@@ -534,8 +534,8 @@ class ComprehensiveBackendTester:
     
     async def run_all_tests(self):
         """Run all tests in sequence"""
-        print("🚀 Starting Complete Indonesian Transaction Flow Testing")
-        print("=" * 60)
+        print("🚀 Starting Comprehensive Backend Testing (Indonesian + Export + AI Features)")
+        print("=" * 80)
         
         test_results = []
         
@@ -578,6 +578,28 @@ class ComprehensiveBackendTester:
         # Test 8: Delete Transaction
         result8 = await self.test_delete_transaction()
         test_results.append(("Delete Transaction", result8))
+        
+        # NEW TESTS FROM REVIEW REQUEST
+        
+        # Test 9: CSV Export
+        result9 = await self.test_export_csv()
+        test_results.append(("Export CSV", result9))
+        
+        # Test 10: JSON Export
+        result10 = await self.test_export_json()
+        test_results.append(("Export JSON", result10))
+        
+        # Test 11: AI Insights
+        result11 = await self.test_ai_insights()
+        test_results.append(("AI Insights", result11))
+        
+        # Test 12: Specific Indonesian Parsing (Review Request)
+        result12 = await self.test_specific_indonesian_parsing()
+        test_results.append(("Specific Indonesian Parsing (gaji masuk 15jt)", result12))
+        
+        # Test 13: Currency Preservation
+        result13 = await self.test_currency_preservation()
+        test_results.append(("Currency Preservation", result13))
         
         return test_results
 
