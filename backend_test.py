@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://1438a319-4ea7-45d8-9861-6e44b33f3aac.preview.emergentagent.com/api"
+BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
 
 class FinanceAPITester:
     def __init__(self):
