@@ -9,7 +9,6 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,13 +18,23 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, register } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (user && !loading) {
-      router.replace("/(app)");
+      // Check if onboarding is completed
+      if (user.onboarding_completed === false) {
+        router.replace("/onboarding-language");
+      } else {
+        router.replace("/(app)");
+      }
     }
   }, [user, loading]);
 
@@ -37,11 +46,43 @@ export default function SignupScreen() {
     );
   }
 
-  const handleEmailSignup = () => {
-    Alert.alert(
-      "Email Signup",
-      "Email/password signup will be available soon. For now, please use Google authentication."
-    );
+  const handleEmailSignup = async () => {
+    // Validate inputs
+    if (!name.trim()) {
+      setError("Please enter your name");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Please enter your email");
+      return;
+    }
+    if (!password.trim()) {
+      setError("Please enter a password");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (!acceptedTerms) {
+      setError("Please accept the Terms of Service");
+      return;
+    }
+
+    setError("");
+    setIsRegistering(true);
+
+    try {
+      const result = await register(name.trim(), email.trim(), password);
+      if (!result.success) {
+        setError(result.error || "Registration failed");
+      }
+      // If successful, the useEffect will handle navigation
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   return (
@@ -54,6 +95,7 @@ export default function SignupScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Header */}
           <View style={styles.header}>
@@ -69,9 +111,17 @@ export default function SignupScreen() {
           <View style={styles.titleSection}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Start your 30-day free trial today
+              Start your 3-day free trial today
             </Text>
           </View>
+
+          {/* Error Message */}
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
 
           {/* Social Login Buttons */}
           <View style={styles.socialButtons}>
@@ -117,9 +167,11 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Aska Nurun Ali"
+                placeholder="Enter your name"
                 placeholderTextColor="#CBD5E1"
                 autoCapitalize="words"
+                value={name}
+                onChangeText={setName}
               />
             </View>
           </View>
@@ -140,6 +192,9 @@ export default function SignupScreen() {
                 placeholderTextColor="#CBD5E1"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={setEmail}
               />
             </View>
           </View>
@@ -160,6 +215,8 @@ export default function SignupScreen() {
                 placeholderTextColor="#CBD5E1"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
+                value={password}
+                onChangeText={setPassword}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
@@ -173,7 +230,7 @@ export default function SignupScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.passwordHint}>
-              Must be at least 8 characters
+              Must be at least 6 characters
             </Text>
           </View>
 
@@ -204,15 +261,15 @@ export default function SignupScreen() {
           <TouchableOpacity
             style={[
               styles.createButton,
-              !acceptedTerms && styles.createButtonDisabled,
+              (!acceptedTerms || isRegistering) && styles.createButtonDisabled,
             ]}
-            disabled={!acceptedTerms}
+            disabled={!acceptedTerms || isRegistering}
             onPress={handleEmailSignup}
             activeOpacity={0.8}
           >
             <LinearGradient
               colors={
-                acceptedTerms
+                acceptedTerms && !isRegistering
                   ? ["#4DB6AC", "#45A599"]
                   : ["#E5E7EB", "#D1D5DB"]
               }
@@ -220,14 +277,18 @@ export default function SignupScreen() {
               end={{ x: 1, y: 0 }}
               style={styles.createButtonGradient}
             >
-              <Text
-                style={[
-                  styles.createButtonText,
-                  !acceptedTerms && styles.createButtonTextDisabled,
-                ]}
-              >
-                Create Account
-              </Text>
+              {isRegistering ? (
+                <ActivityIndicator size="small" color="#9CA3AF" />
+              ) : (
+                <Text
+                  style={[
+                    styles.createButtonText,
+                    !acceptedTerms && styles.createButtonTextDisabled,
+                  ]}
+                >
+                  Create Account
+                </Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -282,7 +343,7 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
   titleSection: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
@@ -294,6 +355,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B7280",
     lineHeight: 20,
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#EF4444",
   },
   socialButtons: {
     flexDirection: "row",
