@@ -1822,4 +1822,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
   },
+  recordingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+  },
+  waitingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 14,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+  },
+  waitingText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
 });
