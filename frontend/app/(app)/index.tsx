@@ -1162,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     flexDirection: "row",
-    backgroundColor: "#1F2937",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 20,
@@ -1171,6 +1171,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   navItem: {
     flex: 1,
