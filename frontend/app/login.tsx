@@ -1,23 +1,27 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { user, loading, login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // If user is already logged in, redirect to app
     if (user && !loading) {
       router.replace("/(app)");
     }
@@ -26,72 +30,144 @@ export default function LoginScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color="#4DB6AC" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Ionicons name="wallet" size={64} color="#667eea" />
-          <Text style={styles.title}>AI Finance</Text>
-          <Text style={styles.subtitle}>
-            Smart expense tracking with AI
-          </Text>
-        </View>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="flash" size={32} color="#4DB6AC" />
+            </View>
+          </View>
 
-        <View style={styles.features}>
-          <View style={styles.featureItem}>
-            <Ionicons name="chatbubble-ellipses" size={24} color="#667eea" />
-            <Text style={styles.featureText}>
-              Chat naturally to log expenses
+          {/* Welcome Section */}
+          <View style={styles.welcomeSection}>
+            <Text style={styles.title}>Welcome Back!</Text>
+            <Text style={styles.subtitle}>
+              Enter your details to access your account
             </Text>
           </View>
 
-          <View style={styles.featureItem}>
-            <Ionicons name="camera" size={24} color="#667eea" />
-            <Text style={styles.featureText}>
-              Scan receipts automatically
-            </Text>
+          {/* Email Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email Address</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color="#94A3B8"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="you@example.com"
+                placeholderTextColor="#CBD5E1"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
           </View>
 
-          <View style={styles.featureItem}>
-            <Ionicons name="stats-chart" size={24} color="#667eea" />
-            <Text style={styles.featureText}>
-              Get AI-powered insights
-            </Text>
+          {/* Password Input */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color="#94A3B8"
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#CBD5E1"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-outline" : "eye-off-outline"}
+                  size={20}
+                  color="#94A3B8"
+                />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.trialBanner}>
-          <Ionicons name="gift" size={20} color="#10b981" />
-          <Text style={styles.trialText}>
-            Start with 3-day free trial • 10 actions/day
-          </Text>
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.googleButton} onPress={login}>
-            <Ionicons name="logo-google" size={20} color="#fff" />
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          {/* Forgot Password */}
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.appleButton, styles.buttonDisabled]}
-            disabled
-          >
-            <Ionicons name="logo-apple" size={20} color="#64748b" />
-            <Text style={styles.appleButtonText}>Continue with Apple</Text>
-            <Text style={styles.comingSoonText}>(Coming Soon)</Text>
+          {/* Login Button */}
+          <TouchableOpacity style={styles.loginButton} activeOpacity={0.8}>
+            <LinearGradient
+              colors={["#4DB6AC", "#45A599"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginButtonGradient}
+            >
+              <Text style={styles.loginButtonText}>Log In</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
-        </View>
 
-        <Text style={styles.termsText}>
-          By continuing, you agree to our Terms & Privacy Policy
-        </Text>
-      </View>
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Social Login Buttons */}
+          <View style={styles.socialButtons}>
+            <TouchableOpacity
+              style={styles.socialButton}
+              onPress={login}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-google" size={20} color="#1F2937" />
+              <Text style={styles.socialButtonText}>Google</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.socialButtonDisabled]}
+              disabled
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-apple" size={20} color="#9CA3AF" />
+              <Text style={[styles.socialButtonText, styles.socialButtonTextDisabled]}>
+                Apple
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sign Up Link */}
+          <View style={styles.signupLink}>
+            <Text style={styles.signupLinkText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.push("/signup")}>
+              <Text style={styles.signupLinkTextBold}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -99,115 +175,170 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A0E27",
+    backgroundColor: "#F9FAFB",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#0A0E27",
+    backgroundColor: "#F9FAFB",
     justifyContent: "center",
     alignItems: "center",
   },
-  content: {
+  keyboardView: {
     flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: "center",
   },
-  header: {
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  logoContainer: {
     alignItems: "center",
-    marginBottom: 48,
+    marginBottom: 32,
+  },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#E0F2F1",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  welcomeSection: {
+    marginBottom: 32,
   },
   title: {
-    fontSize: 40,
+    fontSize: 28,
     fontWeight: "bold",
-    color: "#fff",
-    marginTop: 16,
+    color: "#1F2937",
+    marginBottom: 8,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
-    color: "#94a3b8",
-    marginTop: 8,
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
   },
-  features: {
-    marginBottom: 32,
-    gap: 16,
+  inputContainer: {
+    marginBottom: 20,
   },
-  featureItem: {
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#1e293b",
-    padding: 16,
+    backgroundColor: "#fff",
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    height: 52,
   },
-  featureText: {
-    fontSize: 15,
-    color: "#e2e8f0",
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
     flex: 1,
+    fontSize: 16,
+    color: "#1F2937",
   },
-  trialBanner: {
+  eyeIcon: {
+    padding: 4,
+  },
+  forgotPassword: {
+    alignSelf: "flex-end",
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: "#4DB6AC",
+    fontWeight: "600",
+  },
+  loginButton: {
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 24,
+    elevation: 2,
+    shadowColor: "#4DB6AC",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  loginButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    gap: 8,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  dividerText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    paddingHorizontal: 16,
+    fontWeight: "500",
+  },
+  socialButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 32,
+  },
+  socialButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: "#fff",
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(16, 185, 129, 0.3)",
-    marginBottom: 32,
+    borderColor: "#E5E7EB",
+    paddingVertical: 14,
   },
-  trialText: {
-    fontSize: 14,
-    color: "#10b981",
-    fontWeight: "600",
-  },
-  buttonContainer: {
-    gap: 12,
-    marginBottom: 24,
-  },
-  googleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#667eea",
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  appleButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    backgroundColor: "#1e293b",
-    paddingVertical: 16,
-    borderRadius: 12,
-    position: "relative",
-  },
-  buttonDisabled: {
+  socialButtonDisabled: {
     opacity: 0.5,
   },
-  appleButtonText: {
-    fontSize: 16,
+  socialButtonText: {
+    fontSize: 15,
     fontWeight: "600",
-    color: "#64748b",
+    color: "#1F2937",
   },
-  comingSoonText: {
-    fontSize: 12,
-    color: "#64748b",
-    position: "absolute",
-    bottom: 4,
-    right: 12,
+  socialButtonTextDisabled: {
+    color: "#9CA3AF",
   },
-  termsText: {
-    fontSize: 12,
-    color: "#64748b",
-    textAlign: "center",
-    lineHeight: 18,
+  signupLink: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  signupLinkText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  signupLinkTextBold: {
+    fontSize: 14,
+    color: "#4DB6AC",
+    fontWeight: "600",
   },
 });
