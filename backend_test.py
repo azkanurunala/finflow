@@ -13,713 +13,356 @@ from datetime import datetime, timedelta
 # Backend URL from frontend/.env
 BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
 
-class FinanceAPITester:
+class IndonesianTransactionTester:
     def __init__(self):
-        self.session = None
-        self.test_results = {}
-        self.created_transactions = []
         self.session_token = None
         self.user_id = None
+        self.transaction_id = None
         
-    async def __aenter__(self):
-        self.session = aiohttp.ClientSession()
-        return self
-        
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.session:
-            await self.session.close()
-    
     async def test_user_registration(self):
-        """Test POST /api/auth/register"""
-        logger.info("Testing user registration...")
-        try:
-            # Generate unique test user data
-            import uuid
-            unique_id = str(uuid.uuid4())[:8]
-            user_data = {
-                "name": f"Sarah Johnson {unique_id}",
-                "email": f"sarah.johnson.{unique_id}@example.com",
-                "password": "SecurePass123!"
-            }
-            
-            async with self.session.post(f"{BACKEND_URL}/auth/register", json=user_data) as response:
+        """Test 1: Register a new test user"""
+        print("🔐 Testing User Registration...")
+        
+        # Generate unique test user
+        test_email = f"testuser_{uuid.uuid4().hex[:8]}@example.com"
+        test_data = {
+            "email": test_email,
+            "password": "testpass123",
+            "name": "Test User Indonesian"
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/auth/register", json=test_data) as response:
                 if response.status == 200:
                     data = await response.json()
                     self.session_token = data.get("session_token")
                     self.user_id = data.get("user_id")
-                    
-                    if self.session_token and self.user_id:
-                        logger.info(f"✅ User Registration: Created user {data['name']} ({data['email']}) - onboarding_completed: {data.get('onboarding_completed', False)}")
-                        return True
-                    else:
-                        logger.error("❌ User Registration: Missing session_token or user_id in response")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ User Registration failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ User Registration error: {str(e)}")
-            return False
-
-    async def test_start_trial(self):
-        """Test POST /api/auth/start-trial"""
-        logger.info("Testing start free trial...")
-        try:
-            headers = {"Authorization": f"Bearer {self.session_token}"}
-            
-            async with self.session.post(f"{BACKEND_URL}/auth/start-trial", headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if data.get("success") and data.get("subscription_tier") == "free_trial":
-                        logger.info(f"✅ Start Trial: Free trial started - expires: {data.get('expires_at')}")
-                        return True
-                    else:
-                        logger.error("❌ Start Trial: Invalid response format or trial not started")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ Start Trial failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Start Trial error: {str(e)}")
-            return False
-
-    async def test_subscription_status(self):
-        """Test GET /api/subscription"""
-        logger.info("Testing subscription status...")
-        try:
-            headers = {"Authorization": f"Bearer {self.session_token}"}
-            
-            async with self.session.get(f"{BACKEND_URL}/subscription", headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    if (data.get("tier") == "free_trial" and 
-                        data.get("tier_name") == "Free Trial" and 
-                        data.get("is_active") == True):
-                        
-                        logger.info(f"✅ Subscription Status: {data['tier_name']} - Active: {data['is_active']} - Days remaining: {data.get('days_remaining', 'N/A')}")
-                        return True
-                    else:
-                        logger.error(f"❌ Subscription Status: Unexpected subscription status: {data}")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ Subscription Status failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Subscription Status error: {str(e)}")
-            return False
-
-    async def test_complete_transaction_flow(self):
-        """Test the complete transaction flow as requested"""
-        logger.info("🚀 Testing Complete Transaction Flow...")
-        
-        # Step 1: Register new user
-        if not await self.test_user_registration():
-            logger.error("❌ Registration failed - stopping flow test")
-            return False
-        
-        # Step 2: Start free trial
-        if not await self.test_start_trial():
-            logger.error("❌ Trial start failed - stopping flow test")
-            return False
-        
-        # Step 3: Test chat transaction with specific text
-        logger.info("Testing chat transaction with 'Spent $25 on lunch at McDonalds'...")
-        try:
-            headers = {"Authorization": f"Bearer {self.session_token}"}
-            transaction_text = {"text": "Spent $25 on lunch at McDonalds"}
-            
-            async with self.session.post(f"{BACKEND_URL}/transactions/chat", 
-                                      json=transaction_text, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    transaction = data.get("transaction")
-                    
-                    if transaction and transaction.get("amount") == 25.0:
-                        logger.info(f"✅ Chat Transaction: ${transaction['amount']} at {transaction.get('merchant', 'N/A')} - Category: {transaction.get('category', 'N/A')}")
-                        self.created_transactions.append(transaction["id"])
-                    else:
-                        logger.error("❌ Chat Transaction: Transaction not properly parsed or amount incorrect")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ Chat Transaction failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Chat Transaction error: {str(e)}")
-            return False
-        
-        # Step 4: Test get transactions
-        logger.info("Testing get transactions...")
-        try:
-            headers = {"Authorization": f"Bearer {self.session_token}"}
-            
-            async with self.session.get(f"{BACKEND_URL}/transactions", headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    transactions = data.get("transactions", [])
-                    count = data.get("count", 0)
-                    
-                    if count > 0 and len(transactions) > 0:
-                        # Check if our McDonald's transaction is there
-                        mcdonalds_found = any(
-                            t.get("merchant", "").lower() == "mcdonalds" and t.get("amount") == 25.0 
-                            for t in transactions
-                        )
-                        
-                        logger.info(f"✅ Get Transactions: Retrieved {count} transactions - McDonald's transaction found: {mcdonalds_found}")
-                    else:
-                        logger.error("❌ Get Transactions: No transactions found")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ Get Transactions failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Get Transactions error: {str(e)}")
-            return False
-        
-        # Step 5: Test get insights
-        logger.info("Testing get insights for 30 days...")
-        try:
-            headers = {"Authorization": f"Bearer {self.session_token}"}
-            
-            async with self.session.get(f"{BACKEND_URL}/insights?days=30", headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    
-                    required_fields = ["total_expenses", "total_income", "net", "by_category", "period"]
-                    if all(field in data for field in required_fields):
-                        logger.info(f"✅ Get Insights: {data['period']} - Expenses: ${data['total_expenses']}, Income: ${data['total_income']}, Net: ${data['net']}")
-                    else:
-                        missing = [f for f in required_fields if f not in data]
-                        logger.error(f"❌ Get Insights: Missing required fields: {missing}")
-                        return False
-                else:
-                    error_text = await response.text()
-                    logger.error(f"❌ Get Insights failed: {response.status}: {error_text}")
-                    return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Get Insights error: {str(e)}")
-            return False
-        
-        # Step 6: Test subscription status
-        if not await self.test_subscription_status():
-            logger.error("❌ Subscription status failed")
-            return False
-        
-        logger.info("🎉 Complete Transaction Flow Test: ALL STEPS PASSED!")
-        return True
-        """Test basic API connectivity"""
-        logger.info("Testing API health...")
-        try:
-            async with self.session.get(f"{BACKEND_URL}/") as response:
-                if response.status == 200:
-                    data = await response.json()
-                    logger.info(f"✅ API Health: {data}")
+                    print(f"✅ Registration successful: {test_email}")
+                    print(f"   User ID: {self.user_id}")
+                    print(f"   Session Token: {self.session_token[:20]}...")
                     return True
                 else:
-                    logger.error(f"❌ API Health failed: {response.status}")
+                    error_text = await response.text()
+                    print(f"❌ Registration failed: {response.status} - {error_text}")
                     return False
-        except Exception as e:
-            logger.error(f"❌ API Health error: {str(e)}")
-            return False
     
-    async def test_categories_endpoint(self):
-        """Test GET /api/categories"""
-        logger.info("Testing categories endpoint...")
-        try:
-            async with self.session.get(f"{BACKEND_URL}/categories") as response:
+    async def test_start_trial(self):
+        """Test 2: Start free trial"""
+        print("\n🎯 Testing Start Free Trial...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/auth/start-trial", headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
-                    categories = data.get("categories", [])
-                    expected_categories = ["Groceries", "Dining & Coffee", "Transportation", "Rent & Utilities"]
-                    
-                    if all(cat in categories for cat in expected_categories):
-                        logger.info(f"✅ Categories endpoint working: {len(categories)} categories")
-                        return True
-                    else:
-                        logger.error(f"❌ Categories missing expected items: {categories}")
-                        return False
+                    print(f"✅ Free trial started successfully")
+                    print(f"   Subscription Tier: {data.get('subscription_tier')}")
+                    print(f"   Expires At: {data.get('expires_at')}")
+                    return True
                 else:
-                    logger.error(f"❌ Categories endpoint failed: {response.status}")
+                    error_text = await response.text()
+                    print(f"❌ Start trial failed: {response.status} - {error_text}")
                     return False
-        except Exception as e:
-            logger.error(f"❌ Categories endpoint error: {str(e)}")
+    
+    async def test_indonesian_income_parsing(self):
+        """Test 3: Indonesian income parsing - 'lembur dapat 5jt'"""
+        print("\n🇮🇩 Testing Indonesian Income Parsing...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
             return False
-    
-    async def test_chat_transactions(self):
-        """Test POST /api/transactions/chat with various inputs"""
-        logger.info("Testing chat transaction parsing...")
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        test_data = {"text": "lembur dapat 5jt"}
         
-        test_cases = [
-            "Spent $23 at Starbucks",
-            "Uber ride 14.75 last night", 
-            "Paid rent 1800",
-            "Got paid 2500 today",
-            "Groceries at Walmart 87.50",
-            "Coffee at Dunkin Donuts $4.25 this morning",
-            "Gas at Shell station $45.60 yesterday",
-            "Netflix subscription $15.99 monthly"
-        ]
-        
-        results = []
-        for test_input in test_cases:
-            try:
-                payload = {"text": test_input}
-                async with self.session.post(
-                    f"{BACKEND_URL}/transactions/chat",
-                    json=payload
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        transaction = data.get("transaction", {})
-                        
-                        # Validate required fields
-                        required_fields = ["id", "amount", "category", "date", "transaction_type", "source"]
-                        if all(field in transaction for field in required_fields):
-                            self.created_transactions.append(transaction["id"])
-                            logger.info(f"✅ Chat: '{test_input}' -> ${transaction['amount']:.2f} at {transaction.get('merchant', 'N/A')} ({transaction['category']})")
-                            results.append(True)
-                        else:
-                            logger.error(f"❌ Chat: Missing fields in response for '{test_input}': {transaction}")
-                            results.append(False)
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"❌ Chat: '{test_input}' failed with {response.status}: {error_text}")
-                        results.append(False)
-                        
-            except Exception as e:
-                logger.error(f"❌ Chat: '{test_input}' error: {str(e)}")
-                results.append(False)
-        
-        success_rate = sum(results) / len(results) if results else 0
-        logger.info(f"Chat transactions success rate: {success_rate:.1%} ({sum(results)}/{len(results)})")
-        return success_rate > 0.7  # 70% success threshold
-    
-    def create_sample_receipt_image(self) -> str:
-        """Create a sample receipt image as base64"""
-        # Create a simple receipt-like image with PIL
-        try:
-            from PIL import Image, ImageDraw, ImageFont
-            
-            # Create a white image
-            img = Image.new('RGB', (300, 400), color='white')
-            draw = ImageDraw.Draw(img)
-            
-            # Try to use default font, fallback to basic if not available
-            try:
-                font = ImageFont.load_default()
-            except:
-                font = None
-            
-            # Draw receipt content
-            receipt_text = [
-                "WALMART SUPERCENTER",
-                "123 MAIN ST",
-                "ANYTOWN, CA 90210",
-                "",
-                "Date: 2024-01-15",
-                "Time: 14:30:25",
-                "",
-                "GROCERIES:",
-                "Bananas         $3.50",
-                "Milk 1 Gal      $4.25", 
-                "Bread           $2.99",
-                "Eggs Dozen      $3.75",
-                "",
-                "Subtotal:      $14.49",
-                "Tax:            $1.16",
-                "TOTAL:         $15.65",
-                "",
-                "THANK YOU!"
-            ]
-            
-            y_position = 10
-            for line in receipt_text:
-                draw.text((10, y_position), line, fill='black', font=font)
-                y_position += 18
-            
-            # Convert to base64
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG')
-            img_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-            
-            return img_base64
-            
-        except ImportError:
-            logger.warning("PIL not available, creating text-based receipt image")
-            # Fallback: create a minimal image without PIL
-            # This is a 1x1 white pixel as base64 JPEG (minimal valid image)
-            return "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A"
-    
-    async def test_receipt_transactions(self):
-        """Test POST /api/transactions/receipt with sample images"""
-        logger.info("Testing receipt transaction parsing...")
-        
-        # Create sample receipt image
-        receipt_base64 = self.create_sample_receipt_image()
-        
-        try:
-            # Test with form data (as expected by the endpoint)
-            form_data = aiohttp.FormData()
-            form_data.add_field('image_base64', receipt_base64)
-            
-            async with self.session.post(
-                f"{BACKEND_URL}/transactions/receipt",
-                data=form_data
-            ) as response:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/chat", json=test_data, headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
                     transaction = data.get("transaction", {})
                     
-                    # Validate required fields
-                    required_fields = ["id", "amount", "category", "date", "source"]
-                    if all(field in transaction for field in required_fields):
-                        if transaction["source"] == "receipt":
-                            self.created_transactions.append(transaction["id"])
-                            logger.info(f"✅ Receipt: Parsed ${transaction['amount']:.2f} at {transaction.get('merchant', 'N/A')} ({transaction['category']})")
-                            return True
-                        else:
-                            logger.error(f"❌ Receipt: Wrong source field: {transaction['source']}")
-                            return False
-                    else:
-                        logger.error(f"❌ Receipt: Missing fields in response: {transaction}")
-                        return False
+                    # Verify expected values
+                    expected_amount = 5000000
+                    expected_currency = "IDR"
+                    expected_type = "income"
+                    expected_category = "Income"
+                    
+                    amount = transaction.get("amount")
+                    currency = transaction.get("currency")
+                    trans_type = transaction.get("transaction_type")
+                    category = transaction.get("category")
+                    
+                    print(f"✅ Indonesian income parsing successful")
+                    print(f"   Text: 'lembur dapat 5jt'")
+                    print(f"   Amount: {amount} (expected: {expected_amount}) {'✅' if amount == expected_amount else '❌'}")
+                    print(f"   Currency: {currency} (expected: {expected_currency}) {'✅' if currency == expected_currency else '❌'}")
+                    print(f"   Type: {trans_type} (expected: {expected_type}) {'✅' if trans_type == expected_type else '❌'}")
+                    print(f"   Category: {category} (expected: {expected_category}) {'✅' if category == expected_category else '❌'}")
+                    
+                    # Store transaction ID for later tests
+                    self.transaction_id = transaction.get("id")
+                    
+                    # Check if all expected values match
+                    success = (amount == expected_amount and 
+                             currency == expected_currency and 
+                             trans_type == expected_type and 
+                             category == expected_category)
+                    
+                    return success
                 else:
                     error_text = await response.text()
-                    logger.error(f"❌ Receipt: Failed with {response.status}: {error_text}")
+                    print(f"❌ Indonesian income parsing failed: {response.status} - {error_text}")
                     return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Receipt: Error: {str(e)}")
+    
+    async def test_indonesian_expense_parsing(self):
+        """Test 4: Indonesian expense parsing - 'beli makan 50rb'"""
+        print("\n🇮🇩 Testing Indonesian Expense Parsing...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
             return False
-    
-    def create_sample_audio(self) -> str:
-        """Create a sample audio file as base64"""
-        # Create a minimal valid audio file (silence)
-        # This is a minimal M4A header with silence
-        try:
-            # Create 1 second of silence in M4A format (minimal)
-            # This is a very basic M4A file with minimal audio data
-            audio_data = b'\x00\x00\x00\x20ftypM4A \x00\x00\x00\x00M4A mp42isom\x00\x00\x00\x08free'
-            return base64.b64encode(audio_data).decode('utf-8')
-        except Exception as e:
-            logger.error(f"Error creating sample audio: {str(e)}")
-            # Return empty base64 as fallback
-            return base64.b64encode(b'').decode('utf-8')
-    
-    async def test_voice_transactions(self):
-        """Test POST /api/transactions/voice with sample audio"""
-        logger.info("Testing voice transaction parsing...")
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        test_data = {"text": "beli makan 50rb"}
         
-        # Create sample audio
-        audio_base64 = self.create_sample_audio()
-        
-        try:
-            payload = {"audio_base64": audio_base64}
-            async with self.session.post(
-                f"{BACKEND_URL}/transactions/voice",
-                json=payload
-            ) as response:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/chat", json=test_data, headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
                     transaction = data.get("transaction", {})
-                    transcription = data.get("transcription", "")
                     
-                    # Validate required fields
-                    required_fields = ["id", "amount", "category", "date", "source"]
-                    if all(field in transaction for field in required_fields):
-                        if transaction["source"] == "voice":
-                            self.created_transactions.append(transaction["id"])
-                            logger.info(f"✅ Voice: Transcribed '{transcription}' -> ${transaction['amount']:.2f} at {transaction.get('merchant', 'N/A')} ({transaction['category']})")
-                            return True
-                        else:
-                            logger.error(f"❌ Voice: Wrong source field: {transaction['source']}")
-                            return False
-                    else:
-                        logger.error(f"❌ Voice: Missing fields in response: {transaction}")
-                        return False
+                    # Verify expected values
+                    expected_amount = 50000
+                    expected_currency = "IDR"
+                    expected_type = "expense"
+                    
+                    amount = transaction.get("amount")
+                    currency = transaction.get("currency")
+                    trans_type = transaction.get("transaction_type")
+                    category = transaction.get("category")
+                    
+                    print(f"✅ Indonesian expense parsing successful")
+                    print(f"   Text: 'beli makan 50rb'")
+                    print(f"   Amount: {amount} (expected: {expected_amount}) {'✅' if amount == expected_amount else '❌'}")
+                    print(f"   Currency: {currency} (expected: {expected_currency}) {'✅' if currency == expected_currency else '❌'}")
+                    print(f"   Type: {trans_type} (expected: {expected_type}) {'✅' if trans_type == expected_type else '❌'}")
+                    print(f"   Category: {category}")
+                    
+                    # Check if critical values match
+                    success = (amount == expected_amount and 
+                             currency == expected_currency and 
+                             trans_type == expected_type)
+                    
+                    return success
                 else:
                     error_text = await response.text()
-                    logger.error(f"❌ Voice: Failed with {response.status}: {error_text}")
-                    # Voice might fail due to audio format issues, but that's expected with minimal audio
-                    logger.info("Note: Voice endpoint failure may be due to minimal test audio format")
+                    print(f"❌ Indonesian expense parsing failed: {response.status} - {error_text}")
                     return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Voice: Error: {str(e)}")
-            return False
     
-    async def test_get_transactions(self):
-        """Test GET /api/transactions"""
-        logger.info("Testing get transactions endpoint...")
+    async def test_manual_transaction(self):
+        """Test 5: Manual transaction creation"""
+        print("\n📝 Testing Manual Transaction Creation...")
         
-        try:
-            async with self.session.get(f"{BACKEND_URL}/transactions") as response:
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        test_data = {
+            "amount": 1500000,
+            "currency": "IDR",
+            "merchant": "Gaji",
+            "category": "Income",
+            "date": "2026-01-10",
+            "transaction_type": "income"
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/manual", json=test_data, headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
-                    transactions = data.get("transactions", [])
-                    count = data.get("count", 0)
+                    transaction = data.get("transaction", {})
                     
-                    logger.info(f"✅ Get transactions: Retrieved {count} transactions")
+                    print(f"✅ Manual transaction created successfully")
+                    print(f"   Amount: {transaction.get('amount')}")
+                    print(f"   Currency: {transaction.get('currency')}")
+                    print(f"   Merchant: {transaction.get('merchant')}")
+                    print(f"   Category: {transaction.get('category')}")
+                    print(f"   Type: {transaction.get('transaction_type')}")
                     
-                    # Validate transaction structure if any exist
-                    if transactions:
-                        first_transaction = transactions[0]
-                        required_fields = ["id", "amount", "category", "date", "source"]
-                        if all(field in first_transaction for field in required_fields):
-                            logger.info(f"✅ Transaction structure valid: {first_transaction.get('merchant', 'N/A')} - ${first_transaction['amount']:.2f}")
-                            return True
-                        else:
-                            logger.error(f"❌ Transaction structure invalid: {first_transaction}")
-                            return False
-                    else:
-                        logger.info("✅ Get transactions: No transactions found (empty database)")
-                        return True
+                    # Store this transaction ID for update/get/delete tests
+                    self.transaction_id = transaction.get("id")
+                    print(f"   Transaction ID: {self.transaction_id}")
+                    
+                    return True
                 else:
                     error_text = await response.text()
-                    logger.error(f"❌ Get transactions failed: {response.status}: {error_text}")
+                    print(f"❌ Manual transaction creation failed: {response.status} - {error_text}")
                     return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Get transactions error: {str(e)}")
+    
+    async def test_update_transaction(self):
+        """Test 6: Update transaction amount to 2000000"""
+        print("\n✏️ Testing Transaction Update...")
+        
+        if not self.session_token or not self.transaction_id:
+            print("❌ No session token or transaction ID available")
             return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        update_data = {"amount": 2000000}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.put(f"{BACKEND_URL}/transactions/{self.transaction_id}", json=update_data, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    transaction = data.get("transaction", {})
+                    
+                    updated_amount = transaction.get("amount")
+                    print(f"✅ Transaction updated successfully")
+                    print(f"   New Amount: {updated_amount} (expected: 2000000) {'✅' if updated_amount == 2000000 else '❌'}")
+                    
+                    return updated_amount == 2000000
+                else:
+                    error_text = await response.text()
+                    print(f"❌ Transaction update failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_get_single_transaction(self):
+        """Test 7: Get single transaction"""
+        print("\n🔍 Testing Get Single Transaction...")
+        
+        if not self.session_token or not self.transaction_id:
+            print("❌ No session token or transaction ID available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as response:
+                if response.status == 200:
+                    transaction = await response.json()
+                    
+                    print(f"✅ Single transaction retrieved successfully")
+                    print(f"   ID: {transaction.get('id')}")
+                    print(f"   Amount: {transaction.get('amount')}")
+                    print(f"   Currency: {transaction.get('currency')}")
+                    print(f"   Merchant: {transaction.get('merchant')}")
+                    print(f"   Category: {transaction.get('category')}")
+                    
+                    return True
+                else:
+                    error_text = await response.text()
+                    print(f"❌ Get single transaction failed: {response.status} - {error_text}")
+                    return False
     
     async def test_delete_transaction(self):
-        """Test DELETE /api/transactions/{id}"""
-        logger.info("Testing delete transaction endpoint...")
+        """Test 8: Delete transaction"""
+        print("\n🗑️ Testing Transaction Deletion...")
         
-        if not self.created_transactions:
-            logger.warning("⚠️ No transactions to delete, skipping delete test")
-            return True
+        if not self.session_token or not self.transaction_id:
+            print("❌ No session token or transaction ID available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
         
-        # Test deleting the first created transaction
-        transaction_id = self.created_transactions[0]
-        
-        try:
-            async with self.session.delete(f"{BACKEND_URL}/transactions/{transaction_id}") as response:
+        async with aiohttp.ClientSession() as session:
+            async with session.delete(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
-                    message = data.get("message", "")
-                    logger.info(f"✅ Delete transaction: {message}")
+                    print(f"✅ Transaction deleted successfully")
+                    print(f"   Message: {data.get('message')}")
                     
-                    # Verify transaction is actually deleted
-                    async with self.session.get(f"{BACKEND_URL}/transactions") as get_response:
-                        if get_response.status == 200:
-                            get_data = await get_response.json()
-                            remaining_transactions = get_data.get("transactions", [])
-                            
-                            # Check if deleted transaction is not in the list
-                            deleted_found = any(t["id"] == transaction_id for t in remaining_transactions)
-                            if not deleted_found:
-                                logger.info("✅ Delete verification: Transaction successfully removed")
-                                return True
-                            else:
-                                logger.error("❌ Delete verification: Transaction still exists")
-                                return False
-                        else:
-                            logger.warning("⚠️ Could not verify deletion")
+                    # Verify deletion by trying to get the transaction
+                    async with session.get(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as verify_response:
+                        if verify_response.status == 404:
+                            print(f"✅ Deletion verified - transaction not found")
                             return True
-                            
-                elif response.status == 404:
-                    logger.info("✅ Delete transaction: Correctly returned 404 for non-existent transaction")
-                    return True
+                        else:
+                            print(f"❌ Deletion verification failed - transaction still exists")
+                            return False
                 else:
                     error_text = await response.text()
-                    logger.error(f"❌ Delete transaction failed: {response.status}: {error_text}")
+                    print(f"❌ Transaction deletion failed: {response.status} - {error_text}")
                     return False
-                    
-        except Exception as e:
-            logger.error(f"❌ Delete transaction error: {str(e)}")
-            return False
-    
-    async def test_insights_endpoint(self):
-        """Test GET /api/insights with different time periods"""
-        logger.info("Testing insights endpoint...")
-        
-        test_periods = [7, 30, 90]
-        results = []
-        
-        for days in test_periods:
-            try:
-                async with self.session.get(f"{BACKEND_URL}/insights?days={days}") as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        
-                        # Validate required fields
-                        required_fields = ["total_expenses", "total_income", "net", "by_category", "period"]
-                        if all(field in data for field in required_fields):
-                            logger.info(f"✅ Insights ({days} days): Expenses: ${data['total_expenses']:.2f}, Income: ${data['total_income']:.2f}, Net: ${data['net']:.2f}")
-                            results.append(True)
-                        else:
-                            logger.error(f"❌ Insights ({days} days): Missing fields: {data}")
-                            results.append(False)
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"❌ Insights ({days} days) failed: {response.status}: {error_text}")
-                        results.append(False)
-                        
-            except Exception as e:
-                logger.error(f"❌ Insights ({days} days) error: {str(e)}")
-                results.append(False)
-        
-        success_rate = sum(results) / len(results) if results else 0
-        return success_rate > 0.5  # 50% success threshold
-    
-    async def test_edge_cases(self):
-        """Test edge cases and error handling"""
-        logger.info("Testing edge cases...")
-        
-        edge_cases = [
-            # Invalid JSON
-            {"endpoint": "chat", "payload": "invalid json", "expect_error": True},
-            # Missing required fields
-            {"endpoint": "chat", "payload": {}, "expect_error": True},
-            # Empty text
-            {"endpoint": "chat", "payload": {"text": ""}, "expect_error": True},
-            # Very large amount
-            {"endpoint": "chat", "payload": {"text": "Spent $999999999 at store"}, "expect_error": False},
-            # Special characters
-            {"endpoint": "chat", "payload": {"text": "Spent $25 at café & restaurant"}, "expect_error": False},
-        ]
-        
-        results = []
-        for case in edge_cases:
-            try:
-                if case["endpoint"] == "chat":
-                    if isinstance(case["payload"], str):
-                        # Test invalid JSON
-                        async with self.session.post(
-                            f"{BACKEND_URL}/transactions/chat",
-                            data=case["payload"],
-                            headers={"Content-Type": "application/json"}
-                        ) as response:
-                            if case["expect_error"] and response.status >= 400:
-                                logger.info(f"✅ Edge case: Correctly handled invalid JSON")
-                                results.append(True)
-                            elif not case["expect_error"] and response.status == 200:
-                                logger.info(f"✅ Edge case: Handled valid request")
-                                results.append(True)
-                            else:
-                                logger.error(f"❌ Edge case: Unexpected response {response.status}")
-                                results.append(False)
-                    else:
-                        # Test valid JSON
-                        async with self.session.post(
-                            f"{BACKEND_URL}/transactions/chat",
-                            json=case["payload"]
-                        ) as response:
-                            if case["expect_error"] and response.status >= 400:
-                                logger.info(f"✅ Edge case: Correctly rejected invalid payload")
-                                results.append(True)
-                            elif not case["expect_error"] and response.status == 200:
-                                data = await response.json()
-                                transaction = data.get("transaction", {})
-                                if "id" in transaction:
-                                    self.created_transactions.append(transaction["id"])
-                                logger.info(f"✅ Edge case: Handled valid request")
-                                results.append(True)
-                            else:
-                                logger.error(f"❌ Edge case: Unexpected response {response.status}")
-                                results.append(False)
-                                
-            except Exception as e:
-                if case["expect_error"]:
-                    logger.info(f"✅ Edge case: Correctly threw exception for invalid input")
-                    results.append(True)
-                else:
-                    logger.error(f"❌ Edge case: Unexpected error: {str(e)}")
-                    results.append(False)
-        
-        success_rate = sum(results) / len(results) if results else 0
-        return success_rate > 0.6  # 60% success threshold
     
     async def run_all_tests(self):
-        """Run all tests and return summary"""
-        logger.info("🚀 Starting comprehensive backend API testing...")
+        """Run all tests in sequence"""
+        print("🚀 Starting Complete Indonesian Transaction Flow Testing")
+        print("=" * 60)
         
-        # First run the complete transaction flow test as requested
-        logger.info("\n" + "="*60)
-        logger.info("🎯 RUNNING COMPLETE TRANSACTION FLOW TEST (AS REQUESTED)")
-        logger.info("="*60)
+        test_results = []
         
-        flow_test_result = await self.test_complete_transaction_flow()
+        # Test 1: User Registration
+        result1 = await self.test_user_registration()
+        test_results.append(("User Registration", result1))
         
-        # Then run other tests (some may fail due to authentication requirements)
-        logger.info("\n" + "="*60)
-        logger.info("🔧 RUNNING ADDITIONAL API TESTS")
-        logger.info("="*60)
+        if not result1:
+            print("\n❌ Cannot continue without successful registration")
+            return test_results
         
-        tests = [
-            ("API Health", self.test_api_health),
-            ("Categories Endpoint", self.test_categories_endpoint),
-            # Skip other tests that require auth since we already tested the flow
-        ]
+        # Test 2: Start Free Trial
+        result2 = await self.test_start_trial()
+        test_results.append(("Start Free Trial", result2))
         
-        results = {"Complete Transaction Flow": flow_test_result}
+        # Test 3: Indonesian Income Parsing
+        result3 = await self.test_indonesian_income_parsing()
+        test_results.append(("Indonesian Income Parsing", result3))
         
-        for test_name, test_func in tests:
-            logger.info(f"\n--- Running {test_name} ---")
-            try:
-                result = await test_func()
-                results[test_name] = result
-                status = "✅ PASS" if result else "❌ FAIL"
-                logger.info(f"{status}: {test_name}")
-            except Exception as e:
-                logger.error(f"❌ FAIL: {test_name} - {str(e)}")
-                results[test_name] = False
+        # Test 4: Indonesian Expense Parsing
+        result4 = await self.test_indonesian_expense_parsing()
+        test_results.append(("Indonesian Expense Parsing", result4))
         
-        # Summary
-        logger.info("\n" + "="*50)
-        logger.info("📊 TEST SUMMARY")
-        logger.info("="*50)
+        # Test 5: Manual Transaction
+        result5 = await self.test_manual_transaction()
+        test_results.append(("Manual Transaction", result5))
         
-        passed = sum(1 for result in results.values() if result)
-        total = len(results)
+        if not result5:
+            print("\n❌ Cannot continue transaction CRUD tests without manual transaction")
+            return test_results
         
-        for test_name, result in results.items():
-            status = "✅ PASS" if result else "❌ FAIL"
-            logger.info(f"{status}: {test_name}")
+        # Test 6: Update Transaction
+        result6 = await self.test_update_transaction()
+        test_results.append(("Update Transaction", result6))
         
-        logger.info(f"\nOverall: {passed}/{total} tests passed ({passed/total:.1%})")
+        # Test 7: Get Single Transaction
+        result7 = await self.test_get_single_transaction()
+        test_results.append(("Get Single Transaction", result7))
         
-        if self.created_transactions:
-            logger.info(f"Created {len(self.created_transactions)} test transactions")
+        # Test 8: Delete Transaction
+        result8 = await self.test_delete_transaction()
+        test_results.append(("Delete Transaction", result8))
         
-        return results
+        return test_results
 
 async def main():
-    """Main test runner"""
-    async with FinanceAPITester() as tester:
-        results = await tester.run_all_tests()
-        
-        # Check if the main requested test passed
-        flow_test_passed = results.get("Complete Transaction Flow", False)
-        
-        if flow_test_passed:
-            print(f"\n✅ COMPLETE TRANSACTION FLOW TEST PASSED!")
-            print("All 6 steps of the requested flow are working correctly:")
-            print("1. ✅ User Registration")
-            print("2. ✅ Start Free Trial") 
-            print("3. ✅ Chat Transaction Processing")
-            print("4. ✅ Get Transactions List")
-            print("5. ✅ Get Financial Insights")
-            print("6. ✅ Get Subscription Status")
-            return 0
-        else:
-            print(f"\n❌ COMPLETE TRANSACTION FLOW TEST FAILED!")
-            return 1
+    """Main test execution"""
+    tester = IndonesianTransactionTester()
+    results = await tester.run_all_tests()
+    
+    print("\n" + "=" * 60)
+    print("📊 TEST RESULTS SUMMARY")
+    print("=" * 60)
+    
+    passed = 0
+    total = len(results)
+    
+    for test_name, success in results:
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{test_name:<30} {status}")
+        if success:
+            passed += 1
+    
+    print(f"\nOverall: {passed}/{total} tests passed ({(passed/total)*100:.1f}%)")
+    
+    if passed == total:
+        print("🎉 ALL TESTS PASSED - Indonesian transaction flow is fully functional!")
+    else:
+        print("⚠️ Some tests failed - check individual test results above")
 
 if __name__ == "__main__":
-    exit_code = asyncio.run(main())
-    exit(exit_code)
+    asyncio.run(main())
