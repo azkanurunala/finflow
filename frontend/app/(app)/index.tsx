@@ -166,7 +166,7 @@ export default function HomeScreen() {
         <View style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>{t('home.totalBalance')}</Text>
           <Text style={styles.balanceAmount}>
-            {formatAmount(totalBalance, 'USD')}
+            {formatAmount(totalBalance)}
           </Text>
         </View>
 
