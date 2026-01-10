@@ -26,6 +26,8 @@ class FinanceAPITester:
         self.session = None
         self.test_results = {}
         self.created_transactions = []
+        self.session_token = None
+        self.user_id = None
         
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
