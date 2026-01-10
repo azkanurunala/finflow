@@ -1068,8 +1068,14 @@ async def create_manual_transaction(
         
         await db.transactions.insert_one(transaction_data)
         
+        # Fetch the created transaction to ensure proper serialization
+        created_transaction = await db.transactions.find_one(
+            {"id": transaction_data["id"]},
+            {"_id": 0}
+        )
+        
         return {
-            "transaction": transaction_data,
+            "transaction": created_transaction,
             "message": f"Transaction logged successfully"
         }
     except Exception as e:
