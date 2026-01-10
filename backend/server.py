@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Depends, Request, Response, Cookie
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,10 +9,11 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 import base64
 import io
+import httpx
 from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 ROOT_DIR = Path(__file__).parent
@@ -52,30 +54,77 @@ US_CATEGORIES = [
     "Other"
 ]
 
-# Common US merchants
-US_MERCHANTS = [
-    "Walmart", "Target", "Costco", "Whole Foods", "Trader Joe's",
-    "Starbucks", "McDonald's", "Chipotle", "Subway",
-    "Uber", "Lyft", "Shell", "Chevron",
-    "Amazon", "Netflix", "Spotify", "Apple"
-]
+# Subscription Tiers
+SUBSCRIPTION_TIERS = {
+    "free_trial": {
+        "name": "Free Trial",
+        "daily_actions": 10,
+        "duration_days": 3,
+        "price": 0
+    },
+    "basic": {
+        "name": "Basic",
+        "audio_minutes": 150,
+        "ocr_images": 150,
+        "chat_messages": 300,
+        "price": 79000
+    },
+    "pro": {
+        "name": "Pro",
+        "audio_minutes": 300,
+        "ocr_images": 300,
+        "chat_messages": 600,
+        "price": 129000
+    },
+    "power": {
+        "name": "Power",
+        "audio_minutes": 600,
+        "ocr_images": 1000,
+        "chat_messages": 1500,
+        "price": 199000
+    }
+}
 
 # Models
+class User(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    subscription_tier: str = "free_trial"
+    subscription_expires_at: Optional[datetime] = None
+    subscription_started_at: Optional[datetime] = None
+    created_at: datetime
+
+class UserSession(BaseModel):
+    user_id: str
+    session_token: str
+    expires_at: datetime
+    created_at: datetime
+
+class SessionDataRequest(BaseModel):
+    session_id: str
+
+class SessionDataResponse(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    session_token: str
+
 class Transaction(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
     amount: float
     currency: str = "USD"
     merchant: Optional[str] = None
     category: str
     date: datetime
-    transaction_type: str = "expense"  # expense or income
+    transaction_type: str = "expense"
     notes: Optional[str] = None
-    source: str  # chat, receipt, voice
+    source: str
     metadata: Optional[Dict[str, Any]] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-class TransactionCreate(BaseModel):
-    text: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ChatTransactionRequest(BaseModel):
     text: str
@@ -83,16 +132,162 @@ class ChatTransactionRequest(BaseModel):
 class VoiceTransactionRequest(BaseModel):
     audio_base64: str
 
-class TransactionResponse(BaseModel):
-    transaction: Transaction
-    message: str
+class UsageStats(BaseModel):
+    user_id: str
+    date: str  # YYYY-MM-DD format
+    chat_count: int = 0
+    ocr_count: int = 0
+    voice_minutes: float = 0.0
+    total_actions: int = 0
 
-class InsightsResponse(BaseModel):
-    total_expenses: float
-    total_income: float
-    net: float
-    by_category: Dict[str, float]
-    period: str
+class SubscriptionInfo(BaseModel):
+    tier: str
+    tier_name: str
+    is_active: bool
+    expires_at: Optional[datetime] = None
+    days_remaining: Optional[int] = None
+    limits: Dict[str, Any]
+    usage: Dict[str, Any]
+
+# Auth Helper Functions
+async def get_session_token(request: Request) -> Optional[str]:
+    """Extract session token from cookie or Authorization header"""
+    # Try cookie first
+    session_token = request.cookies.get("session_token")
+    if session_token:
+        return session_token
+    
+    # Try Authorization header
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header.replace("Bearer ", "")
+    
+    return None
+
+async def get_current_user(request: Request) -> Optional[User]:
+    """Get current user from session token"""
+    session_token = await get_session_token(request)
+    if not session_token:
+        return None
+    
+    # Get session from database
+    session = await db.user_sessions.find_one(
+        {"session_token": session_token},
+        {"_id": 0}
+    )
+    
+    if not session:
+        return None
+    
+    # Check if session is expired
+    expires_at = session["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    
+    if expires_at < datetime.now(timezone.utc):
+        # Delete expired session
+        await db.user_sessions.delete_one({"session_token": session_token})
+        return None
+    
+    # Get user from database
+    user_doc = await db.users.find_one(
+        {"user_id": session["user_id"]},
+        {"_id": 0}
+    )
+    
+    if not user_doc:
+        return None
+    
+    return User(**user_doc)
+
+async def require_auth(request: Request) -> User:
+    """Dependency to require authentication"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return user
+
+async def check_quota(user: User, action_type: str) -> bool:
+    """Check if user has quota for the action"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    # Get today's usage
+    usage = await db.usage_stats.find_one(
+        {"user_id": user.user_id, "date": today},
+        {"_id": 0}
+    )
+    
+    if not usage:
+        usage = {
+            "user_id": user.user_id,
+            "date": today,
+            "chat_count": 0,
+            "ocr_count": 0,
+            "voice_minutes": 0.0,
+            "total_actions": 0
+        }
+    
+    tier = user.subscription_tier
+    tier_limits = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
+    
+    # Check subscription expiry
+    if user.subscription_expires_at:
+        expires_at = user.subscription_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at < datetime.now(timezone.utc):
+            # Subscription expired, revert to free trial
+            tier = "free_trial"
+            tier_limits = SUBSCRIPTION_TIERS["free_trial"]
+    
+    # For free trial, check daily total actions
+    if tier == "free_trial":
+        if usage["total_actions"] >= tier_limits["daily_actions"]:
+            return False
+        return True
+    
+    # For paid tiers, check monthly limits
+    # For now, we'll use daily limits as placeholder
+    if action_type == "chat":
+        # Rough daily limit = monthly / 30
+        daily_limit = tier_limits.get("chat_messages", 0) / 30
+        return usage["chat_count"] < daily_limit
+    elif action_type == "ocr":
+        daily_limit = tier_limits.get("ocr_images", 0) / 30
+        return usage["ocr_count"] < daily_limit
+    elif action_type == "voice":
+        daily_limit = tier_limits.get("audio_minutes", 0) / 30
+        return usage["voice_minutes"] < daily_limit
+    
+    return True
+
+async def increment_usage(user_id: str, action_type: str, amount: float = 1.0):
+    """Increment user's usage stats"""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    update_fields = {
+        "$inc": {
+            "total_actions": 1
+        },
+        "$setOnInsert": {
+            "user_id": user_id,
+            "date": today
+        }
+    }
+    
+    if action_type == "chat":
+        update_fields["$inc"]["chat_count"] = 1
+    elif action_type == "ocr":
+        update_fields["$inc"]["ocr_count"] = 1
+    elif action_type == "voice":
+        update_fields["$inc"]["voice_minutes"] = amount
+    
+    await db.usage_stats.update_one(
+        {"user_id": user_id, "date": today},
+        update_fields,
+        upsert=True
+    )
 
 # Helper function to parse transaction via GPT
 async def parse_transaction_text(text: str, source: str = "chat") -> Transaction:
@@ -115,7 +310,7 @@ Rules:
 - Default currency is USD
 - Infer date from context (today, yesterday, last week, etc.)
 - If no date mentioned, use today
-- Recognize common US merchants: {', '.join(US_MERCHANTS[:10])}
+- Recognize common US merchants
 - Categorize intelligently based on merchant and context
 - transaction_type should be "income" only if explicitly about earning/receiving money
 - Extract any mentions of tip, tax, or split payments into notes"""
@@ -131,7 +326,6 @@ Rules:
         
         # Parse GPT response
         import json
-        # Extract JSON from response
         response_text = response.strip()
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0]
@@ -140,25 +334,25 @@ Rules:
         
         data = json.loads(response_text)
         
-        # Create transaction
-        transaction = Transaction(
-            amount=float(data["amount"]),
-            merchant=data.get("merchant"),
-            category=data["category"],
-            date=datetime.fromisoformat(data["date"]),
-            transaction_type=data.get("transaction_type", "expense"),
-            notes=data.get("notes"),
-            source=source
-        )
+        # Create transaction (without user_id, will be added by caller)
+        transaction_data = {
+            "amount": float(data["amount"]),
+            "merchant": data.get("merchant"),
+            "category": data["category"],
+            "date": datetime.fromisoformat(data["date"]),
+            "transaction_type": data.get("transaction_type", "expense"),
+            "notes": data.get("notes"),
+            "source": source
+        }
         
-        return transaction
+        return transaction_data
         
     except Exception as e:
         logger.error(f"Error parsing transaction: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Could not parse transaction: {str(e)}")
 
 # Helper function to parse receipt image
-async def parse_receipt_image(image_base64: str) -> Transaction:
+async def parse_receipt_image(image_base64: str) -> dict:
     """Use GPT Vision to parse receipt image"""
     try:
         system_prompt = f"""You are a receipt scanner for US transactions.
@@ -189,7 +383,6 @@ Rules:
             system_message=system_prompt
         ).with_model("openai", "gpt-5.2")
 
-        # Create image content
         image_content = ImageContent(image_base64=image_base64)
         user_message = UserMessage(
             text="Extract transaction details from this receipt.",
@@ -215,28 +408,181 @@ Rules:
         if data.get("tip"):
             metadata["tip"] = data["tip"]
         
-        # Create transaction
-        transaction = Transaction(
-            amount=float(data["amount"]),
-            merchant=data.get("merchant"),
-            category=data["category"],
-            date=datetime.fromisoformat(data["date"]),
-            transaction_type="expense",
-            notes=data.get("notes"),
-            source="receipt",
-            metadata=metadata if metadata else None
-        )
+        # Create transaction data
+        transaction_data = {
+            "amount": float(data["amount"]),
+            "merchant": data.get("merchant"),
+            "category": data["category"],
+            "date": datetime.fromisoformat(data["date"]),
+            "transaction_type": "expense",
+            "notes": data.get("notes"),
+            "source": "receipt",
+            "metadata": metadata if metadata else None
+        }
         
-        return transaction
+        return transaction_data
         
     except Exception as e:
         logger.error(f"Error parsing receipt: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Could not parse receipt: {str(e)}")
 
-# Routes
+# Auth Routes
+@api_router.post("/auth/session")
+async def create_session(request: SessionDataRequest, response: Response):
+    """Exchange session_id for user data and session_token"""
+    try:
+        # Call Emergent Auth API
+        async with httpx.AsyncClient() as client:
+            auth_response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": request.session_id}
+            )
+        
+        if auth_response.status_code != 200:
+            raise HTTPException(status_code=400, detail="Invalid session ID")
+        
+        user_data = auth_response.json()
+        
+        # Check if user exists
+        existing_user = await db.users.find_one(
+            {"email": user_data["email"]},
+            {"_id": 0}
+        )
+        
+        if existing_user:
+            user_id = existing_user["user_id"]
+        else:
+            # Create new user
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            
+            # Free trial expires in 3 days
+            trial_expires = datetime.now(timezone.utc) + timedelta(days=3)
+            
+            new_user = {
+                "user_id": user_id,
+                "email": user_data["email"],
+                "name": user_data["name"],
+                "picture": user_data.get("picture"),
+                "subscription_tier": "free_trial",
+                "subscription_started_at": datetime.now(timezone.utc),
+                "subscription_expires_at": trial_expires,
+                "created_at": datetime.now(timezone.utc)
+            }
+            
+            await db.users.insert_one(new_user)
+        
+        # Create session
+        session_token = user_data["session_token"]
+        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session_doc = {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": session_expires,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.user_sessions.insert_one(session_doc)
+        
+        # Set httpOnly cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+            path="/"
+        )
+        
+        return SessionDataResponse(
+            user_id=user_id,
+            email=user_data["email"],
+            name=user_data["name"],
+            picture=user_data.get("picture"),
+            session_token=session_token
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/auth/me")
+async def get_me(current_user: User = Depends(require_auth)):
+    """Get current user info"""
+    return current_user
+
+@api_router.post("/auth/logout")
+async def logout(request: Request, response: Response):
+    """Logout user"""
+    session_token = await get_session_token(request)
+    if session_token:
+        await db.user_sessions.delete_one({"session_token": session_token})
+    
+    response.delete_cookie("session_token", path="/")
+    return {"message": "Logged out successfully"}
+
+# Subscription Routes
+@api_router.get("/subscription")
+async def get_subscription(current_user: User = Depends(require_auth)):
+    """Get user's subscription info"""
+    tier = current_user.subscription_tier
+    tier_data = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
+    
+    # Check if subscription is active
+    is_active = True
+    days_remaining = None
+    
+    if current_user.subscription_expires_at:
+        expires_at = current_user.subscription_expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        is_active = expires_at > datetime.now(timezone.utc)
+        if is_active:
+            days_remaining = (expires_at - datetime.now(timezone.utc)).days
+    
+    # Get today's usage
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    usage = await db.usage_stats.find_one(
+        {"user_id": current_user.user_id, "date": today},
+        {"_id": 0}
+    )
+    
+    if not usage:
+        usage = {
+            "chat_count": 0,
+            "ocr_count": 0,
+            "voice_minutes": 0.0,
+            "total_actions": 0
+        }
+    
+    return SubscriptionInfo(
+        tier=tier,
+        tier_name=tier_data["name"],
+        is_active=is_active,
+        expires_at=current_user.subscription_expires_at,
+        days_remaining=days_remaining,
+        limits=tier_data,
+        usage={
+            "chat_count": usage["chat_count"],
+            "ocr_count": usage["ocr_count"],
+            "voice_minutes": usage["voice_minutes"],
+            "total_actions": usage["total_actions"]
+        }
+    )
+
+@api_router.get("/subscription/tiers")
+async def get_subscription_tiers():
+    """Get available subscription tiers"""
+    return SUBSCRIPTION_TIERS
+
+# Transaction Routes
 @api_router.get("/")
 async def root():
-    return {"message": "AI Finance Assistant API", "version": "1.0.0"}
+    return {"message": "AI Finance Assistant API", "version": "2.0.0"}
 
 @api_router.get("/categories")
 async def get_categories():
@@ -244,34 +590,70 @@ async def get_categories():
     return {"categories": US_CATEGORIES}
 
 @api_router.post("/transactions/chat")
-async def create_chat_transaction(request: ChatTransactionRequest):
+async def create_chat_transaction(
+    request: ChatTransactionRequest,
+    current_user: User = Depends(require_auth)
+):
     """Process text chat input and create transaction"""
     try:
+        # Check quota
+        if not await check_quota(current_user, "chat"):
+            raise HTTPException(
+                status_code=403,
+                detail="Quota exceeded. Please upgrade your subscription."
+            )
+        
         # Parse transaction using GPT
-        transaction = await parse_transaction_text(request.text, source="chat")
+        transaction_data = await parse_transaction_text(request.text, source="chat")
+        transaction_data["user_id"] = current_user.user_id
+        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
-        transaction_dict = transaction.dict()
-        await db.transactions.insert_one(transaction_dict)
+        await db.transactions.insert_one(transaction_data)
+        
+        # Increment usage
+        await increment_usage(current_user.user_id, "chat")
+        
+        transaction = Transaction(**transaction_data)
         
         return {
             "transaction": transaction,
             "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating chat transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/transactions/receipt")
-async def create_receipt_transaction(image_base64: str = Form(...)):
+async def create_receipt_transaction(
+    image_base64: str = Form(...),
+    current_user: User = Depends(require_auth)
+):
     """Process receipt image and create transaction"""
     try:
+        # Check quota
+        if not await check_quota(current_user, "ocr"):
+            raise HTTPException(
+                status_code=403,
+                detail="Quota exceeded. Please upgrade your subscription."
+            )
+        
         # Parse receipt using GPT Vision
-        transaction = await parse_receipt_image(image_base64)
+        transaction_data = await parse_receipt_image(image_base64)
+        transaction_data["user_id"] = current_user.user_id
+        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
-        transaction_dict = transaction.dict()
-        await db.transactions.insert_one(transaction_dict)
+        await db.transactions.insert_one(transaction_data)
+        
+        # Increment usage
+        await increment_usage(current_user.user_id, "ocr")
+        
+        transaction = Transaction(**transaction_data)
         
         tip_info = ""
         if transaction.metadata and transaction.metadata.get("tip"):
@@ -281,98 +663,63 @@ async def create_receipt_transaction(image_base64: str = Form(...)):
             "transaction": transaction,
             "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating receipt transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@api_router.post("/transactions/voice")
-async def create_voice_transaction(request: VoiceTransactionRequest):
-    """Process voice note and create transaction
-    
-    NOTE: This endpoint requires OpenAI Whisper API which is NOT supported by Emergent LLM key.
-    Use the /transactions/voice-text endpoint instead if you don't have a separate OpenAI key.
-    """
+@api_router.post("/transactions/voice-text")
+async def create_voice_text_transaction(
+    request: ChatTransactionRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Process pre-transcribed voice text and create transaction"""
     try:
-        # Check if we have a real OpenAI key (not Emergent key)
-        if EMERGENT_LLM_KEY.startswith("sk-emergent"):
+        # Check quota (voice)
+        if not await check_quota(current_user, "voice"):
             raise HTTPException(
-                status_code=501,
-                detail="Voice transcription requires a separate OpenAI API key. Emergent LLM key does not support Whisper API. Please use text input or provide an OpenAI API key."
+                status_code=403,
+                detail="Quota exceeded. Please upgrade your subscription."
             )
         
-        # Transcribe audio using Whisper
-        from openai import AsyncOpenAI
-        
-        openai_client = AsyncOpenAI(api_key=EMERGENT_LLM_KEY)
-        
-        # Decode base64 audio
-        audio_bytes = base64.b64decode(request.audio_base64)
-        
-        # Create a file-like object
-        audio_file = io.BytesIO(audio_bytes)
-        audio_file.name = "audio.m4a"
-        
-        # Transcribe with Whisper
-        transcription = await openai_client.audio.transcriptions.create(
-            model="whisper-1",
-            file=audio_file
-        )
-        
-        transcribed_text = transcription.text
-        logger.info(f"Transcribed: {transcribed_text}")
-        
         # Parse transaction using GPT
-        transaction = await parse_transaction_text(transcribed_text, source="voice")
+        transaction_data = await parse_transaction_text(request.text, source="voice")
+        transaction_data["user_id"] = current_user.user_id
+        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
-        transaction_dict = transaction.dict()
-        await db.transactions.insert_one(transaction_dict)
+        await db.transactions.insert_one(transaction_data)
         
-        return {
-            "transaction": transaction,
-            "transcription": transcribed_text,
-            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error creating voice transaction: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.post("/transactions/voice-text")
-async def create_voice_text_transaction(request: ChatTransactionRequest):
-    """Process pre-transcribed voice text and create transaction
-    
-    Use this endpoint if you're doing speech-to-text on the client side.
-    This works with the Emergent LLM key since it only uses GPT for parsing.
-    """
-    try:
-        # Parse transaction using GPT
-        transaction = await parse_transaction_text(request.text, source="voice")
+        # Increment usage (estimate 0.5 minute per voice note)
+        await increment_usage(current_user.user_id, "voice", 0.5)
         
-        # Save to database
-        transaction_dict = transaction.dict()
-        await db.transactions.insert_one(transaction_dict)
+        transaction = Transaction(**transaction_data)
         
         return {
             "transaction": transaction,
             "transcription": request.text,
             "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating voice-text transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/transactions")
-async def get_transactions(limit: int = 100, skip: int = 0):
-    """Get all transactions"""
+async def get_transactions(
+    limit: int = 100,
+    skip: int = 0,
+    current_user: User = Depends(require_auth)
+):
+    """Get all transactions for current user"""
     try:
-        transactions = await db.transactions.find().sort("date", -1).skip(skip).limit(limit).to_list(limit)
-        
-        # Convert ObjectId to string and format response
-        for t in transactions:
-            if "_id" in t:
-                del t["_id"]
+        transactions = await db.transactions.find(
+            {"user_id": current_user.user_id},
+            {"_id": 0}
+        ).sort("date", -1).skip(skip).limit(limit).to_list(limit)
         
         return {"transactions": transactions, "count": len(transactions)}
     except Exception as e:
@@ -380,12 +727,20 @@ async def get_transactions(limit: int = 100, skip: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.delete("/transactions/{transaction_id}")
-async def delete_transaction(transaction_id: str):
+async def delete_transaction(
+    transaction_id: str,
+    current_user: User = Depends(require_auth)
+):
     """Delete a transaction"""
     try:
-        result = await db.transactions.delete_one({"id": transaction_id})
+        result = await db.transactions.delete_one({
+            "id": transaction_id,
+            "user_id": current_user.user_id
+        })
+        
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Transaction not found")
+        
         return {"message": "Transaction deleted successfully"}
     except HTTPException:
         raise
@@ -394,14 +749,18 @@ async def delete_transaction(transaction_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/insights")
-async def get_insights(days: int = 30):
-    """Get spending insights"""
+async def get_insights(
+    days: int = 30,
+    current_user: User = Depends(require_auth)
+):
+    """Get spending insights for current user"""
     try:
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
         transactions = await db.transactions.find({
+            "user_id": current_user.user_id,
             "date": {"$gte": start_date}
-        }).to_list(1000)
+        }, {"_id": 0}).to_list(1000)
         
         total_expenses = 0
         total_income = 0
