@@ -822,10 +822,10 @@ async def get_subscription(current_user: User = Depends(require_auth)):
         days_remaining=days_remaining,
         limits=tier_data,
         usage={
-            "chat_count": usage["chat_count"],
-            "ocr_count": usage["ocr_count"],
-            "voice_minutes": usage["voice_minutes"],
-            "total_actions": usage["total_actions"]
+            "chat_count": usage.get("chat_count", 0),
+            "ocr_count": usage.get("ocr_count", 0),
+            "voice_minutes": usage.get("voice_minutes", 0.0),
+            "total_actions": usage.get("total_actions", 0)
         }
     )
 
