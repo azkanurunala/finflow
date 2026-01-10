@@ -212,6 +212,28 @@ export default function AddScreen() {
 
       <TouchableOpacity
         style={styles.modeCard}
+        onPress={() => router.push("/(app)/manual")}
+        activeOpacity={0.7}
+      >
+        <LinearGradient
+          colors={["#DBEAFE", "#BFDBFE"]}
+          style={styles.modeGradient}
+        >
+          <View style={styles.modeIconContainer}>
+            <Ionicons name="create" size={32} color="#3B82F6" />
+          </View>
+          <View style={styles.modeContent}>
+            <Text style={styles.modeTitle}>Manual Input</Text>
+            <Text style={styles.modeDescription}>
+              Enter transaction details manually
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#3B82F6" />
+        </LinearGradient>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.modeCard}
         onPress={() => router.push("/(app)/add?mode=camera")}
         activeOpacity={0.7}
       >
