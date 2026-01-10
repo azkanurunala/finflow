@@ -1,27 +1,37 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  POPULAR_CURRENCIES,
-  OTHER_CURRENCIES,
-  Currency,
-  fetchExchangeRates,
-  formatCurrency as formatCurrencyUtil,
-} from '../utils/currency';
 
 interface CurrencyContextType {
   currency: string;
   currencySymbol: string;
   setCurrency: (code: string) => Promise<void>;
-  formatAmount: (amount: number, fromCurrency?: string) => string;
-  convertAmount: (amount: number, fromCurrency: string) => Promise<number>;
+  formatAmount: (amount: number, sourceCurrency?: string) => string;
   loading: boolean;
 }
+
+const CURRENCY_SYMBOLS: { [key: string]: string } = {
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  IDR: 'Rp',
+  SGD: 'S$',
+  AUD: 'A$',
+  CAD: 'C$',
+  CHF: 'CHF',
+  CNY: '¥',
+  HKD: 'HK$',
+  KRW: '₩',
+  MYR: 'RM',
+  THB: '฿',
+  PHP: '₱',
+  VND: '₫',
+};
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState('USD');
-  const [rates, setRates] = useState<{ [key: string]: number }>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,10 +44,6 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       if (saved) {
         setCurrencyState(saved);
       }
-      
-      // Fetch exchange rates
-      const exchangeRates = await fetchExchangeRates('USD');
-      setRates(exchangeRates);
     } catch (error) {
       console.error('Error loading currency:', error);
     } finally {
@@ -50,34 +56,43 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     await AsyncStorage.setItem('user_currency', code);
   };
 
-  const getCurrencyData = (code: string): Currency | undefined => {
-    return [...POPULAR_CURRENCIES, ...OTHER_CURRENCIES].find(c => c.code === code);
-  };
+  const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
 
-  const currencySymbol = getCurrencyData(currency)?.symbol || '$';
-
-  const convertAmount = async (amount: number, fromCurrency: string): Promise<number> => {
-    if (fromCurrency === currency) return amount;
+  /**
+   * Format amount with proper thousand separators and decimal places
+   * NO currency conversion - just format the number in user's selected currency display style
+   * 
+   * @param amount - The amount to format
+   * @param sourceCurrency - The currency of the amount (optional, for display purposes only)
+   */
+  const formatAmount = (amount: number, sourceCurrency?: string): string => {
+    // Use the display currency to determine formatting style
+    const displayCurrency = currency;
+    const symbol = CURRENCY_SYMBOLS[displayCurrency] || '$';
     
-    // Convert from source to USD first
-    const toUsd = fromCurrency === 'USD' ? amount : amount / (rates[fromCurrency] || 1);
-    
-    // Then convert from USD to target currency
-    const toTarget = currency === 'USD' ? toUsd : toUsd * (rates[currency] || 1);
-    
-    return toTarget;
-  };
-
-  const formatAmount = (amount: number, fromCurrency: string = 'USD'): string => {
-    // Simple synchronous conversion using cached rates
-    let convertedAmount = amount;
-    
-    if (fromCurrency !== currency && Object.keys(rates).length > 0) {
-      const toUsd = fromCurrency === 'USD' ? amount : amount / (rates[fromCurrency] || 1);
-      convertedAmount = currency === 'USD' ? toUsd : toUsd * (rates[currency] || 1);
+    // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
+    if (displayCurrency === 'IDR') {
+      // For IDR, typically no decimal places for whole numbers
+      const hasDecimals = amount % 1 !== 0;
+      const formatted = amount.toLocaleString('id-ID', {
+        minimumFractionDigits: hasDecimals ? 2 : 0,
+        maximumFractionDigits: 2,
+      });
+      return `${symbol}${formatted}`;
     }
     
-    return formatCurrencyUtil(convertedAmount, currency);
+    // Japanese Yen - no decimals
+    if (displayCurrency === 'JPY' || displayCurrency === 'KRW') {
+      const formatted = Math.round(amount).toLocaleString('ja-JP');
+      return `${symbol}${formatted}`;
+    }
+    
+    // USD, EUR, GBP, etc. - uses , for thousands and . for decimals ($1,300.50)
+    const formatted = amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `${symbol}${formatted}`;
   };
 
   return (
@@ -87,7 +102,6 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         currencySymbol,
         setCurrency,
         formatAmount,
-        convertAmount,
         loading,
       }}
     >
