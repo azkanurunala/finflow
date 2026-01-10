@@ -284,15 +284,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Chat transaction parsing with GPT"
-    - "Receipt photo OCR with GPT Vision"
     - "Voice transcription with Whisper"
-    - "Home screen with chat interface"
-    - "Add transaction screen - Receipt photo"
-    - "Add transaction screen - Voice recording"
-  stuck_tasks: []
-  test_all: true
-  test_priority: "high_first"
+  stuck_tasks:
+    - "Voice transcription with Whisper"
+  test_all: false
+  test_priority: "stuck_first"
 
 agent_communication:
   - agent: "main"
