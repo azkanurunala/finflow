@@ -331,14 +331,12 @@ export default function HomeScreen() {
       );
 
       setShowVoiceModal(false);
-      setSuccessTransaction({
-        ...apiResponse.data.transaction,
-        transcription: apiResponse.data.transcription
-      });
-      setShowSuccessModal(true);
-      fetchData();
-
       setRecording(null);
+      
+      // Redirect to edit mode for correction
+      const transaction = apiResponse.data.transaction;
+      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=voice&transcription=${encodeURIComponent(apiResponse.data.transcription || '')}`);
+      
     } catch (error: any) {
       console.error("Voice transcription error:", error);
       Alert.alert(
