@@ -6,23 +6,26 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Index() {
   const { user, loading } = useAuth();
-  const [showFreeTrial, setShowFreeTrial] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [hasLanguage, setHasLanguage] = useState(false);
+  const [hasCurrency, setHasCurrency] = useState(false);
 
   useEffect(() => {
-    checkFirstTime();
-  }, [user]);
+    checkPreferences();
+  }, []);
 
-  const checkFirstTime = async () => {
-    if (user) {
-      // Check if user has seen free trial page
-      const hasSeenFreeTrial = await AsyncStorage.getItem("has_seen_free_trial");
-      if (!hasSeenFreeTrial) {
-        await AsyncStorage.setItem("has_seen_free_trial", "true");
-        setShowFreeTrial(true);
-      }
+  const checkPreferences = async () => {
+    try {
+      const savedLanguage = await AsyncStorage.getItem("user_locale");
+      const savedCurrency = await AsyncStorage.getItem("user_currency");
+      
+      setHasLanguage(!!savedLanguage);
+      setHasCurrency(!!savedCurrency);
+    } catch (error) {
+      console.error("Error checking preferences:", error);
+    } finally {
+      setChecking(false);
     }
-    setChecking(false);
   };
 
   if (loading || checking) {
@@ -33,21 +36,34 @@ export default function Index() {
     );
   }
 
-  // Redirect based on auth state
-  if (user) {
-    if (showFreeTrial) {
-      return <Redirect href="/free-trial" />;
-    }
-    return <Redirect href="/(app)" />;
+  // Step 1: Must select language first
+  if (!hasLanguage) {
+    return <Redirect href="/onboarding-language" />;
   }
 
-  return <Redirect href="/login" />;
+  // Step 2: Must select currency second
+  if (!hasCurrency) {
+    return <Redirect href="/onboarding-currency" />;
+  }
+
+  // Step 3: Must login/register
+  if (!user) {
+    return <Redirect href="/login" />;
+  }
+
+  // Step 4: Check subscription status
+  if (!user.is_subscription_active) {
+    return <Redirect href="/onboarding-trial" />;
+  }
+
+  // Step 5: Go to home
+  return <Redirect href="/(app)" />;
 }
 
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#0A0E27",
+    backgroundColor: "#F9FAFB",
     justifyContent: "center",
     alignItems: "center",
   },
