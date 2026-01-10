@@ -1045,6 +1045,111 @@ async def delete_transaction(
         logger.error(f"Error deleting transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/transactions/manual")
+async def create_manual_transaction(
+    request: ManualTransactionRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Create a transaction manually"""
+    try:
+        transaction_data = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "amount": request.amount,
+            "currency": request.currency,
+            "merchant": request.merchant,
+            "category": request.category,
+            "date": datetime.fromisoformat(request.date),
+            "transaction_type": request.transaction_type,
+            "notes": request.notes,
+            "source": "manual",
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.transactions.insert_one(transaction_data)
+        
+        return {
+            "transaction": transaction_data,
+            "message": f"Transaction logged successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error creating manual transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/transactions/{transaction_id}")
+async def update_transaction(
+    transaction_id: str,
+    request: UpdateTransactionRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Update a transaction"""
+    try:
+        # Build update fields
+        update_fields = {}
+        if request.amount is not None:
+            update_fields["amount"] = request.amount
+        if request.currency is not None:
+            update_fields["currency"] = request.currency
+        if request.merchant is not None:
+            update_fields["merchant"] = request.merchant
+        if request.category is not None:
+            update_fields["category"] = request.category
+        if request.date is not None:
+            update_fields["date"] = datetime.fromisoformat(request.date)
+        if request.transaction_type is not None:
+            update_fields["transaction_type"] = request.transaction_type
+        if request.notes is not None:
+            update_fields["notes"] = request.notes
+        
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        result = await db.transactions.update_one(
+            {"id": transaction_id, "user_id": current_user.user_id},
+            {"$set": update_fields}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        
+        # Fetch updated transaction
+        transaction = await db.transactions.find_one(
+            {"id": transaction_id},
+            {"_id": 0}
+        )
+        
+        return {
+            "transaction": transaction,
+            "message": "Transaction updated successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/transactions/{transaction_id}")
+async def get_transaction(
+    transaction_id: str,
+    current_user: User = Depends(require_auth)
+):
+    """Get a single transaction"""
+    try:
+        transaction = await db.transactions.find_one(
+            {"id": transaction_id, "user_id": current_user.user_id},
+            {"_id": 0}
+        )
+        
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        
+        return transaction
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/insights")
 async def get_insights(
     days: int = 30,
