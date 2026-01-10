@@ -193,8 +193,6 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('home.quickActions')}</Text>
-          
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => router.push("/(app)/chat")}
