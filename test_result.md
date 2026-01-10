@@ -302,3 +302,35 @@ agent_communication:
       
       NOTE: Read /app/image_testing.md for image handling rules.
       Use base64 images only (JPEG, PNG, WEBP). Test with real receipt images with visible text.
+  
+  - agent: "testing"
+    message: |
+      COMPREHENSIVE BACKEND TESTING COMPLETED (8/9 tests passed - 88.9% success rate)
+      
+      ✅ WORKING ENDPOINTS:
+      - API Health Check: ✅ PASS
+      - GET /api/categories: ✅ PASS (12 US categories)
+      - POST /api/transactions/chat: ✅ PASS (100% success rate with 8 test cases)
+      - POST /api/transactions/receipt: ✅ PASS (GPT Vision working correctly)
+      - GET /api/transactions: ✅ PASS (retrieved 22 transactions)
+      - DELETE /api/transactions/{id}: ✅ PASS (deletion verified)
+      - GET /api/insights: ✅ PASS (all time periods: 7, 30, 90 days)
+      - Edge Cases: ✅ PASS (error handling working)
+      
+      ❌ CRITICAL ISSUE FOUND:
+      - POST /api/transactions/voice: ❌ FAIL
+        ERROR: "Incorrect API key provided: sk-emerg******************8A76"
+        ROOT CAUSE: Emergent LLM API key is NOT compatible with OpenAI Whisper API
+        IMPACT: Voice transcription feature completely non-functional
+        
+      DETAILED FINDINGS:
+      1. Chat parsing works perfectly - GPT-5.2 correctly extracts amount, merchant, category, date
+      2. Receipt OCR works - GPT Vision successfully parsed Walmart receipt ($15.65)
+      3. All CRUD operations functional
+      4. MongoDB storage working correctly
+      5. Insights calculations accurate
+      
+      VOICE ENDPOINT TECHNICAL ISSUE:
+      - Backend tries to use Emergent key with OpenAI AsyncClient for Whisper
+      - Emergent API only supports LLM endpoints, not audio transcription
+      - Need separate OpenAI API key for Whisper or alternative ASR solution
