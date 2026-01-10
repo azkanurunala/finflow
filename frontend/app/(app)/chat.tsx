@@ -279,13 +279,15 @@ export default function ChatScreen() {
           </TouchableOpacity>
           
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={chatText}
             onChangeText={setChatText}
-            placeholder="Type an expense..."
+            placeholder={language === 'id' ? "Ketik pengeluaran..." : "Type an expense..."}
             placeholderTextColor="#9CA3AF"
             multiline
             maxLength={500}
+            autoFocus={true}
           />
           
           <TouchableOpacity style={styles.micButton}>
