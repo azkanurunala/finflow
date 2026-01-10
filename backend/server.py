@@ -152,6 +152,36 @@ class SubscriptionInfo(BaseModel):
     limits: Dict[str, Any]
     usage: Dict[str, Any]
 
+# Email/Password Auth Models
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class UpdateOnboardingRequest(BaseModel):
+    language: Optional[str] = None
+    currency: Optional[str] = None
+    onboarding_completed: Optional[bool] = None
+
+# Helper function to hash password
+def hash_password(password: str) -> str:
+    """Hash password with salt using SHA256"""
+    salt = secrets.token_hex(16)
+    password_hash = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+    return f"{salt}:{password_hash}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash"""
+    try:
+        salt, hash_value = stored_hash.split(":")
+        return hashlib.sha256(f"{salt}{password}".encode()).hexdigest() == hash_value
+    except:
+        return False
+
 # Auth Helper Functions
 async def get_session_token(request: Request) -> Optional[str]:
     """Extract session token from cookie or Authorization header"""
