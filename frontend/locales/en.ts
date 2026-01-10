@@ -1,4 +1,8 @@
 export default {
+  app: {
+    name: "FinFlow",
+    tagline: "Smart expense tracking with AI",
+  },
   common: {
     save: "Save",
     cancel: "Cancel",
