@@ -42,7 +42,7 @@ interface Transaction {
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { formatAmount, currency } = useCurrency();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [insights, setInsights] = useState<any>(null);
