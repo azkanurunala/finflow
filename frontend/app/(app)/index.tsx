@@ -1151,6 +1151,11 @@ const styles = StyleSheet.create({
   transactionIncome: {
     color: "#10B981",
   },
+  transactionRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   emptyState: {
     alignItems: "center",
     paddingVertical: 48,
