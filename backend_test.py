@@ -872,84 +872,52 @@ class CriticalAreasTester:
         
         return all_passed
     
-    async def run_all_tests(self):
-        """Run all tests in sequence"""
-        print("🚀 Starting Comprehensive Backend Testing (Indonesian + Export + AI Features)")
+    async def run_critical_tests(self):
+        """Run all critical tests focusing on review request areas"""
+        print("🚀 Starting CRITICAL AREAS Testing - FinFlow AI Backend")
+        print("Focus: Voice Transcription, Receipt Scanning, Transaction CRUD, Authentication")
         print("=" * 80)
         
         test_results = []
         
-        # Test 1: User Registration
-        result1 = await self.test_user_registration()
-        test_results.append(("User Registration", result1))
+        # CRITICAL TEST 1: Authentication Flow
+        print("\n" + "="*50)
+        result1 = await self.test_authentication_flow()
+        test_results.append(("Authentication Flow", result1))
         
         if not result1:
-            print("\n❌ Cannot continue without successful registration")
+            print("\n❌ CRITICAL FAILURE: Cannot continue without authentication")
             return test_results
         
-        # Test 2: Start Free Trial
-        result2 = await self.test_start_trial()
-        test_results.append(("Start Free Trial", result2))
+        # CRITICAL TEST 2: Voice Transcription (was previously failing)
+        print("\n" + "="*50)
+        result2 = await self.test_voice_transcription_critical()
+        test_results.append(("Voice Transcription (CRITICAL)", result2))
         
-        # Test 3: Indonesian Income Parsing
-        result3 = await self.test_indonesian_income_parsing()
-        test_results.append(("Indonesian Income Parsing", result3))
+        # CRITICAL TEST 3: Receipt Scanning
+        print("\n" + "="*50)
+        result3 = await self.test_receipt_scanning_critical()
+        test_results.append(("Receipt Scanning", result3))
         
-        # Test 4: Indonesian Expense Parsing
-        result4 = await self.test_indonesian_expense_parsing()
-        test_results.append(("Indonesian Expense Parsing", result4))
+        # CRITICAL TEST 4: Manual Transaction CRUD
+        print("\n" + "="*50)
+        result4 = await self.test_manual_transaction_crud_critical()
+        test_results.append(("Manual Transaction CRUD", result4))
         
-        # Test 5: Manual Transaction
-        result5 = await self.test_manual_transaction()
-        test_results.append(("Manual Transaction", result5))
-        
-        if not result5:
-            print("\n❌ Cannot continue transaction CRUD tests without manual transaction")
-            return test_results
-        
-        # Test 6: Update Transaction
-        result6 = await self.test_update_transaction()
-        test_results.append(("Update Transaction", result6))
-        
-        # Test 7: Get Single Transaction
-        result7 = await self.test_get_single_transaction()
-        test_results.append(("Get Single Transaction", result7))
-        
-        # Test 8: Delete Transaction
-        result8 = await self.test_delete_transaction()
-        test_results.append(("Delete Transaction", result8))
-        
-        # NEW TESTS FROM REVIEW REQUEST
-        
-        # Test 9: CSV Export
-        result9 = await self.test_export_csv()
-        test_results.append(("Export CSV", result9))
-        
-        # Test 10: JSON Export
-        result10 = await self.test_export_json()
-        test_results.append(("Export JSON", result10))
-        
-        # Test 11: AI Insights
-        result11 = await self.test_ai_insights()
-        test_results.append(("AI Insights", result11))
-        
-        # Test 12: Specific Indonesian Parsing (Review Request)
-        result12 = await self.test_specific_indonesian_parsing()
-        test_results.append(("Specific Indonesian Parsing (gaji masuk 15jt)", result12))
-        
-        # Test 13: Currency Preservation
-        result13 = await self.test_currency_preservation()
-        test_results.append(("Currency Preservation", result13))
+        # CRITICAL TEST 5: Indonesian Parsing (as requested)
+        print("\n" + "="*50)
+        result5 = await self.test_indonesian_parsing_critical()
+        test_results.append(("Indonesian Transaction Parsing", result5))
         
         return test_results
 
 async def main():
-    """Main test execution"""
-    tester = ComprehensiveBackendTester()
-    results = await tester.run_all_tests()
+    """Main test execution focusing on critical areas"""
+    tester = CriticalAreasTester()
+    results = await tester.run_critical_tests()
     
     print("\n" + "=" * 80)
-    print("📊 COMPREHENSIVE TEST RESULTS SUMMARY")
+    print("🎯 CRITICAL AREAS TEST RESULTS SUMMARY")
     print("=" * 80)
     
     passed = 0
@@ -963,28 +931,28 @@ async def main():
     
     print(f"\nOverall: {passed}/{total} tests passed ({(passed/total)*100:.1f}%)")
     
-    if passed == total:
-        print("🎉 ALL TESTS PASSED - Backend features are fully functional!")
-    else:
-        print("⚠️ Some tests failed - check individual test results above")
-        
-    # Highlight new features from review request
+    # Highlight critical findings
     print("\n" + "=" * 80)
-    print("🔍 REVIEW REQUEST FEATURES STATUS")
+    print("🔍 CRITICAL FINDINGS")
     print("=" * 80)
     
-    review_features = [
-        ("Export CSV", results[-5][1] if len(results) >= 5 else False),
-        ("Export JSON", results[-4][1] if len(results) >= 4 else False),
-        ("AI Insights", results[-3][1] if len(results) >= 3 else False),
-        ("Indonesian Parsing (gaji masuk 15jt)", results[-2][1] if len(results) >= 2 else False),
-        ("Currency Preservation", results[-1][1] if len(results) >= 1 else False)
-    ]
+    if len(results) >= 2:
+        voice_result = results[1][1]  # Voice transcription result
+        if voice_result:
+            print("✅ VOICE TRANSCRIPTION: FIXED - No longer failing with API key errors")
+        else:
+            print("❌ VOICE TRANSCRIPTION: STILL FAILING - Needs immediate attention")
     
-    for feature, status in review_features:
-        status_text = "✅ WORKING" if status else "❌ FAILED"
-        print(f"{feature:<35} {status_text}")
-    
+    if passed == total:
+        print("\n🎉 ALL CRITICAL TESTS PASSED!")
+        print("The backend API is working correctly for all critical areas.")
+    else:
+        failed_tests = [name for name, success in results if not success]
+        print(f"\n⚠️ CRITICAL ISSUES FOUND:")
+        for test in failed_tests:
+            print(f"   - {test}")
+        print("\nThese issues need immediate attention before production.")
+        
     return passed == total
 
 if __name__ == "__main__":
