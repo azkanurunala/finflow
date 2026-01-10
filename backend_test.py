@@ -648,4 +648,5 @@ async def main():
     return passed == total
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    success = asyncio.run(main())
+    exit(0 if success else 1)
