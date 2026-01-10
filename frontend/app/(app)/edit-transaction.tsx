@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#4DB6AC",
+    backgroundColor: "#10B981",
     paddingVertical: 16,
     borderRadius: 12,
     marginTop: 12,
@@ -547,5 +547,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+  },
+  sourceBadgeContainer: {
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  sourceBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
+  voiceBadge: {
+    backgroundColor: "#EDE9FE",
+  },
+  receiptBadge: {
+    backgroundColor: "#FEF3C7",
+  },
+  sourceBadgeText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  voiceBadgeText: {
+    color: "#8B5CF6",
+  },
+  receiptBadgeText: {
+    color: "#F59E0B",
+  },
+  reviewNote: {
+    fontSize: 13,
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  transcriptionBox: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  transcriptionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  transcriptionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  transcriptionText: {
+    fontSize: 15,
+    color: "#4B5563",
+    fontStyle: "italic",
+    lineHeight: 22,
   },
 });
