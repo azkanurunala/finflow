@@ -423,9 +423,8 @@ metadata:
 test_plan:
   current_focus:
     - "Voice transcription with Whisper"
-    - "Receipt scanning"
-    - "Transaction CRUD"
-  stuck_tasks: []
+  stuck_tasks:
+    - "Voice transcription with Whisper"
   test_all: false
   test_priority: "high_first"
 
