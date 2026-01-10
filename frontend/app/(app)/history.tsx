@@ -46,7 +46,15 @@ export default function HistoryScreen() {
       const response = await axios.get(`${BACKEND_URL}/api/transactions`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
-      setTransactions(response.data.transactions);
+      
+      // Sort by created_at or date (newest first)
+      const sortedTransactions = response.data.transactions.sort((a: Transaction, b: Transaction) => {
+        const dateA = new Date(a.created_at || a.date);
+        const dateB = new Date(b.created_at || b.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+      
+      setTransactions(sortedTransactions);
     } catch (error) {
       Alert.alert(t('common.error'), "Failed to fetch transactions");
     } finally {
