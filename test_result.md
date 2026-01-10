@@ -425,9 +425,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Voice transcription with Whisper"
-  stuck_tasks:
-    - "Voice transcription with Whisper"
+    - "Receipt photo OCR with GPT Vision"
+  stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
