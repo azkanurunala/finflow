@@ -171,13 +171,53 @@ export default function EditTransactionScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Transaction</Text>
+          <Text style={styles.headerTitle}>
+            {isFromVoice || isFromReceipt 
+              ? (language === 'id' ? 'Periksa & Simpan' : 'Review & Save')
+              : (language === 'id' ? 'Edit Transaksi' : 'Edit Transaction')}
+          </Text>
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={24} color="#EF4444" />
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Source Badge */}
+          {(isFromVoice || isFromReceipt) && (
+            <View style={styles.sourceBadgeContainer}>
+              <View style={[styles.sourceBadge, isFromVoice ? styles.voiceBadge : styles.receiptBadge]}>
+                <Ionicons 
+                  name={isFromVoice ? "mic" : "scan"} 
+                  size={16} 
+                  color={isFromVoice ? "#8B5CF6" : "#F59E0B"} 
+                />
+                <Text style={[styles.sourceBadgeText, isFromVoice ? styles.voiceBadgeText : styles.receiptBadgeText]}>
+                  {isFromVoice 
+                    ? (language === 'id' ? 'Dari Voice' : 'From Voice')
+                    : (language === 'id' ? 'Dari Scan Receipt' : 'From Receipt Scan')}
+                </Text>
+              </View>
+              <Text style={styles.reviewNote}>
+                {language === 'id' 
+                  ? 'Periksa data di bawah dan koreksi jika perlu'
+                  : 'Review the data below and correct if needed'}
+              </Text>
+            </View>
+          )}
+
+          {/* Voice Transcription */}
+          {isFromVoice && decodedTranscription && (
+            <View style={styles.transcriptionBox}>
+              <View style={styles.transcriptionHeader}>
+                <Ionicons name="text" size={18} color="#8B5CF6" />
+                <Text style={styles.transcriptionTitle}>
+                  {language === 'id' ? 'Transkripsi' : 'Transcription'}
+                </Text>
+              </View>
+              <Text style={styles.transcriptionText}>"{decodedTranscription}"</Text>
+            </View>
+          )}
+
           {/* Transaction Type Toggle */}
           <View style={styles.typeToggle}>
             <TouchableOpacity
