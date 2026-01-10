@@ -16,7 +16,9 @@ class AuthTester:
     def __init__(self):
         self.session_token = None
         self.user_id = None
-        self.test_email = "testuser@example.com"
+        # Use timestamp to make email unique
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.test_email = f"testuser_{timestamp}@example.com"
         self.test_password = "password123"
         self.test_name = "Test User"
         
