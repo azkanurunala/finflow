@@ -173,25 +173,19 @@ export default function HomeScreen() {
         {/* Income & Expenses Cards */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, styles.incomeCard]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="arrow-down" size={20} color="#10B981" />
-            </View>
             <View style={styles.statContent}>
               <Text style={styles.statLabel}>{t('home.income')}</Text>
-              <Text style={styles.incomeAmount}>
-                +{formatAmount(insights?.total_income || 0, 'USD')}
+              <Text style={styles.incomeAmount} numberOfLines={1} adjustsFontSizeToFit>
+                +{formatAmount(insights?.total_income || 0)}
               </Text>
             </View>
           </View>
 
           <View style={[styles.statCard, styles.expenseCard]}>
-            <View style={styles.statIconContainer}>
-              <Ionicons name="arrow-up" size={20} color="#EF4444" />
-            </View>
             <View style={styles.statContent}>
               <Text style={styles.statLabel}>{t('home.expenses')}</Text>
-              <Text style={styles.expenseAmount}>
-                -{formatAmount(insights?.total_expenses || 0, 'USD')}
+              <Text style={styles.expenseAmount} numberOfLines={1} adjustsFontSizeToFit>
+                -{formatAmount(insights?.total_expenses || 0)}
               </Text>
             </View>
           </View>
