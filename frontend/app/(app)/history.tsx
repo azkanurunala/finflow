@@ -403,12 +403,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: "italic",
   },
-  deleteButton: {
-    position: "absolute",
-    bottom: 12,
-    right: 12,
-    padding: 8,
-  },
   bottomNav: {
     flexDirection: "row",
     backgroundColor: "#fff",
