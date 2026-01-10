@@ -420,12 +420,40 @@ metadata:
 test_plan:
   current_focus:
     - "Voice transcription with Whisper"
-  stuck_tasks:
-    - "Voice transcription with Whisper"
+    - "Receipt scanning"
+    - "Transaction CRUD"
+  stuck_tasks: []
   test_all: false
-  test_priority: "stuck_first"
+  test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      BUG FIXES IMPLEMENTED - JUNE 2025:
+      
+      1. VOICE TRANSCRIPTION: Added new endpoint POST /api/transactions/voice using OpenAI Whisper API
+         - Uses user-provided OpenAI API key (not Emergent key)
+         - Supports Indonesian language transcription
+         - Full integration with transaction parsing
+      
+      2. CURRENCY SYMBOL FIX: Fixed formatAmount function in CurrencyContext.tsx
+         - Now uses sourceCurrency if provided for proper symbol display
+         - IDR transactions show Rp, USD shows $, etc.
+      
+      3. HOME SCREEN UI FIXES:
+         - Removed icons from income/expense cards (more space for numbers)
+         - Removed "Quick Actions" label as requested
+         - Made income/expense text adjust font size to fit
+      
+      4. BACKEND: Added OPENAI_API_KEY to .env for Whisper API
+      
+      PLEASE TEST:
+      1. Voice transcription endpoint: POST /api/transactions/voice
+      2. Receipt scanning: POST /api/transactions/receipt
+      3. Manual transaction save: POST /api/transactions/manual
+      4. Transaction delete: DELETE /api/transactions/{id}
+      5. All transaction CRUD operations
+
   - agent: "main"
     message: |
       Initial implementation complete. Built full-stack AI Finance Assistant with:
