@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Script for AI Personal Finance Assistant
-Tests complete transaction flow including Indonesian language parsing, exports, and AI insights
+FinFlow AI Finance Assistant Backend API Testing - CRITICAL AREAS FOCUS
+Focus on critical areas that were just fixed:
+1. Voice Transcription (NEW) - POST /api/transactions/voice
+2. Receipt Scanning - POST /api/transactions/receipt  
+3. Manual Transaction CRUD
+4. Authentication Flow
+
+Test Credentials: test_voice@test.com / test123456 / Voice Test User
 """
 
 import asyncio
@@ -10,10 +16,18 @@ import json
 import uuid
 import csv
 import io
+import base64
 from datetime import datetime, timedelta
 
 # Backend URL from frontend/.env
 BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
+
+# Test credentials from review request
+TEST_CREDENTIALS = {
+    "email": "test_voice@test.com",
+    "password": "test123456", 
+    "name": "Voice Test User"
+}
 
 class ComprehensiveBackendTester:
     def __init__(self):
