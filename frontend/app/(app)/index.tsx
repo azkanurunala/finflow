@@ -12,6 +12,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
@@ -22,6 +24,7 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 interface Transaction {
   id: string;
   amount: number;
+  currency?: string;
   merchant?: string;
   category: string;
   date: string;
@@ -32,6 +35,8 @@ interface Transaction {
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const { formatAmount } = useCurrency();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -74,9 +79,9 @@ export default function HomeScreen() {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return t('home.goodMorning');
+    if (hour < 18) return t('home.goodAfternoon');
+    return t('home.goodEvening');
   };
 
   const getCategoryIcon = (category: string) => {
@@ -159,9 +164,9 @@ export default function HomeScreen() {
 
         {/* Total Balance Card */}
         <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text style={styles.balanceLabel}>{t('home.totalBalance')}</Text>
           <Text style={styles.balanceAmount}>
-            ${totalBalance.toFixed(2)}
+            {formatAmount(totalBalance, 'USD')}
           </Text>
         </View>
 
@@ -172,9 +177,9 @@ export default function HomeScreen() {
               <Ionicons name="arrow-down" size={20} color="#10B981" />
             </View>
             <View style={styles.statContent}>
-              <Text style={styles.statLabel}>Income</Text>
+              <Text style={styles.statLabel}>{t('home.income')}</Text>
               <Text style={styles.incomeAmount}>
-                +${insights?.total_income?.toFixed(2) || "0.00"}
+                +{formatAmount(insights?.total_income || 0, 'USD')}
               </Text>
             </View>
           </View>
@@ -184,9 +189,9 @@ export default function HomeScreen() {
               <Ionicons name="arrow-up" size={20} color="#EF4444" />
             </View>
             <View style={styles.statContent}>
-              <Text style={styles.statLabel}>Expenses</Text>
+              <Text style={styles.statLabel}>{t('home.expenses')}</Text>
               <Text style={styles.expenseAmount}>
-                -${insights?.total_expenses?.toFixed(2) || "0.00"}
+                -{formatAmount(insights?.total_expenses || 0, 'USD')}
               </Text>
             </View>
           </View>
@@ -194,7 +199,7 @@ export default function HomeScreen() {
 
         {/* Quick Actions */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <Text style={styles.sectionTitle}>{t('home.quickActions')}</Text>
           
           <TouchableOpacity
             style={styles.actionCard}
@@ -211,9 +216,9 @@ export default function HomeScreen() {
                 <Ionicons name="chatbubble-ellipses" size={24} color="#4DB6AC" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Ask Assistant</Text>
+                <Text style={styles.actionTitle}>{t('actions.askAssistant')}</Text>
                 <Text style={styles.actionSubtitle}>
-                  Chat with AI to log expenses naturally
+                  {t('actions.askAssistantDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#4DB6AC" />
@@ -235,9 +240,9 @@ export default function HomeScreen() {
                 <Ionicons name="camera" size={24} color="#F59E0B" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Scan Receipt</Text>
+                <Text style={styles.actionTitle}>{t('actions.scanReceipt')}</Text>
                 <Text style={styles.actionSubtitle}>
-                  Take a photo and extract details automatically
+                  {t('actions.scanReceiptDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
@@ -259,9 +264,9 @@ export default function HomeScreen() {
                 <Ionicons name="mic" size={24} color="#8B5CF6" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Voice Log</Text>
+                <Text style={styles.actionTitle}>{t('actions.voiceLog')}</Text>
                 <Text style={styles.actionSubtitle}>
-                  Record your expense with your voice
+                  {t('actions.voiceLogDesc')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#8B5CF6" />
@@ -272,18 +277,18 @@ export default function HomeScreen() {
         {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>{t('home.recentActivity')}</Text>
             <TouchableOpacity onPress={() => router.push("/(app)/history")}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
             </TouchableOpacity>
           </View>
 
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="receipt-outline" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={styles.emptyText}>{t('home.noTransactions')}</Text>
               <Text style={styles.emptySubtext}>
-                Start logging your expenses to see them here
+                {t('home.startLogging')}
               </Text>
             </View>
           ) : (
@@ -317,8 +322,8 @@ export default function HomeScreen() {
                       styles.transactionIncome,
                   ]}
                 >
-                  {transaction.transaction_type === "income" ? "+" : "-"}$
-                  {transaction.amount.toFixed(2)}
+                  {transaction.transaction_type === "income" ? "+" : "-"}
+                  {formatAmount(transaction.amount, transaction.currency || 'USD')}
                 </Text>
               </View>
             ))
@@ -360,7 +365,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push("/(app)/subscription")}
+          onPress={() => router.push("/(app)/profile")}
         >
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Profile</Text>
