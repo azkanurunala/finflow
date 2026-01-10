@@ -1194,6 +1194,193 @@ async def get_insights(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Include router
+@api_router.get("/export/transactions")
+async def export_transactions(
+    format: str = "csv",
+    days: int = 30,
+    current_user: User = Depends(require_auth)
+):
+    """Export transactions as CSV, JSON, or for Excel"""
+    try:
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        transactions = await db.transactions.find(
+            {
+                "user_id": current_user.user_id,
+                "date": {"$gte": start_date}
+            },
+            {"_id": 0}
+        ).sort("date", -1).to_list(1000)
+        
+        if format == "json":
+            # Return as JSON for Excel/Google Sheets import
+            return {
+                "transactions": transactions,
+                "exported_at": datetime.now(timezone.utc).isoformat(),
+                "total_count": len(transactions)
+            }
+        
+        # Default CSV format
+        import io
+        import csv
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            "Date", "Merchant", "Category", "Amount", "Currency", 
+            "Type", "Notes", "Source"
+        ])
+        
+        # Data rows
+        for t in transactions:
+            date_str = t["date"].strftime("%Y-%m-%d") if hasattr(t["date"], "strftime") else str(t["date"])[:10]
+            writer.writerow([
+                date_str,
+                t.get("merchant", ""),
+                t.get("category", ""),
+                t.get("amount", 0),
+                t.get("currency", "USD"),
+                t.get("transaction_type", "expense"),
+                t.get("notes", ""),
+                t.get("source", "")
+            ])
+        
+        csv_content = output.getvalue()
+        
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=transactions_{datetime.now().strftime('%Y%m%d')}.csv"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/insights/ai")
+async def get_ai_insights(
+    days: int = 30,
+    current_user: User = Depends(require_auth)
+):
+    """Get AI-powered financial insights and recommendations"""
+    try:
+        start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        # Get transactions
+        transactions = await db.transactions.find(
+            {
+                "user_id": current_user.user_id,
+                "date": {"$gte": start_date}
+            },
+            {"_id": 0}
+        ).to_list(500)
+        
+        if not transactions:
+            return {
+                "summary": "No transactions found for this period.",
+                "insights": [],
+                "recommendations": ["Start logging your expenses to get personalized insights!"],
+                "spending_trend": "neutral"
+            }
+        
+        # Calculate basic stats
+        total_income = sum(t["amount"] for t in transactions if t.get("transaction_type") == "income")
+        total_expenses = sum(t["amount"] for t in transactions if t.get("transaction_type") == "expense")
+        net = total_income - total_expenses
+        
+        # Get spending by category
+        category_spending = {}
+        for t in transactions:
+            if t.get("transaction_type") == "expense":
+                cat = t.get("category", "Other")
+                category_spending[cat] = category_spending.get(cat, 0) + t["amount"]
+        
+        # Sort categories by spending
+        sorted_categories = sorted(category_spending.items(), key=lambda x: x[1], reverse=True)
+        top_category = sorted_categories[0] if sorted_categories else ("None", 0)
+        
+        # Get currency (most common)
+        currencies = [t.get("currency", "USD") for t in transactions]
+        main_currency = max(set(currencies), key=currencies.count) if currencies else "USD"
+        
+        # Build context for GPT
+        context = f"""
+User's financial data for the last {days} days:
+- Total Income: {main_currency} {total_income:,.2f}
+- Total Expenses: {main_currency} {total_expenses:,.2f}
+- Net: {main_currency} {net:,.2f}
+- Top spending category: {top_category[0]} ({main_currency} {top_category[1]:,.2f})
+- Spending by category: {', '.join([f'{cat}: {main_currency} {amt:,.2f}' for cat, amt in sorted_categories[:5]])}
+- Number of transactions: {len(transactions)}
+"""
+        
+        system_prompt = """You are a friendly personal finance advisor. Analyze the user's spending data and provide:
+1. A brief summary (2-3 sentences)
+2. 3 specific insights about their spending patterns
+3. 3 actionable recommendations to improve their finances
+4. An overall spending trend assessment (good/needs_attention/concerning)
+
+Respond in JSON format:
+{
+    "summary": "brief summary",
+    "insights": ["insight1", "insight2", "insight3"],
+    "recommendations": ["rec1", "rec2", "rec3"],
+    "spending_trend": "good|needs_attention|concerning"
+}"""
+
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"insights_{uuid.uuid4()}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        user_message = UserMessage(text=f"Analyze this financial data and provide insights:\n{context}")
+        response = await chat.send_message(user_message)
+        
+        # Parse response
+        import json
+        response_text = response.strip()
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+        
+        ai_insights = json.loads(response_text)
+        
+        # Add chart data
+        ai_insights["chart_data"] = {
+            "by_category": [{"category": cat, "amount": amt} for cat, amt in sorted_categories],
+            "income_vs_expenses": {
+                "income": total_income,
+                "expenses": total_expenses,
+                "net": net
+            }
+        }
+        ai_insights["period_days"] = days
+        ai_insights["currency"] = main_currency
+        
+        return ai_insights
+        
+    except Exception as e:
+        logger.error(f"Error getting AI insights: {str(e)}")
+        # Return fallback insights
+        return {
+            "summary": "Unable to generate detailed insights at this time.",
+            "insights": ["Keep tracking your expenses", "Review your spending regularly", "Set budget goals"],
+            "recommendations": ["Continue logging transactions", "Review your largest expense categories", "Consider setting savings goals"],
+            "spending_trend": "neutral",
+            "chart_data": {"by_category": [], "income_vs_expenses": {"income": 0, "expenses": 0, "net": 0}},
+            "period_days": days,
+            "currency": "USD"
+        }
+
+# Add Response import at top if not present
+from fastapi.responses import Response
+
 app.include_router(api_router)
 
 app.add_middleware(
