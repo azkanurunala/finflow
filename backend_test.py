@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Testing for AI Finance Assistant
-Tests all endpoints with various scenarios including edge cases
+Backend API Testing Script for Indonesian Transaction Flow
+Tests complete transaction flow including Indonesian language parsing and manual transactions
 """
 
 import asyncio
 import aiohttp
 import json
-import base64
-import io
-import os
+import uuid
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Backend URL from frontend .env
+# Backend URL from frontend/.env
 BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
 
 class FinanceAPITester:
