@@ -226,12 +226,12 @@ export default function ProfileScreen() {
           activeOpacity={0.7}
         >
           <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>{t('auth.logout')}</Text>
         </TouchableOpacity>
 
         {/* Version */}
         <View style={styles.versionContainer}>
-          <Text style={styles.versionLabel}>VERSION</Text>
+          <Text style={styles.versionLabel}>{t('profile.version')}</Text>
           <Text style={styles.versionText}>FinFlow v1.0.0</Text>
         </View>
       </ScrollView>
