@@ -215,6 +215,66 @@ backend:
         agent: "testing"
         comment: "✅ TESTING PASSED: Returns 12 US-specific categories including Groceries, Dining & Coffee, Transportation, Rent & Utilities. All expected categories present and properly formatted."
 
+  - task: "Email/Password Authentication - Register"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: POST /api/auth/register endpoint working correctly. Successfully creates new user with email/password, returns user_id, email, name, session_token, and onboarding_completed=false. Proper validation for duplicate emails and password requirements."
+
+  - task: "Email/Password Authentication - Login"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: POST /api/auth/login endpoint working correctly. Successfully authenticates users with email/password, returns user_id, email, name, session_token, and onboarding_completed status. Proper 401 errors for wrong password and non-existent emails."
+
+  - task: "Get Current User Info"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: GET /api/auth/me endpoint working correctly. Returns complete user profile including user_id, email, name, subscription_tier, onboarding_completed, and subscription status. Requires valid session token authentication."
+
+  - task: "Update Onboarding Preferences"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: PUT /api/auth/onboarding endpoint working correctly. Successfully updates user language and currency preferences. Returns success=true response. Requires authentication."
+
+  - task: "Start Free Trial"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: POST /api/auth/start-trial endpoint working correctly. Successfully starts 3-day free trial, sets subscription_tier to 'free_trial', returns success=true, subscription_tier, and expires_at timestamp. Requires authentication."
+
 frontend:
   - task: "Home screen with chat interface"
     implemented: true
