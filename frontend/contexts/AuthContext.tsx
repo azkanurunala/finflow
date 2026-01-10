@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Determine redirect URL based on platform
       const redirectUrl =
         Platform.OS === "web"
-          ? `${BACKEND_URL}/`
+          ? (typeof window !== 'undefined' ? window.location.origin + "/" : "/")
           : Linking.createURL("/");
 
       const authUrl = `${AUTH_URL}/?redirect=${encodeURIComponent(
