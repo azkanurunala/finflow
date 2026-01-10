@@ -116,35 +116,44 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented POST /api/transactions/chat endpoint using GPT-5.2 with Emergent LLM key. Successfully tested with 'Spent 45 dollars at Target yesterday' and 'Starbucks coffee 6.50 this morning'. Returns parsed transaction with amount, merchant, category, date."
+      - working: true
+        agent: "testing"
+        comment: "✅ COMPREHENSIVE TESTING PASSED: 100% success rate with 8 diverse test cases. GPT-5.2 correctly parses amount, merchant, category, date, transaction_type. Examples: 'Spent $23 at Starbucks' -> $23.00 Dining & Coffee, 'Got paid 2500 today' -> $2500.00 Income, 'Groceries at Walmart 87.50' -> $87.50 Groceries. All transactions properly saved to MongoDB."
   
   - task: "Receipt photo OCR with GPT Vision"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /api/transactions/receipt endpoint using GPT Vision API. Accepts base64 image, extracts merchant, amount, tax, tip, date. Not yet tested with actual receipt image."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: GPT Vision successfully parsed sample Walmart receipt. Extracted: $15.65 total, Walmart Supercenter merchant, Groceries category, proper date parsing. Receipt OCR working correctly with base64 JPEG images. Metadata includes tax/tip when present."
   
   - task: "Voice transcription with Whisper"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented POST /api/transactions/voice endpoint using OpenAI Whisper API. Accepts base64 audio, transcribes, then parses with GPT. Not yet tested with actual audio."
+      - working: false
+        agent: "testing"
+        comment: "❌ CRITICAL ISSUE: Voice endpoint fails with 'Incorrect API key provided: sk-emerg******************8A76'. ROOT CAUSE: Emergent LLM API key is NOT compatible with OpenAI Whisper API. Backend tries to use Emergent key with OpenAI AsyncClient for Whisper transcription, but Emergent only supports LLM endpoints, not audio APIs. SOLUTION NEEDED: Separate OpenAI API key for Whisper or alternative ASR service."
   
   - task: "Get transactions list"
     implemented: true
@@ -152,23 +161,29 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented GET /api/transactions endpoint. Successfully tested and returns transactions sorted by date."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Retrieved 22 transactions successfully. Proper JSON structure with all required fields (id, amount, category, date, source). Sorting by date working correctly. Response format validated."
   
   - task: "Delete transaction"
     implemented: true
-    working: "NA"
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: "NA"
         agent: "main"
         comment: "Implemented DELETE /api/transactions/{id} endpoint. Not yet tested."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Successfully deleted transaction and verified removal from database. Returns proper success message. 404 handling for non-existent transactions working correctly."
   
   - task: "Get spending insights"
     implemented: true
@@ -176,11 +191,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented GET /api/insights endpoint with ?days parameter. Successfully tested with 3 transactions. Returns total_expenses, total_income, net, and by_category breakdown."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: All time periods (7, 30, 90 days) working correctly. Proper calculations for total_expenses, total_income, net balance, and by_category breakdown. Response format validated with all required fields."
   
   - task: "Get categories list"
     implemented: true
@@ -188,11 +206,14 @@ backend:
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "low"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "Implemented GET /api/categories endpoint. Returns US-specific categories array."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Returns 12 US-specific categories including Groceries, Dining & Coffee, Transportation, Rent & Utilities. All expected categories present and properly formatted."
 
 frontend:
   - task: "Home screen with chat interface"
