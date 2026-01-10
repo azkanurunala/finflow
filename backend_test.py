@@ -76,9 +76,21 @@ class CriticalAreasTester:
                     print(f"   ❌ Login failed: {response.status} - {error_text}")
                     return False
             
-            # 3. Get current user info
-            print("   Step 3: Get Current User")
+            # 3. Start Free Trial (needed for quota)
+            print("   Step 3: Start Free Trial")
             headers = {"Authorization": f"Bearer {self.session_token}"}
+            async with session.post(f"{BACKEND_URL}/auth/start-trial", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    print(f"   ✅ Free trial started successfully")
+                    print(f"   Subscription Tier: {data.get('subscription_tier')}")
+                else:
+                    error_text = await response.text()
+                    print(f"   ⚠️ Start trial failed: {response.status} - {error_text}")
+                    # Continue anyway - might already have trial
+            
+            # 4. Get current user info
+            print("   Step 4: Get Current User")
             async with session.get(f"{BACKEND_URL}/auth/me", headers=headers) as response:
                 if response.status == 200:
                     data = await response.json()
