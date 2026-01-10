@@ -290,6 +290,66 @@ backend:
         agent: "testing"
         comment: "✅ TESTING PASSED: Complete manual transaction CRUD operations working. POST /api/transactions/manual creates transactions, PUT /api/transactions/{id} updates amounts, GET /api/transactions/{id} retrieves single transactions, DELETE /api/transactions/{id} removes transactions. Fixed serialization issue during testing."
 
+  - task: "Export Transactions CSV"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: GET /api/export/transactions?format=csv&days=30 working correctly. Returns proper CSV content with headers ['Date', 'Merchant', 'Category', 'Amount', 'Currency', 'Type', 'Notes', 'Source']. Content-Type is text/csv with proper attachment headers. Tested with 2 transactions successfully exported."
+
+  - task: "Export Transactions JSON"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: GET /api/export/transactions?format=json&days=30 working correctly. Returns JSON with required fields: transactions array, exported_at timestamp, total_count. Transaction objects contain all required fields (id, amount, currency, category, date, transaction_type). Proper JSON structure verified."
+
+  - task: "AI Insights Generation"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: GET /api/insights/ai?days=30 working correctly. Returns comprehensive AI insights with summary, insights array (3 items), recommendations array (3 items), spending_trend assessment, and chart_data with by_category and income_vs_expenses breakdowns. GPT-5.2 successfully analyzes financial data and provides personalized recommendations."
+
+  - task: "Indonesian Transaction Parsing Enhanced"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Specific Indonesian parsing test 'gaji masuk 15jt' working perfectly. Amount=15,000,000 IDR, transaction_type=income, category=Income, currency=IDR. GPT-5.2 correctly interprets Indonesian amounts (jt=million, rb=thousand), transaction types (gaji masuk=salary income), and preserves IDR currency without conversion to USD."
+
+  - task: "Currency Preservation System"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Currency preservation working correctly. Indonesian transactions ('beli kopi 25rb') maintain IDR currency with proper amount (25,000), while USD transactions ('spent $50 on groceries') maintain USD currency. No unwanted currency conversion occurring - original currencies preserved as intended."
+
 frontend:
   - task: "Home screen with chat interface"
     implemented: true
