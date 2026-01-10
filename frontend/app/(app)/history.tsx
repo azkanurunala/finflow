@@ -27,6 +27,7 @@ interface Transaction {
   merchant?: string;
   category: string;
   date: string;
+  created_at?: string;
   transaction_type: string;
   notes?: string;
   source: string;
