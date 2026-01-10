@@ -253,9 +253,11 @@ export default function HomeScreen() {
 
       setShowReceiptModal(false);
       setSelectedImage(null);
-      setSuccessTransaction(response.data.transaction);
-      setShowSuccessModal(true);
-      fetchData();
+      
+      // Redirect to edit mode for correction
+      const transaction = response.data.transaction;
+      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=receipt`);
+      
     } catch (error: any) {
       Alert.alert(
         "Error",
