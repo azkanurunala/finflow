@@ -135,6 +135,24 @@ class ChatTransactionRequest(BaseModel):
 class ReceiptTransactionRequest(BaseModel):
     image_base64: str
 
+class ManualTransactionRequest(BaseModel):
+    amount: float
+    currency: str = "USD"
+    merchant: Optional[str] = None
+    category: str
+    date: str  # YYYY-MM-DD
+    transaction_type: str = "expense"
+    notes: Optional[str] = None
+
+class UpdateTransactionRequest(BaseModel):
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    merchant: Optional[str] = None
+    category: Optional[str] = None
+    date: Optional[str] = None  # YYYY-MM-DD
+    transaction_type: Optional[str] = None
+    notes: Optional[str] = None
+
 class VoiceTransactionRequest(BaseModel):
     audio_base64: str
 
