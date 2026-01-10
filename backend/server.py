@@ -557,6 +557,190 @@ async def logout(request: Request, response: Response):
     response.delete_cookie("session_token", path="/")
     return {"message": "Logged out successfully"}
 
+@api_router.post("/auth/register")
+async def register(request: RegisterRequest, response: Response):
+    """Register new user with email/password"""
+    try:
+        # Check if email already exists
+        existing_user = await db.users.find_one({"email": request.email.lower()})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Validate email format
+        if "@" not in request.email or "." not in request.email:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        
+        # Validate password
+        if len(request.password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
+        # Create user
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        password_hash = hash_password(request.password)
+        
+        new_user = {
+            "user_id": user_id,
+            "email": request.email.lower(),
+            "name": request.name,
+            "picture": None,
+            "password_hash": password_hash,
+            "auth_provider": "email",
+            "subscription_tier": None,  # Will be set after onboarding
+            "subscription_started_at": None,
+            "subscription_expires_at": None,
+            "onboarding_completed": False,
+            "language": None,
+            "currency": None,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.users.insert_one(new_user)
+        
+        # Create session
+        session_token = secrets.token_urlsafe(32)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session_doc = {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": session_expires,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.user_sessions.insert_one(session_doc)
+        
+        # Set cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 60 * 60,
+            path="/"
+        )
+        
+        return {
+            "user_id": user_id,
+            "email": request.email.lower(),
+            "name": request.name,
+            "session_token": session_token,
+            "onboarding_completed": False
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error registering user: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/auth/login")
+async def login(request: LoginRequest, response: Response):
+    """Login with email/password"""
+    try:
+        # Find user
+        user = await db.users.find_one({"email": request.email.lower()})
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Verify password
+        if "password_hash" not in user:
+            raise HTTPException(status_code=401, detail="Please login with Google")
+        
+        if not verify_password(request.password, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        # Create session
+        session_token = secrets.token_urlsafe(32)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session_doc = {
+            "user_id": user["user_id"],
+            "session_token": session_token,
+            "expires_at": session_expires,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.user_sessions.insert_one(session_doc)
+        
+        # Set cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 60 * 60,
+            path="/"
+        )
+        
+        return {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user["name"],
+            "picture": user.get("picture"),
+            "session_token": session_token,
+            "onboarding_completed": user.get("onboarding_completed", True),
+            "subscription_tier": user.get("subscription_tier")
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error logging in: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.put("/auth/onboarding")
+async def update_onboarding(request: UpdateOnboardingRequest, current_user: User = Depends(require_auth)):
+    """Update user's onboarding preferences"""
+    try:
+        update_fields = {}
+        
+        if request.language:
+            update_fields["language"] = request.language
+        if request.currency:
+            update_fields["currency"] = request.currency
+        if request.onboarding_completed is not None:
+            update_fields["onboarding_completed"] = request.onboarding_completed
+        
+        if update_fields:
+            await db.users.update_one(
+                {"user_id": current_user.user_id},
+                {"$set": update_fields}
+            )
+        
+        return {"success": True}
+        
+    except Exception as e:
+        logger.error(f"Error updating onboarding: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/auth/start-trial")
+async def start_trial(current_user: User = Depends(require_auth)):
+    """Start free trial for user"""
+    try:
+        trial_expires = datetime.now(timezone.utc) + timedelta(days=3)
+        
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {"$set": {
+                "subscription_tier": "free_trial",
+                "subscription_started_at": datetime.now(timezone.utc),
+                "subscription_expires_at": trial_expires,
+                "onboarding_completed": True
+            }}
+        )
+        
+        return {
+            "success": True,
+            "subscription_tier": "free_trial",
+            "expires_at": trial_expires.isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error starting trial: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Subscription Routes
 @api_router.get("/subscription")
 async def get_subscription(current_user: User = Depends(require_auth)):
