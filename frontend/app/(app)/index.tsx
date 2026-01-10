@@ -649,79 +649,85 @@ export default function HomeScreen() {
           setSelectedImage(null);
         }}
       >
-        <View style={styles.fullModalOverlay}>
-          <SafeAreaView style={styles.fullModalContent} edges={["top", "bottom"]}>
-            <View style={styles.fullModalHeader}>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setShowReceiptModal(false);
+            setSelectedImage(null);
+          }}
+        >
+          <View style={styles.bottomSheetContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHandle} />
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Scan Receipt</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowReceiptModal(false);
                   setSelectedImage(null);
                 }}
               >
-                <Ionicons name="close" size={28} color="#1F2937" />
+                <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
-              <Text style={styles.fullModalTitle}>Scan Receipt</Text>
-              <View style={{ width: 28 }} />
             </View>
 
-            <View style={styles.receiptContent}>
-              {selectedImage ? (
-                <>
-                  <View style={styles.imagePreview}>
-                    <Image
-                      source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
-                      style={styles.previewImage}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  <View style={styles.receiptActions}>
-                    <TouchableOpacity
-                      style={styles.retakeButton}
-                      onPress={() => setSelectedImage(null)}
-                    >
-                      <Ionicons name="refresh" size={20} color="#6B7280" />
-                      <Text style={styles.retakeButtonText}>Retake</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.processButton, processingReceipt && styles.buttonDisabled]}
-                      onPress={handleProcessReceipt}
-                      disabled={processingReceipt}
-                    >
-                      {processingReceipt ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                      ) : (
-                        <>
-                          <Ionicons name="checkmark" size={20} color="#fff" />
-                          <Text style={styles.processButtonText}>Process</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : (
-                <View style={styles.cameraOptions}>
-                  <View style={styles.cameraIconLarge}>
-                    <Ionicons name="receipt" size={64} color="#F59E0B" />
-                  </View>
-                  <Text style={styles.cameraTitle}>Scan Your Receipt</Text>
-                  <Text style={styles.cameraSubtitle}>
-                    Take a photo or select from gallery
-                  </Text>
-                  <View style={styles.cameraButtons}>
-                    <TouchableOpacity style={styles.cameraBtn} onPress={handleTakePhoto}>
-                      <Ionicons name="camera" size={28} color="#10B981" />
-                      <Text style={styles.cameraBtnText}>Camera</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage}>
-                      <Ionicons name="images" size={28} color="#10B981" />
-                      <Text style={styles.cameraBtnText}>Gallery</Text>
-                    </TouchableOpacity>
-                  </View>
+            {selectedImage ? (
+              <View style={styles.receiptPreviewContainer}>
+                <View style={styles.imagePreviewSmall}>
+                  <Image
+                    source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
+                    style={styles.previewImageSmall}
+                    resizeMode="cover"
+                  />
                 </View>
-              )}
-            </View>
-          </SafeAreaView>
-        </View>
+                <View style={styles.receiptActionsRow}>
+                  <TouchableOpacity
+                    style={styles.retakeButtonSmall}
+                    onPress={() => setSelectedImage(null)}
+                  >
+                    <Ionicons name="refresh" size={18} color="#6B7280" />
+                    <Text style={styles.retakeButtonText}>Retake</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.processButtonSmall, processingReceipt && styles.buttonDisabled]}
+                    onPress={handleProcessReceipt}
+                    disabled={processingReceipt}
+                  >
+                    {processingReceipt ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark" size={18} color="#fff" />
+                        <Text style={styles.processButtonText}>Process</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.cameraOptionsCompact}>
+                <View style={styles.cameraIconMedium}>
+                  <Ionicons name="receipt" size={48} color="#F59E0B" />
+                </View>
+                <Text style={styles.cameraTitleSmall}>Take a photo or select from gallery</Text>
+                <View style={styles.cameraButtonsRow}>
+                  <TouchableOpacity style={styles.cameraBtnCompact} onPress={handleTakePhoto}>
+                    <View style={styles.cameraBtnIcon}>
+                      <Ionicons name="camera" size={24} color="#10B981" />
+                    </View>
+                    <Text style={styles.cameraBtnTextSmall}>Camera</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cameraBtnCompact} onPress={handlePickImage}>
+                    <View style={styles.cameraBtnIcon}>
+                      <Ionicons name="images" size={24} color="#10B981" />
+                    </View>
+                    <Text style={styles.cameraBtnTextSmall}>Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Voice Recording Modal */}
