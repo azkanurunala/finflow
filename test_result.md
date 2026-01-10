@@ -278,6 +278,18 @@ backend:
         agent: "testing"
         comment: "✅ TESTING PASSED: POST /api/auth/start-trial endpoint working correctly. Successfully starts 3-day free trial, sets subscription_tier to 'free_trial', returns success=true, subscription_tier, and expires_at timestamp. Requires authentication."
 
+  - task: "Manual Transaction CRUD Operations"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTING PASSED: Complete manual transaction CRUD operations working. POST /api/transactions/manual creates transactions, PUT /api/transactions/{id} updates amounts, GET /api/transactions/{id} retrieves single transactions, DELETE /api/transactions/{id} removes transactions. Fixed serialization issue during testing."
+
 frontend:
   - task: "Home screen with chat interface"
     implemented: true
