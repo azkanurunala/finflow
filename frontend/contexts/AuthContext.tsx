@@ -110,12 +110,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
 
+      // Check if this is a new user (check if they just signed up)
+      const isNewUser = await AsyncStorage.getItem("is_new_user");
+      
       // Set user data
       setUser(userData as User);
 
       // Clean up URL (web only)
       if (Platform.OS === "web") {
         window.history.replaceState(null, "", window.location.pathname);
+      }
+      
+      // Mark as not new user anymore
+      if (isNewUser === "true") {
+        await AsyncStorage.setItem("is_new_user", "false");
       }
     } catch (error) {
       console.error("Error processing auth callback:", error);
