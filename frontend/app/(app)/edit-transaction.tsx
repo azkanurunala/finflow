@@ -17,6 +17,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -37,8 +38,9 @@ const CATEGORIES = [
 
 export default function EditTransactionScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, source, transcription } = useLocalSearchParams();
   const { currency, currencySymbol } = useCurrency();
+  const { language, t } = useLanguage();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,6 +52,11 @@ export default function EditTransactionScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState("");
   const [transactionCurrency, setTransactionCurrency] = useState("USD");
+  
+  // Source info for displaying context
+  const isFromVoice = source === "voice";
+  const isFromReceipt = source === "receipt";
+  const decodedTranscription = transcription ? decodeURIComponent(transcription as string) : null;
 
   useEffect(() => {
     fetchTransaction();
