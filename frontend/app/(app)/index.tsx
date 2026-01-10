@@ -484,7 +484,12 @@ export default function HomeScreen() {
             </View>
           ) : (
             transactions.map((transaction) => (
-              <View key={transaction.id} style={styles.transactionItem}>
+              <TouchableOpacity 
+                key={transaction.id} 
+                style={styles.transactionItem}
+                onPress={() => router.push(`/(app)/edit-transaction?id=${transaction.id}`)}
+                activeOpacity={0.7}
+              >
                 <View style={[styles.transactionIconContainer, { backgroundColor: getCategoryColor(transaction.category) + "20" }]}>
                   <Ionicons
                     name={getCategoryIcon(transaction.category) as any}
@@ -500,16 +505,19 @@ export default function HomeScreen() {
                     {transaction.category} • {getTimeAgo(transaction.created_at || transaction.date)}
                   </Text>
                 </View>
-                <Text
-                  style={[
-                    styles.transactionAmount,
-                    transaction.transaction_type === "income" && styles.transactionIncome,
-                  ]}
-                >
-                  {transaction.transaction_type === "income" ? "+" : "-"}
-                  {formatAmount(transaction.amount, transaction.currency || 'USD')}
-                </Text>
-              </View>
+                <View style={styles.transactionRight}>
+                  <Text
+                    style={[
+                      styles.transactionAmount,
+                      transaction.transaction_type === "income" && styles.transactionIncome,
+                    ]}
+                  >
+                    {transaction.transaction_type === "income" ? "+" : "-"}
+                    {formatAmount(transaction.amount, transaction.currency || 'USD')}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+                </View>
+              </TouchableOpacity>
             ))
           )}
         </View>
