@@ -36,10 +36,10 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t('auth.logout'), "Are you sure you want to logout?", [
+      { text: t('common.cancel'), style: "cancel" },
       {
-        text: "Logout",
+        text: t('auth.logout'),
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -59,47 +59,47 @@ export default function ProfileScreen() {
 
   const menuItems = [
     {
-      section: "Account Settings",
+      section: t('profile.accountSettings'),
       items: [
         {
           icon: "person-outline",
-          label: "Personal Information",
+          label: t('profile.personalInfo'),
           color: "#4DB6AC",
           onPress: () => {},
         },
         {
           icon: "card-outline",
-          label: "Payment Methods",
+          label: t('profile.paymentMethods'),
           color: "#F59E0B",
           onPress: () => {},
         },
         {
           icon: "shield-checkmark-outline",
-          label: "Security",
+          label: t('profile.security'),
           color: "#8B5CF6",
           onPress: () => {},
         },
         {
           icon: "notifications-outline",
-          label: "Notifications",
+          label: t('profile.notifications'),
           color: "#EF4444",
           onPress: () => {},
         },
       ],
     },
     {
-      section: "Preferences",
+      section: t('profile.preferences'),
       items: [
         {
           icon: "language-outline",
-          label: "Language",
+          label: t('profile.language'),
           value: getLanguageName(selectedLanguage),
           color: "#4DB6AC",
           onPress: () => router.push("/(app)/language"),
         },
         {
           icon: "cash-outline",
-          label: "Currency",
+          label: t('profile.currency'),
           value: selectedCurrency,
           color: "#10B981",
           onPress: () => router.push("/(app)/currency"),
@@ -107,17 +107,17 @@ export default function ProfileScreen() {
       ],
     },
     {
-      section: "Support & Info",
+      section: t('profile.supportInfo'),
       items: [
         {
           icon: "help-circle-outline",
-          label: "Help Center",
+          label: t('profile.helpCenter'),
           color: "#4DB6AC",
           onPress: () => {},
         },
         {
           icon: "document-text-outline",
-          label: "Privacy Policy",
+          label: t('profile.privacyPolicy'),
           color: "#6B7280",
           onPress: () => {},
         },
