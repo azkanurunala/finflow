@@ -94,7 +94,7 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
-    subscription_tier: str = "free_trial"
+    subscription_tier: Optional[str] = None
     subscription_expires_at: Optional[datetime] = None
     subscription_started_at: Optional[datetime] = None
     created_at: datetime
