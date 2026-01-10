@@ -54,34 +54,35 @@ US_CATEGORIES = [
     "Other"
 ]
 
-# Subscription Tiers
+# Subscription Tiers (USD pricing)
 SUBSCRIPTION_TIERS = {
     "free_trial": {
         "name": "Free Trial",
         "daily_actions": 10,
         "duration_days": 3,
-        "price": 0
+        "price": 0,
+        "price_yearly": 0
     },
     "basic": {
         "name": "Basic",
-        "audio_minutes": 150,
-        "ocr_images": 150,
-        "chat_messages": 300,
-        "price": 79000
+        "chat_messages": 30,
+        "uploads": 20,  # Combined OCR + voice recordings per month
+        "price": 1.99,
+        "price_yearly": 19.99
     },
     "pro": {
         "name": "Pro",
-        "audio_minutes": 300,
-        "ocr_images": 300,
-        "chat_messages": 600,
-        "price": 129000
+        "chat_messages": 100,
+        "uploads": 100,
+        "price": 4.99,
+        "price_yearly": 49.99
     },
     "power": {
         "name": "Power",
-        "audio_minutes": 600,
-        "ocr_images": 1000,
-        "chat_messages": 1500,
-        "price": 199000
+        "chat_messages": -1,  # Unlimited
+        "uploads": -1,  # Unlimited
+        "price": 9.99,
+        "price_yearly": 99.99
     }
 }
 
