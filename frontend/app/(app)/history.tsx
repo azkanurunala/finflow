@@ -138,7 +138,11 @@ export default function HistoryScreen() {
     const categoryColor = getCategoryColor(item.category);
     
     return (
-      <View style={styles.transactionCard}>
+      <TouchableOpacity 
+        style={styles.transactionCard}
+        onPress={() => router.push(`/(app)/edit-transaction?id=${item.id}`)}
+        activeOpacity={0.7}
+      >
         <View style={styles.transactionHeader}>
           <View style={[styles.iconContainer, { backgroundColor: `${categoryColor}20` }]}>
             <Ionicons
@@ -178,13 +182,7 @@ export default function HistoryScreen() {
           </View>
         </View>
         {item.notes && <Text style={styles.notesText}>{item.notes}</Text>}
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDelete(item.id)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   };
 
