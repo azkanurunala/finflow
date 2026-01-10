@@ -102,7 +102,7 @@ export default function AddScreen() {
       const sessionToken = await AsyncStorage.getItem("session_token");
       
       const response = await axios.post(
-        `${BACKEND_URL}/api/receipt`,
+        `${BACKEND_URL}/api/transactions/receipt`,
         { image_base64: selectedImage },
         {
           headers: {
