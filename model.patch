@@ -14,7 +14,7 @@ index 0000000..f34c5b8
 +import base64
 +import json
 +
-+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
++BACKEND_URL = "https://income-expense-view.preview.emergentagent.com/api"
 +
 +async def test_with_trial_user():
 +    """Test with existing trial user"""
@@ -539,7 +539,7 @@ index 2406907..0dcc752 100644
 --------+from datetime import datetime
 --------+
 --------+# Backend URL from frontend/.env
---------+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
+--------+BACKEND_URL = "https://income-expense-view.preview.emergentagent.com/api"
 --------+
 --------+class AuthTester:
 --------+    def __init__(self):
@@ -1055,7 +1055,7 @@ index 2406907..0dcc752 100644
 -------+from datetime import datetime
 -------+
 -------+# Backend URL from frontend/.env
--------+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
+-------+BACKEND_URL = "https://income-expense-view.preview.emergentagent.com/api"
 -------+
 -------+async def test_complete_transaction_flow():
 -------+    """Test the complete transaction flow as requested"""
@@ -1602,7 +1602,7 @@ index 0000000..631d9d1
 +import json
 +
 +# Backend URL
-+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
++BACKEND_URL = "https://income-expense-view.preview.emergentagent.com/api"
 +
 +# Test credentials
 +TEST_CREDENTIALS = {
