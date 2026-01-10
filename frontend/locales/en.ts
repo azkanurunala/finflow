@@ -15,6 +15,8 @@ export default {
     loading: "Loading...",
     error: "Error",
     success: "Success",
+    search: "Search",
+    apply: "Apply",
   },
   auth: {
     login: "Log In",
@@ -29,6 +31,8 @@ export default {
     continueWithApple: "Continue with Apple",
     alreadyHaveAccount: "Already have an account?",
     dontHaveAccount: "Don't have an account?",
+    enterDetails: "Enter your details to access your account",
+    orContinueWith: "OR CONTINUE WITH",
   },
   home: {
     goodMorning: "Good Morning",
@@ -58,6 +62,7 @@ export default {
     welcomeMessage: "Hi! I'm ready to help you log your expenses. You can say things like 'Spent $15 on lunch' or 'Paid $50 for gas'.",
     dailyLimit: "Daily Limit",
     left: "left",
+    today: "TODAY",
   },
   profile: {
     profile: "Profile",
@@ -76,6 +81,7 @@ export default {
     helpCenter: "Help Center",
     privacyPolicy: "Privacy Policy",
     version: "VERSION",
+    plan: "Plan",
   },
   subscription: {
     subscription: "Subscription",
@@ -86,6 +92,21 @@ export default {
     yearly: "Yearly",
     mostPopular: "MOST POPULAR",
     unlimited: "UNLIMITED",
+    freeTrial: "Free Trial",
+    startTrial: "Start My 3-Day Free Trial",
+    viewPlans: "Or view all subscription plans",
+  },
+  analytics: {
+    analytics: "Analytics",
+    netBalance: "Net Balance",
+    spendingByCategory: "Spending by Category",
+    noData: "No spending data for this period",
+    days: "Days",
+    last: "Last",
+  },
+  history: {
+    transactionHistory: "Transaction History",
+    unknownMerchant: "Unknown Merchant",
   },
   categories: {
     groceries: "Groceries",
