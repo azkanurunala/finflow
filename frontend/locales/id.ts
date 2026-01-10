@@ -15,6 +15,8 @@ export default {
     loading: "Memuat...",
     error: "Kesalahan",
     success: "Berhasil",
+    search: "Cari",
+    apply: "Terapkan",
   },
   auth: {
     login: "Masuk",
@@ -29,6 +31,8 @@ export default {
     continueWithApple: "Lanjutkan dengan Apple",
     alreadyHaveAccount: "Sudah punya akun?",
     dontHaveAccount: "Belum punya akun?",
+    enterDetails: "Masukkan detail Anda untuk mengakses akun",
+    orContinueWith: "ATAU LANJUTKAN DENGAN",
   },
   home: {
     goodMorning: "Selamat Pagi",
@@ -58,6 +62,7 @@ export default {
     welcomeMessage: "Hai! Saya siap membantu Anda mencatat pengeluaran. Anda bisa bilang 'Beli kopi 50 ribu' atau 'Bayar bensin 100 ribu'.",
     dailyLimit: "Batas Harian",
     left: "tersisa",
+    today: "HARI INI",
   },
   profile: {
     profile: "Profil",
@@ -76,6 +81,7 @@ export default {
     helpCenter: "Pusat Bantuan",
     privacyPolicy: "Kebijakan Privasi",
     version: "VERSI",
+    plan: "Paket",
   },
   subscription: {
     subscription: "Langganan",
@@ -86,6 +92,21 @@ export default {
     yearly: "Tahunan",
     mostPopular: "PALING POPULER",
     unlimited: "TANPA BATAS",
+    freeTrial: "Uji Coba Gratis",
+    startTrial: "Mulai Uji Coba 3 Hari Gratis",
+    viewPlans: "Atau lihat semua paket langganan",
+  },
+  analytics: {
+    analytics: "Analitik",
+    netBalance: "Saldo Bersih",
+    spendingByCategory: "Pengeluaran per Kategori",
+    noData: "Tidak ada data pengeluaran untuk periode ini",
+    days: "Hari",
+    last: "Terakhir",
+  },
+  history: {
+    transactionHistory: "Riwayat Transaksi",
+    unknownMerchant: "Merchant Tidak Diketahui",
   },
   categories: {
     groceries: "Belanja",
