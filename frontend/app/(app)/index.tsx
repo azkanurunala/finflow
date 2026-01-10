@@ -1195,6 +1195,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: -28,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   navText: {
     fontSize: 10,
@@ -1203,6 +1208,7 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: "#10B981",
+    fontWeight: "600",
   },
   // Modal styles
   modalOverlay: {
