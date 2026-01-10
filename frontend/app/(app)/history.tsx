@@ -247,13 +247,13 @@ export default function HistoryScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="list" size={24} color="#4DB6AC" />
+          <Ionicons name="swap-horizontal" size={24} color="#10B981" />
           <Text style={[styles.navText, styles.navTextActive]}>Transactions</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItemCenter}
-          onPress={() => router.push("/(app)/add")}
+          onPress={() => router.push("/(app)/manual")}
         >
           <View style={styles.navCenterButton}>
             <Ionicons name="add" size={28} color="#fff" />
@@ -264,7 +264,7 @@ export default function HistoryScreen() {
           style={styles.navItem}
           onPress={() => router.push("/(app)/insights")}
         >
-          <Ionicons name="analytics-outline" size={24} color="#9CA3AF" />
+          <Ionicons name="bar-chart-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Analytics</Text>
         </TouchableOpacity>
 
@@ -414,15 +414,20 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    paddingBottom: 8,
-    paddingTop: 8,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 20,
+    paddingTop: 12,
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   navItem: {
     flex: 1,
@@ -438,23 +443,23 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#4DB6AC",
+    backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: -20,
-    elevation: 4,
-    shadowColor: "#4DB6AC",
+    marginTop: -28,
+    shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+    elevation: 4,
   },
   navText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#9CA3AF",
     marginTop: 4,
   },
   navTextActive: {
-    color: "#4DB6AC",
+    color: "#10B981",
     fontWeight: "600",
   },
 });
