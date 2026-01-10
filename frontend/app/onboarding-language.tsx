@@ -9,8 +9,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "../contexts/AuthContext";
-import { useLanguage } from "../contexts/LanguageContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import i18n from "../utils/i18n";
 
 const LANGUAGES = [
   { code: "en", name: "English", native: "English", flag: "🇺🇸" },
@@ -19,14 +19,15 @@ const LANGUAGES = [
 
 export default function OnboardingLanguageScreen() {
   const router = useRouter();
-  const { updateOnboarding } = useAuth();
-  const { setLanguage } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
 
   const handleContinue = async () => {
-    await setLanguage(selectedLanguage);
-    await updateOnboarding({ language: selectedLanguage });
-    router.push("/onboarding-currency");
+    // Save language preference
+    await AsyncStorage.setItem("user_locale", selectedLanguage);
+    i18n.locale = selectedLanguage;
+    
+    // Go to currency selection
+    router.replace("/onboarding-currency");
   };
 
   return (
