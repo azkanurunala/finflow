@@ -408,7 +408,7 @@ export default function HomeScreen() {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <View style={styles.statIconDown}>
-                <Ionicons name="arrow-down" size={16} color="#10B981" />
+                <Ionicons name="arrow-down" size={14} color="#10B981" />
               </View>
               <Text style={styles.statLabel}>Income</Text>
             </View>
@@ -420,7 +420,7 @@ export default function HomeScreen() {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <View style={styles.statIconUp}>
-                <Ionicons name="arrow-up" size={16} color="#EF4444" />
+                <Ionicons name="arrow-up" size={14} color="#EF4444" />
               </View>
               <Text style={styles.statLabel}>Expenses</Text>
             </View>
