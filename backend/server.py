@@ -884,7 +884,7 @@ async def create_chat_transaction(
 
 @api_router.post("/transactions/receipt")
 async def create_receipt_transaction(
-    image_base64: str = Form(...),
+    request: ReceiptTransactionRequest,
     current_user: User = Depends(require_auth)
 ):
     """Process receipt image and create transaction"""
