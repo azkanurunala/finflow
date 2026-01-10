@@ -481,12 +481,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
     padding: 16,
     backgroundColor: "#fff",
     borderRadius: 12,
-    gap: 12,
   },
   incomeCard: {
     borderLeftWidth: 3,
@@ -496,29 +493,21 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: "#EF4444",
   },
-  statIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
   statContent: {
     flex: 1,
   },
   statLabel: {
     fontSize: 12,
     color: "#6B7280",
-    marginBottom: 2,
+    marginBottom: 4,
   },
   incomeAmount: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: "#10B981",
   },
   expenseAmount: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
     color: "#EF4444",
   },
