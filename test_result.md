@@ -124,6 +124,9 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ COMPREHENSIVE TESTING PASSED: 100% success rate with 8 diverse test cases. GPT-5.2 correctly parses amount, merchant, category, date, transaction_type. Examples: 'Spent $23 at Starbucks' -> $23.00 Dining & Coffee, 'Got paid 2500 today' -> $2500.00 Income, 'Groceries at Walmart 87.50' -> $87.50 Groceries. All transactions properly saved to MongoDB."
+      - working: true
+        agent: "testing"
+        comment: "✅ INDONESIAN LANGUAGE PARSING VERIFIED: GPT-5.2 correctly parses Indonesian transactions. 'lembur dapat 5jt' -> 5,000,000 IDR income, 'beli makan 50rb' -> 50,000 IDR expense. Indonesian amounts (jt=million, rb=thousand), currency detection (IDR), and transaction types working perfectly."
   
   - task: "Receipt photo OCR with GPT Vision"
     implemented: true
