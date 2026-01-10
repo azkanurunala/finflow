@@ -33,22 +33,34 @@ const CATEGORY_CHIPS = [
 export default function ChatScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t, language } = useLanguage();
+  const { formatAmount, currency } = useCurrency();
   const [chatText, setChatText] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Add welcome message
+    // Add welcome message based on language
+    const welcomeMessage = language === 'id' 
+      ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu. Coba bilang "Beli makan 50rb" atau "Gaji masuk 5 juta".`
+      : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. Try saying "Spent $15 on lunch" or "Got paid $500".`;
+    
     setMessages([
       {
         id: "welcome",
         type: "assistant",
-        text: `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. You can say things like "Spent $15 on lunch" or "Paid $50 for gas".`,
+        text: welcomeMessage,
         timestamp: new Date(),
       },
     ]);
-  }, []);
+    
+    // Auto focus input after a short delay
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 500);
+  }, [language]);
 
   const handleSendMessage = async () => {
     if (!chatText.trim()) return;
