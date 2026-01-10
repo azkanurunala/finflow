@@ -13,7 +13,7 @@ import io
 from datetime import datetime, timedelta
 
 # Backend URL from frontend/.env
-BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
 
 class ComprehensiveBackendTester:
     def __init__(self):

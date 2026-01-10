@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 
 # Backend URL from frontend/.env
-BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
 
 async def test_complete_transaction_flow():
     """Test the complete transaction flow as requested"""

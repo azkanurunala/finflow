@@ -424,7 +424,7 @@ index b805bc8..e69de29 100644
 ------+from datetime import datetime
 ------+
 ------+# Backend URL from frontend/.env
-------+BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
+------+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
 ------+
 ------+class AuthTester:
 ------+    def __init__(self):
@@ -940,7 +940,7 @@ index b805bc8..e69de29 100644
 -----+from datetime import datetime
 -----+
 -----+# Backend URL from frontend/.env
------+BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
+-----+BACKEND_URL = "https://hardcore-lewin.preview.emergentagent.com/api"
 -----+
 -----+async def test_complete_transaction_flow():
 -----+    """Test the complete transaction flow as requested"""
