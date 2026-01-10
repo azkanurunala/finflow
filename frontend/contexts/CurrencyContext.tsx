@@ -60,14 +60,14 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   /**
    * Format amount with proper thousand separators and decimal places
-   * NO currency conversion - just format the number in user's selected currency display style
+   * Uses the sourceCurrency if provided, otherwise uses user's selected currency
    * 
    * @param amount - The amount to format
-   * @param sourceCurrency - The currency of the amount (optional, for display purposes only)
+   * @param sourceCurrency - The currency of the amount (optional, will use this for symbol if provided)
    */
   const formatAmount = (amount: number, sourceCurrency?: string): string => {
-    // Use the display currency to determine formatting style
-    const displayCurrency = currency;
+    // Use sourceCurrency if provided, otherwise use user's selected currency
+    const displayCurrency = sourceCurrency || currency;
     const symbol = CURRENCY_SYMBOLS[displayCurrency] || '$';
     
     // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
