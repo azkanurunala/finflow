@@ -760,11 +760,13 @@ export default function HomeScreen() {
         transparent
         animationType="slide"
         onRequestClose={() => {
-          setShowVoiceModal(false);
-          if (recording) {
-            recording.stopAndUnloadAsync();
-            setRecording(null);
-            setIsRecording(false);
+          if (!processingVoice) {
+            setShowVoiceModal(false);
+            if (recording) {
+              recording.stopAndUnloadAsync();
+              setRecording(null);
+              setIsRecording(false);
+            }
           }
         }}
       >
@@ -795,8 +797,9 @@ export default function HomeScreen() {
                     }
                   }
                 }}
+                disabled={isRecording || processingVoice}
               >
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close" size={24} color={isRecording || processingVoice ? "#D1D5DB" : "#6B7280"} />
               </TouchableOpacity>
             </View>
 
@@ -811,39 +814,54 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              {isRecording ? (
+              {processingVoice ? (
+                <View style={styles.processingContainerCompact}>
+                  <ActivityIndicator size="small" color="#8B5CF6" />
+                  <Text style={styles.processingTextSmall}>Processing your voice...</Text>
+                </View>
+              ) : isRecording ? (
                 <View style={styles.recordingInfoCompact}>
                   <Text style={styles.recordingDurationSmall}>{formatDuration(recordingDuration)}</Text>
-                  <Text style={styles.recordingLabelSmall}>Recording...</Text>
+                  <View style={styles.recordingIndicator}>
+                    <View style={styles.recordingDot} />
+                    <Text style={styles.recordingLabelSmall}>Recording... Speak now!</Text>
+                  </View>
                 </View>
               ) : (
                 <Text style={styles.voiceSubtitleCompact}>
-                  Tap the button and speak your expense
+                  Starting recorder...
                 </Text>
               )}
 
               <View style={styles.voiceExamplesCompact}>
-                <Text style={styles.examplesTitleSmall}>Try: "Beli makan 50rb" atau "Gaji masuk 5 juta"</Text>
+                <Text style={styles.examplesTitleSmall}>
+                  {language === 'id' 
+                    ? 'Contoh: "Beli makan 50rb" atau "Gaji masuk 5 juta"'
+                    : 'Try: "Spent $20 on lunch" or "Got paid $500"'}
+                </Text>
               </View>
 
               <View style={styles.voiceActionsCompact}>
                 {processingVoice ? (
-                  <View style={styles.processingContainerCompact}>
-                    <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text style={styles.processingTextSmall}>Processing...</Text>
+                  <View style={styles.waitingContainer}>
+                    <Text style={styles.waitingText}>Please wait...</Text>
                   </View>
                 ) : isRecording ? (
                   <TouchableOpacity style={styles.stopButtonCompact} onPress={stopRecording}>
                     <Ionicons name="stop" size={20} color="#fff" />
-                    <Text style={styles.stopButtonTextSmall}>Stop</Text>
+                    <Text style={styles.stopButtonTextSmall}>Stop & Process</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={styles.recordButtonCompact} onPress={startRecording}>
-                    <Ionicons name="mic" size={20} color="#fff" />
-                    <Text style={styles.recordButtonTextSmall}>Start Recording</Text>
-                  </TouchableOpacity>
+                  <View style={styles.waitingContainer}>
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                    <Text style={styles.waitingText}>Initializing...</Text>
+                  </View>
                 )}
               </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
             </View>
           </View>
         </TouchableOpacity>
