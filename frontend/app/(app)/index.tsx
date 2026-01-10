@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
-import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 
@@ -100,13 +99,11 @@ export default function HomeScreen() {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       
-      // Fetch recent transactions (sorted by created_at desc from backend)
       const transactionsRes = await axios.get(
         `${BACKEND_URL}/api/transactions?limit=5`,
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
       
-      // Fetch insights
       const insightsRes = await axios.get(
         `${BACKEND_URL}/api/insights?days=30`,
         { headers: { Authorization: `Bearer ${sessionToken}` } }
@@ -154,9 +151,29 @@ export default function HomeScreen() {
       "Shopping": "bag",
       "Travel": "airplane",
       "Income": "cash",
+      "Freelance": "briefcase",
       "Other": "ellipsis-horizontal",
     };
     return icons[category] || "ellipsis-horizontal";
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      "Groceries": "#F87171",
+      "Dining & Coffee": "#F87171",
+      "Transportation": "#A3E635",
+      "Rent & Utilities": "#60A5FA",
+      "Subscriptions": "#C084FC",
+      "Healthcare": "#F472B6",
+      "Insurance": "#2DD4BF",
+      "Entertainment": "#FB923C",
+      "Shopping": "#F87171",
+      "Travel": "#38BDF8",
+      "Income": "#4ADE80",
+      "Freelance": "#4ADE80",
+      "Other": "#9CA3AF",
+    };
+    return colors[category] || "#9CA3AF";
   };
 
   const getTimeAgo = (dateString: string) => {
@@ -164,10 +181,12 @@ export default function HomeScreen() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
     
     if (diffHours < 1) return "Just now";
     if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffHours < 48) return "Yesterday";
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
     return format(date, "MMM dd");
   };
 
@@ -232,13 +251,10 @@ export default function HomeScreen() {
         }
       );
 
-      // Close receipt modal and show success
       setShowReceiptModal(false);
       setSelectedImage(null);
       setSuccessTransaction(response.data.transaction);
       setShowSuccessModal(true);
-      
-      // Refresh data
       fetchData();
     } catch (error: any) {
       Alert.alert(
@@ -283,7 +299,6 @@ export default function HomeScreen() {
         throw new Error("No recording URI");
       }
 
-      // Read the audio file and convert to base64
       const response = await fetch(uri);
       const blob = await response.blob();
       
@@ -313,15 +328,12 @@ export default function HomeScreen() {
         }
       );
 
-      // Close voice modal and show success
       setShowVoiceModal(false);
       setSuccessTransaction({
         ...apiResponse.data.transaction,
         transcription: apiResponse.data.transcription
       });
       setShowSuccessModal(true);
-      
-      // Refresh data
       fetchData();
 
       setRecording(null);
@@ -365,12 +377,11 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.avatarContainer}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name?.charAt(0).toUpperCase()}
-                </Text>
-              </View>
+            <View style={styles.avatar}>
+              <Image
+                source={{ uri: user?.picture || `https://ui-avatars.com/api/?name=${user?.name}&background=random` }}
+                style={styles.avatarImage}
+              />
               <View style={styles.onlineIndicator} />
             </View>
             <View>
@@ -384,41 +395,82 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Total Balance Card */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>{t('home.totalBalance')}</Text>
+        {/* Total Balance */}
+        <View style={styles.balanceSection}>
+          <Text style={styles.balanceLabel}>Total Balance</Text>
           <Text style={styles.balanceAmount}>
             {formatAmount(totalBalance)}
           </Text>
         </View>
 
-        {/* Income & Expenses Cards */}
+        {/* Income & Expenses Cards - New Layout */}
         <View style={styles.statsRow}>
-          <View style={[styles.statCard, styles.incomeCard]}>
-            <View style={styles.statContent}>
-              <Text style={styles.statLabel}>{t('home.income')}</Text>
-              <Text style={styles.incomeAmount} numberOfLines={1} adjustsFontSizeToFit>
-                +{formatAmount(insights?.total_income || 0)}
-              </Text>
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <View style={styles.statIconDown}>
+                <Ionicons name="arrow-down" size={16} color="#10B981" />
+              </View>
+              <Text style={styles.statLabel}>Income</Text>
             </View>
+            <Text style={styles.incomeAmount}>
+              +{formatAmount(insights?.total_income || 0)}
+            </Text>
           </View>
 
-          <View style={[styles.statCard, styles.expenseCard]}>
-            <View style={styles.statContent}>
-              <Text style={styles.statLabel}>{t('home.expenses')}</Text>
-              <Text style={styles.expenseAmount} numberOfLines={1} adjustsFontSizeToFit>
-                -{formatAmount(insights?.total_expenses || 0)}
-              </Text>
+          <View style={styles.statCard}>
+            <View style={styles.statHeader}>
+              <View style={styles.statIconUp}>
+                <Ionicons name="arrow-up" size={16} color="#EF4444" />
+              </View>
+              <Text style={styles.statLabel}>Expenses</Text>
             </View>
+            <Text style={styles.expenseAmount}>
+              -{formatAmount(insights?.total_expenses || 0)}
+            </Text>
           </View>
+        </View>
+
+        {/* Quick Actions - Chat, Voice Log, Scan */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity
+            style={styles.actionButtonSmall}
+            onPress={() => router.push("/(app)/chat")}
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: "#10B981" }]}>
+              <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionButtonText}>Chat</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButtonLarge}
+            onPress={() => setShowVoiceModal(true)}
+          >
+            <View style={styles.voiceIconCircle}>
+              <View style={styles.voiceIconInner}>
+                <Ionicons name="mic" size={32} color="#fff" />
+              </View>
+            </View>
+            <Text style={styles.actionButtonTextLarge}>Voice Log</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButtonSmall}
+            onPress={() => setShowReceiptModal(true)}
+          >
+            <View style={[styles.actionIconCircle, { backgroundColor: "#F59E0B" }]}>
+              <Ionicons name="receipt" size={24} color="#fff" />
+            </View>
+            <Text style={styles.actionButtonText}>Scan</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{t('home.recentActivity')}</Text>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
             <TouchableOpacity onPress={() => router.push("/(app)/history")}>
-              <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
+              <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
 
@@ -433,32 +485,25 @@ export default function HomeScreen() {
           ) : (
             transactions.map((transaction) => (
               <View key={transaction.id} style={styles.transactionItem}>
-                <View style={styles.transactionIconContainer}>
+                <View style={[styles.transactionIconContainer, { backgroundColor: getCategoryColor(transaction.category) + "20" }]}>
                   <Ionicons
-                    name={getCategoryIcon(transaction.category)}
+                    name={getCategoryIcon(transaction.category) as any}
                     size={24}
-                    color="#4DB6AC"
+                    color={getCategoryColor(transaction.category)}
                   />
                 </View>
                 <View style={styles.transactionContent}>
                   <Text style={styles.transactionMerchant}>
                     {transaction.merchant || "Unknown"}
                   </Text>
-                  <View style={styles.transactionMeta}>
-                    <Text style={styles.transactionCategory}>
-                      {transaction.category}
-                    </Text>
-                    <Text style={styles.transactionDot}> • </Text>
-                    <Text style={styles.transactionTime}>
-                      {getTimeAgo(transaction.created_at || transaction.date)}
-                    </Text>
-                  </View>
+                  <Text style={styles.transactionMeta}>
+                    {transaction.category} • {getTimeAgo(transaction.created_at || transaction.date)}
+                  </Text>
                 </View>
                 <Text
                   style={[
                     styles.transactionAmount,
-                    transaction.transaction_type === "income" &&
-                      styles.transactionIncome,
+                    transaction.transaction_type === "income" && styles.transactionIncome,
                   ]}
                 >
                   {transaction.transaction_type === "income" ? "+" : "-"}
@@ -473,7 +518,7 @@ export default function HomeScreen() {
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#4DB6AC" />
+          <Ionicons name="home" size={24} color="#10B981" />
           <Text style={[styles.navText, styles.navTextActive]}>Home</Text>
         </TouchableOpacity>
 
@@ -481,7 +526,7 @@ export default function HomeScreen() {
           style={styles.navItem}
           onPress={() => router.push("/(app)/history")}
         >
-          <Ionicons name="list-outline" size={24} color="#9CA3AF" />
+          <Ionicons name="swap-horizontal" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Transactions</Text>
         </TouchableOpacity>
 
@@ -498,7 +543,7 @@ export default function HomeScreen() {
           style={styles.navItem}
           onPress={() => router.push("/(app)/insights")}
         >
-          <Ionicons name="analytics-outline" size={24} color="#9CA3AF" />
+          <Ionicons name="bar-chart" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Analytics</Text>
         </TouchableOpacity>
 
@@ -506,7 +551,7 @@ export default function HomeScreen() {
           style={styles.navItem}
           onPress={() => router.push("/(app)/profile")}
         >
-          <Ionicons name="person-outline" size={24} color="#9CA3AF" />
+          <Ionicons name="person" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -534,12 +579,12 @@ export default function HomeScreen() {
                 router.push("/(app)/chat");
               }}
             >
-              <View style={[styles.modalOptionIcon, { backgroundColor: "#E0F2F1" }]}>
-                <Ionicons name="chatbubble-ellipses" size={24} color="#4DB6AC" />
+              <View style={[styles.modalOptionIcon, { backgroundColor: "#D1FAE5" }]}>
+                <Ionicons name="chatbubble-ellipses" size={24} color="#10B981" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>{t('actions.askAssistant')}</Text>
-                <Text style={styles.modalOptionDesc}>{t('actions.askAssistantDesc')}</Text>
+                <Text style={styles.modalOptionTitle}>Chat with AI</Text>
+                <Text style={styles.modalOptionDesc}>Type your expense naturally</Text>
               </View>
             </TouchableOpacity>
 
@@ -570,8 +615,8 @@ export default function HomeScreen() {
                 <Ionicons name="camera" size={24} color="#F59E0B" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>{t('actions.scanReceipt')}</Text>
-                <Text style={styles.modalOptionDesc}>{t('actions.scanReceiptDesc')}</Text>
+                <Text style={styles.modalOptionTitle}>Scan Receipt</Text>
+                <Text style={styles.modalOptionDesc}>Take a photo of your receipt</Text>
               </View>
             </TouchableOpacity>
 
@@ -586,8 +631,8 @@ export default function HomeScreen() {
                 <Ionicons name="mic" size={24} color="#8B5CF6" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>{t('actions.voiceLog')}</Text>
-                <Text style={styles.modalOptionDesc}>{t('actions.voiceLogDesc')}</Text>
+                <Text style={styles.modalOptionTitle}>Voice Log</Text>
+                <Text style={styles.modalOptionDesc}>Speak your expense</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -664,11 +709,11 @@ export default function HomeScreen() {
                   </Text>
                   <View style={styles.cameraButtons}>
                     <TouchableOpacity style={styles.cameraBtn} onPress={handleTakePhoto}>
-                      <Ionicons name="camera" size={28} color="#4DB6AC" />
+                      <Ionicons name="camera" size={28} color="#10B981" />
                       <Text style={styles.cameraBtnText}>Camera</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage}>
-                      <Ionicons name="images" size={28} color="#4DB6AC" />
+                      <Ionicons name="images" size={28} color="#10B981" />
                       <Text style={styles.cameraBtnText}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
@@ -864,21 +909,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  avatarContainer: {
+  avatar: {
     position: "relative",
   },
-  avatar: {
+  avatarImage: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#4DB6AC",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
+    backgroundColor: "#E5E7EB",
   },
   onlineIndicator: {
     position: "absolute",
@@ -918,23 +956,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: "#EF4444",
   },
-  balanceCard: {
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 24,
-    backgroundColor: "#fff",
-    borderRadius: 16,
+  balanceSection: {
     alignItems: "center",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    paddingVertical: 16,
   },
   balanceLabel: {
     fontSize: 14,
     color: "#6B7280",
-    marginBottom: 8,
+    marginBottom: 4,
   },
   balanceAmount: {
     fontSize: 36,
@@ -951,33 +980,97 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: "#fff",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  statHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  statIconDown: {
+    width: 24,
+    height: 24,
     borderRadius: 12,
+    backgroundColor: "#D1FAE5",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  incomeCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: "#10B981",
-  },
-  expenseCard: {
-    borderLeftWidth: 3,
-    borderLeftColor: "#EF4444",
-  },
-  statContent: {
-    flex: 1,
+  statIconUp: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FEE2E2",
+    justifyContent: "center",
+    alignItems: "center",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#6B7280",
-    marginBottom: 4,
   },
   incomeAmount: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#10B981",
   },
   expenseAmount: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#EF4444",
+  },
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    gap: 24,
+  },
+  actionButtonSmall: {
+    alignItems: "center",
+  },
+  actionButtonLarge: {
+    alignItems: "center",
+  },
+  actionIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  voiceIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "#EDE9FE",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  voiceIconInner: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "#8B5CF6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  actionButtonText: {
+    fontSize: 12,
+    color: "#4B5563",
+    marginTop: 8,
+    fontWeight: "500",
+  },
+  actionButtonTextLarge: {
+    fontSize: 14,
+    color: "#4B5563",
+    marginTop: 8,
+    fontWeight: "600",
   },
   section: {
     paddingHorizontal: 20,
@@ -991,12 +1084,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: "#1F2937",
   },
   viewAllText: {
     fontSize: 14,
-    color: "#4DB6AC",
+    color: "#10B981",
     fontWeight: "500",
   },
   transactionItem: {
@@ -1004,14 +1097,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 12,
     backgroundColor: "#fff",
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 8,
   },
   transactionIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E0F2F1",
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -1020,30 +1112,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionMerchant: {
-    fontSize: 15,
-    fontWeight: "500",
+    fontSize: 16,
+    fontWeight: "600",
     color: "#1F2937",
     marginBottom: 2,
   },
   transactionMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  transactionCategory: {
-    fontSize: 13,
-    color: "#6B7280",
-  },
-  transactionDot: {
-    fontSize: 13,
-    color: "#9CA3AF",
-  },
-  transactionTime: {
     fontSize: 13,
     color: "#9CA3AF",
   },
   transactionAmount: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: "#EF4444",
   },
   transactionIncome: {
@@ -1068,11 +1148,11 @@ const styles = StyleSheet.create({
   },
   bottomNav: {
     flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    paddingBottom: 8,
-    paddingTop: 8,
+    backgroundColor: "#1F2937",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 20,
+    paddingTop: 12,
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -1092,24 +1172,18 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#4DB6AC",
+    backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: -20,
-    elevation: 4,
-    shadowColor: "#4DB6AC",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    marginTop: -28,
   },
   navText: {
-    fontSize: 11,
+    fontSize: 10,
     color: "#9CA3AF",
     marginTop: 4,
   },
   navTextActive: {
-    color: "#4DB6AC",
-    fontWeight: "600",
+    color: "#10B981",
   },
   // Modal styles
   modalOverlay: {
@@ -1232,7 +1306,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    backgroundColor: "#4DB6AC",
+    backgroundColor: "#10B981",
     borderRadius: 12,
   },
   processButtonText: {
@@ -1270,7 +1344,7 @@ const styles = StyleSheet.create({
   },
   cameraButtons: {
     flexDirection: "row",
-    gap: 24,
+    gap: 48,
   },
   cameraBtn: {
     alignItems: "center",
@@ -1470,7 +1544,7 @@ const styles = StyleSheet.create({
   successButton: {
     width: "100%",
     paddingVertical: 16,
-    backgroundColor: "#4DB6AC",
+    backgroundColor: "#10B981",
     borderRadius: 12,
     alignItems: "center",
   },
