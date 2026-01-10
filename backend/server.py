@@ -1378,9 +1378,6 @@ Respond in JSON format:
             "currency": "USD"
         }
 
-# Add Response import at top if not present
-from fastapi.responses import Response
-
 app.include_router(api_router)
 
 app.add_middleware(
