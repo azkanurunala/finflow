@@ -543,9 +543,44 @@ async def create_session(request: SessionDataRequest, response: Response):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/auth/me")
-async def get_me(current_user: User = Depends(require_auth)):
+async def get_me(request: Request):
     """Get current user info"""
-    return current_user
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Get additional user data from DB
+    user_doc = await db.users.find_one(
+        {"user_id": user.user_id},
+        {"_id": 0, "password_hash": 0}
+    )
+    
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check subscription status
+    is_subscription_active = True
+    if user_doc.get("subscription_expires_at"):
+        expires_at = user_doc["subscription_expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        is_subscription_active = expires_at > datetime.now(timezone.utc)
+    else:
+        is_subscription_active = False
+    
+    return {
+        "user_id": user_doc["user_id"],
+        "email": user_doc["email"],
+        "name": user_doc["name"],
+        "picture": user_doc.get("picture"),
+        "subscription_tier": user_doc.get("subscription_tier"),
+        "subscription_expires_at": user_doc.get("subscription_expires_at"),
+        "is_subscription_active": is_subscription_active,
+        "onboarding_completed": user_doc.get("onboarding_completed", True),
+        "language": user_doc.get("language"),
+        "currency": user_doc.get("currency"),
+        "created_at": user_doc.get("created_at")
+    }
 
 @api_router.post("/auth/logout")
 async def logout(request: Request, response: Response):
