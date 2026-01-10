@@ -29,7 +29,333 @@ TEST_CREDENTIALS = {
     "name": "Voice Test User"
 }
 
-class ComprehensiveBackendTester:
+class CriticalAreasTester:
+    def __init__(self):
+        self.session_token = None
+        self.user_id = None
+        self.transaction_id = None
+        
+    async def test_authentication_flow(self):
+        """Test CRITICAL: Complete authentication flow with specific test credentials"""
+        print("🔐 Testing Authentication Flow (CRITICAL)...")
+        
+        # Try to register first, then login if already exists
+        async with aiohttp.ClientSession() as session:
+            # 1. Register
+            print("   Step 1: User Registration")
+            async with session.post(f"{BACKEND_URL}/auth/register", json=TEST_CREDENTIALS) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    self.session_token = data.get("session_token")
+                    self.user_id = data.get("user_id")
+                    print(f"   ✅ Registration successful: {TEST_CREDENTIALS['email']}")
+                elif response.status == 400:
+                    error_text = await response.text()
+                    if "Email already registered" in error_text:
+                        print(f"   ℹ️ User already exists, proceeding to login")
+                    else:
+                        print(f"   ❌ Registration failed: {error_text}")
+                        return False
+                else:
+                    print(f"   ❌ Registration failed: {response.status}")
+                    return False
+            
+            # 2. Login
+            print("   Step 2: User Login")
+            login_data = {"email": TEST_CREDENTIALS["email"], "password": TEST_CREDENTIALS["password"]}
+            async with session.post(f"{BACKEND_URL}/auth/login", json=login_data) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    self.session_token = data.get("session_token")
+                    self.user_id = data.get("user_id")
+                    print(f"   ✅ Login successful")
+                    print(f"   User ID: {self.user_id}")
+                    print(f"   Session Token: {self.session_token[:20]}...")
+                else:
+                    error_text = await response.text()
+                    print(f"   ❌ Login failed: {response.status} - {error_text}")
+                    return False
+            
+            # 3. Get current user info
+            print("   Step 3: Get Current User")
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            async with session.get(f"{BACKEND_URL}/auth/me", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    print(f"   ✅ Get current user successful")
+                    print(f"   Email: {data.get('email')}")
+                    print(f"   Name: {data.get('name')}")
+                    print(f"   Subscription: {data.get('subscription_tier')}")
+                    return True
+                else:
+                    error_text = await response.text()
+                    print(f"   ❌ Get current user failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_voice_transcription_critical(self):
+        """Test CRITICAL: Voice transcription endpoint (was previously failing)"""
+        print("\n🎤 Testing Voice Transcription (CRITICAL - Previously Failing)...")
+        
+        if not self.session_token:
+            print("   ❌ No session token available")
+            return False
+        
+        # Create a minimal base64 encoded audio file for testing
+        # This is a minimal WAV file header - just enough to test the endpoint
+        wav_header = (
+            b'RIFF'
+            b'\x24\x00\x00\x00'  # File size
+            b'WAVE'
+            b'fmt '
+            b'\x10\x00\x00\x00'  # Format chunk size
+            b'\x01\x00'          # Audio format (PCM)
+            b'\x01\x00'          # Number of channels
+            b'\x44\xAC\x00\x00'  # Sample rate (44100)
+            b'\x88X\x01\x00'     # Byte rate
+            b'\x02\x00'          # Block align
+            b'\x10\x00'          # Bits per sample
+            b'data'
+            b'\x00\x00\x00\x00'  # Data chunk size
+        )
+        
+        audio_base64 = base64.b64encode(wav_header).decode('utf-8')
+        
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        voice_data = {"audio_base64": audio_base64}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/voice", json=voice_data, headers=headers) as response:
+                response_text = await response.text()
+                
+                print(f"   Response Status: {response.status}")
+                print(f"   Response: {response_text[:200]}...")
+                
+                if response.status == 200:
+                    # Success - voice transcription working
+                    data = await response.json() if response.content_type == 'application/json' else None
+                    print(f"   ✅ Voice Transcription: WORKING - Endpoint processed audio successfully")
+                    if data and 'transcription' in data:
+                        print(f"   Transcription: {data.get('transcription')}")
+                    return True
+                elif response.status == 400 and "Could not transcribe audio" in response_text:
+                    # Expected for minimal test audio - endpoint is working
+                    print(f"   ✅ Voice Transcription: ENDPOINT WORKING - Cannot transcribe minimal test audio (expected)")
+                    return True
+                elif response.status == 500 and "Voice transcription service is not configured" in response_text:
+                    # Service not configured
+                    print(f"   ⚠️ Voice Transcription: SERVICE NOT CONFIGURED - OpenAI API key missing")
+                    return False
+                elif "Incorrect API key" in response_text:
+                    # Critical failure - API key issue
+                    print(f"   ❌ Voice Transcription: CRITICAL FAILURE - API key issue still exists")
+                    print(f"   This was the original problem that needed fixing")
+                    return False
+                else:
+                    # Other error
+                    print(f"   ❌ Voice Transcription: FAILED - {response_text}")
+                    return False
+    
+    async def test_receipt_scanning_critical(self):
+        """Test CRITICAL: Receipt scanning with base64 image"""
+        print("\n📷 Testing Receipt Scanning (CRITICAL)...")
+        
+        if not self.session_token:
+            print("   ❌ No session token available")
+            return False
+        
+        # Create a simple test receipt image (1x1 pixel PNG)
+        # This is a minimal PNG file for testing
+        png_data = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==')
+        image_base64 = base64.b64encode(png_data).decode('utf-8')
+        
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        receipt_data = {"image_base64": image_base64}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/receipt", json=receipt_data, headers=headers) as response:
+                response_text = await response.text()
+                
+                print(f"   Response Status: {response.status}")
+                print(f"   Response: {response_text[:200]}...")
+                
+                if response.status == 200:
+                    # Success
+                    print(f"   ✅ Receipt Scanning: WORKING")
+                    return True
+                elif response.status == 400 and "Could not parse receipt" in response_text:
+                    # Expected for minimal test image - endpoint is working
+                    print(f"   ✅ Receipt Scanning: ENDPOINT WORKING - Cannot parse minimal test image (expected)")
+                    return True
+                else:
+                    # Error
+                    print(f"   ❌ Receipt Scanning: FAILED - {response_text}")
+                    return False
+    
+    async def test_manual_transaction_crud_critical(self):
+        """Test CRITICAL: Complete manual transaction CRUD operations"""
+        print("\n📝 Testing Manual Transaction CRUD (CRITICAL)...")
+        
+        if not self.session_token:
+            print("   ❌ No session token available")
+            return False
+        
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            # 1. CREATE - Manual transaction
+            print("   Step 1: Create Manual Transaction")
+            transaction_data = {
+                "amount": 25.50,
+                "currency": "USD",
+                "merchant": "Test Coffee Shop",
+                "category": "Dining & Coffee",
+                "date": "2024-01-15",
+                "transaction_type": "expense",
+                "notes": "Test transaction for CRUD operations"
+            }
+            
+            async with session.post(f"{BACKEND_URL}/transactions/manual", json=transaction_data, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    self.transaction_id = data.get("transaction", {}).get("id")
+                    print(f"   ✅ CREATE: Transaction created successfully")
+                    print(f"   Transaction ID: {self.transaction_id}")
+                else:
+                    error_text = await response.text()
+                    print(f"   ❌ CREATE: Failed - {response.status} - {error_text}")
+                    return False
+            
+            # 2. READ - Get all transactions
+            print("   Step 2: Get All Transactions")
+            async with session.get(f"{BACKEND_URL}/transactions", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    transaction_count = len(data.get("transactions", []))
+                    print(f"   ✅ READ (All): Retrieved {transaction_count} transactions")
+                else:
+                    error_text = await response.text()
+                    print(f"   ❌ READ (All): Failed - {response.status} - {error_text}")
+                    return False
+            
+            # 3. READ - Get single transaction
+            if self.transaction_id:
+                print("   Step 3: Get Single Transaction")
+                async with session.get(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        print(f"   ✅ READ (Single): Retrieved transaction {data.get('id')}")
+                    else:
+                        error_text = await response.text()
+                        print(f"   ❌ READ (Single): Failed - {response.status} - {error_text}")
+                        return False
+            
+            # 4. UPDATE - Update transaction
+            if self.transaction_id:
+                print("   Step 4: Update Transaction")
+                update_data = {
+                    "amount": 30.00,
+                    "notes": "Updated test transaction"
+                }
+                
+                async with session.put(f"{BACKEND_URL}/transactions/{self.transaction_id}", json=update_data, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        updated_amount = data.get("transaction", {}).get("amount")
+                        print(f"   ✅ UPDATE: Transaction updated successfully")
+                        print(f"   New amount: ${updated_amount}")
+                    else:
+                        error_text = await response.text()
+                        print(f"   ❌ UPDATE: Failed - {response.status} - {error_text}")
+                        return False
+            
+            # 5. DELETE - Delete transaction
+            if self.transaction_id:
+                print("   Step 5: Delete Transaction")
+                async with session.delete(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as response:
+                    if response.status == 200:
+                        print(f"   ✅ DELETE: Transaction deleted successfully")
+                        
+                        # Verify deletion
+                        async with session.get(f"{BACKEND_URL}/transactions/{self.transaction_id}", headers=headers) as verify_response:
+                            if verify_response.status == 404:
+                                print(f"   ✅ DELETE VERIFIED: Transaction no longer exists")
+                                return True
+                            else:
+                                print(f"   ❌ DELETE VERIFICATION: Transaction still exists")
+                                return False
+                    else:
+                        error_text = await response.text()
+                        print(f"   ❌ DELETE: Failed - {response.status} - {error_text}")
+                        return False
+        
+        return True
+    
+    async def test_indonesian_parsing_critical(self):
+        """Test CRITICAL: Indonesian transaction parsing as requested"""
+        print("\n🇮🇩 Testing Indonesian Transaction Parsing (CRITICAL)...")
+        
+        if not self.session_token:
+            print("   ❌ No session token available")
+            return False
+        
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        # Test cases from review request
+        test_cases = [
+            {
+                "text": "beli makan 50rb",
+                "expected_amount": 50000,
+                "expected_currency": "IDR",
+                "expected_type": "expense",
+                "description": "Indonesian expense"
+            },
+            {
+                "text": "gaji masuk 5jt", 
+                "expected_amount": 5000000,
+                "expected_currency": "IDR",
+                "expected_type": "income",
+                "description": "Indonesian income"
+            }
+        ]
+        
+        all_passed = True
+        
+        async with aiohttp.ClientSession() as session:
+            for i, test_case in enumerate(test_cases):
+                print(f"\n   Test {i+1}: {test_case['description']} - '{test_case['text']}'")
+                
+                chat_data = {"text": test_case["text"]}
+                async with session.post(f"{BACKEND_URL}/transactions/chat", json=chat_data, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        transaction = data.get("transaction", {})
+                        
+                        amount = transaction.get("amount")
+                        currency = transaction.get("currency")
+                        trans_type = transaction.get("transaction_type")
+                        
+                        # Check each expected value
+                        amount_ok = amount == test_case["expected_amount"]
+                        currency_ok = currency == test_case["expected_currency"]
+                        type_ok = trans_type == test_case["expected_type"]
+                        
+                        print(f"     Amount: {amount} (expected: {test_case['expected_amount']}) {'✅' if amount_ok else '❌'}")
+                        print(f"     Currency: {currency} (expected: {test_case['expected_currency']}) {'✅' if currency_ok else '❌'}")
+                        print(f"     Type: {trans_type} (expected: {test_case['expected_type']}) {'✅' if type_ok else '❌'}")
+                        
+                        if not (amount_ok and currency_ok and type_ok):
+                            all_passed = False
+                    else:
+                        error_text = await response.text()
+                        print(f"     ❌ Request failed: {response.status} - {error_text}")
+                        all_passed = False
+        
+        if all_passed:
+            print(f"\n   ✅ Indonesian Parsing: ALL TESTS PASSED")
+        else:
+            print(f"\n   ❌ Indonesian Parsing: SOME TESTS FAILED")
+        
+        return all_passed
     def __init__(self):
         self.session_token = None
         self.user_id = None
