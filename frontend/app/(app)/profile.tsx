@@ -11,24 +11,28 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUserCurrency } from "../../utils/currency";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { t, language } = useLanguage();
+  const { currency } = useCurrency();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   useEffect(() => {
     loadPreferences();
-  }, []);
+  }, [language, currency]);
 
   const loadPreferences = async () => {
     const locale = await AsyncStorage.getItem("user_locale");
-    const currency = await getUserCurrency();
+    const curr = await getUserCurrency();
     if (locale) setSelectedLanguage(locale);
-    if (currency) setSelectedCurrency(currency);
+    if (curr) setSelectedCurrency(curr);
   };
 
   const handleLogout = () => {
