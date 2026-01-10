@@ -329,12 +329,17 @@ async def increment_usage(user_id: str, action_type: str, amount: float = 1.0):
 async def parse_transaction_text(text: str, source: str = "chat") -> Transaction:
     """Use GPT to parse natural language transaction input"""
     try:
-        system_prompt = f"""You are a financial transaction parser for US users.
-Your task is to extract transaction details from natural language.
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        system_prompt = f"""You are a multilingual financial transaction parser that understands both English and Indonesian (Bahasa Indonesia).
+Your task is to extract transaction details from natural language input.
 
-Respond in this exact JSON format:
+TODAY'S DATE: {today}
+
+Respond ONLY with this exact JSON format (no other text):
 {{
-    "amount": <number>,
+    "amount": <number in original currency>,
+    "currency": "USD" or "IDR",
     "merchant": "<merchant name or null>",
     "category": "<one of: {', '.join(US_CATEGORIES)}>",
     "date": "<YYYY-MM-DD>",
@@ -342,14 +347,32 @@ Respond in this exact JSON format:
     "notes": "<any additional context or null>"
 }}
 
-Rules:
-- Default currency is USD
-- Infer date from context (today, yesterday, last week, etc.)
-- If no date mentioned, use today
-- Recognize common US merchants
-- Categorize intelligently based on merchant and context
-- transaction_type should be "income" only if explicitly about earning/receiving money
-- Extract any mentions of tip, tax, or split payments into notes"""
+CRITICAL RULES FOR INCOME vs EXPENSE:
+- "income" = receiving money: salary (gaji), bonus, overtime pay (lembur), freelance payment, selling something, refund, dividend, gift received
+- "expense" = spending money: buying, paying, purchasing, subscription, bills
+
+INDONESIAN AMOUNT PARSING (VERY IMPORTANT):
+- "jt" or "juta" = million (1.000.000). Example: "5jt" = 5000000, "2,5jt" = 2500000
+- "rb" or "ribu" = thousand (1.000). Example: "50rb" = 50000, "150rb" = 150000  
+- "k" = thousand. Example: "50k" = 50000
+- Indonesian uses comma for decimals: "2,5jt" = 2.5 million = 2500000
+- If amount seems Indonesian (jt, rb, ribu, juta, or context is Indonesian), use currency: "IDR"
+
+INDONESIAN CONTEXT EXAMPLES:
+- "lembur dapat 5jt" → amount: 5000000, currency: "IDR", transaction_type: "income", category: "Income"
+- "beli makan 50rb" → amount: 50000, currency: "IDR", transaction_type: "expense", category: "Dining & Coffee"
+- "gaji masuk 10jt" → amount: 10000000, currency: "IDR", transaction_type: "income", category: "Income"
+- "bayar listrik 500rb" → amount: 500000, currency: "IDR", transaction_type: "expense", category: "Rent & Utilities"
+
+ENGLISH EXAMPLES:
+- "earned $500 from freelance" → amount: 500, currency: "USD", transaction_type: "income"
+- "spent $25 on lunch" → amount: 25, currency: "USD", transaction_type: "expense"
+
+DATE PARSING:
+- "hari ini" / "today" = {today}
+- "kemarin" / "yesterday" = yesterday's date
+- "minggu lalu" / "last week" = 7 days ago
+- If no date mentioned, use today: {today}"""
 
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
@@ -373,6 +396,7 @@ Rules:
         # Create transaction (without user_id, will be added by caller)
         transaction_data = {
             "amount": float(data["amount"]),
+            "currency": data.get("currency", "USD"),
             "merchant": data.get("merchant"),
             "category": data["category"],
             "date": datetime.fromisoformat(data["date"]),
