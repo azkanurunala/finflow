@@ -287,8 +287,19 @@ async def create_receipt_transaction(image_base64: str = Form(...)):
 
 @api_router.post("/transactions/voice")
 async def create_voice_transaction(request: VoiceTransactionRequest):
-    """Process voice note and create transaction"""
+    """Process voice note and create transaction
+    
+    NOTE: This endpoint requires OpenAI Whisper API which is NOT supported by Emergent LLM key.
+    Use the /transactions/voice-text endpoint instead if you don't have a separate OpenAI key.
+    """
     try:
+        # Check if we have a real OpenAI key (not Emergent key)
+        if EMERGENT_LLM_KEY.startswith("sk-emergent"):
+            raise HTTPException(
+                status_code=501,
+                detail="Voice transcription requires a separate OpenAI API key. Emergent LLM key does not support Whisper API. Please use text input or provide an OpenAI API key."
+            )
+        
         # Transcribe audio using Whisper
         from openai import AsyncOpenAI
         
@@ -322,8 +333,34 @@ async def create_voice_transaction(request: VoiceTransactionRequest):
             "transcription": transcribed_text,
             "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating voice transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/transactions/voice-text")
+async def create_voice_text_transaction(request: ChatTransactionRequest):
+    """Process pre-transcribed voice text and create transaction
+    
+    Use this endpoint if you're doing speech-to-text on the client side.
+    This works with the Emergent LLM key since it only uses GPT for parsing.
+    """
+    try:
+        # Parse transaction using GPT
+        transaction = await parse_transaction_text(request.text, source="voice")
+        
+        # Save to database
+        transaction_dict = transaction.dict()
+        await db.transactions.insert_one(transaction_dict)
+        
+        return {
+            "transaction": transaction,
+            "transcription": request.text,
+            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+        }
+    except Exception as e:
+        logger.error(f"Error creating voice-text transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/transactions")
