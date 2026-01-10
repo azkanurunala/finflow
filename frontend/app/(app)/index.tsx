@@ -16,11 +16,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import axios from "axios";
 import { format } from "date-fns";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../contexts/AuthContext";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [chatText, setChatText] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
@@ -54,9 +57,12 @@ export default function HomeScreen() {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/transactions/chat`, {
-        text: messageText,
-      });
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      const response = await axios.post(
+        `${BACKEND_URL}/api/transactions/chat`,
+        { text: messageText },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
 
       const assistantMessage = {
         id: Date.now().toString() + "_assistant",
@@ -68,10 +74,21 @@ export default function HomeScreen() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process transaction"
-      );
+      const errorMsg = error.response?.data?.detail || "Failed to process transaction";
+      
+      // Check if quota exceeded
+      if (error.response?.status === 403 && errorMsg.includes("Quota exceeded")) {
+        Alert.alert(
+          "Quota Exceeded",
+          "You've reached your daily limit. Upgrade your plan to continue!",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Upgrade", onPress: () => router.push("/(app)/subscription") }
+          ]
+        );
+      } else {
+        Alert.alert("Error", errorMsg);
+      }
       const errorMessage = {
         id: Date.now().toString() + "_error",
         type: "assistant",
@@ -91,15 +108,21 @@ export default function HomeScreen() {
         <View style={styles.headerButtons}>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => router.push("/history")}
+            onPress={() => router.push("/(app)/history")}
           >
             <Ionicons name="list" size={24} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.iconButton}
-            onPress={() => router.push("/insights")}
+            onPress={() => router.push("/(app)/insights")}
           >
             <Ionicons name="stats-chart" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={() => router.push("/(app)/subscription")}
+          >
+            <Ionicons name="person-circle" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
@@ -165,14 +188,14 @@ export default function HomeScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <TouchableOpacity
               style={styles.quickAddButton}
-              onPress={() => router.push("/add?mode=camera")}
+              onPress={() => router.push("/(app)/add?mode=camera")}
             >
               <Ionicons name="camera" size={24} color="#667eea" />
               <Text style={styles.quickAddText}>Receipt</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickAddButton}
-              onPress={() => router.push("/add?mode=voice")}
+              onPress={() => router.push("/(app)/add?mode=voice")}
             >
               <Ionicons name="mic" size={24} color="#667eea" />
               <Text style={styles.quickAddText}>Voice</Text>
