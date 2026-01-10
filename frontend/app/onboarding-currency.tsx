@@ -9,8 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useAuth } from "../contexts/AuthContext";
-import { useCurrency } from "../contexts/CurrencyContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CURRENCIES = [
   { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
@@ -23,14 +22,14 @@ const CURRENCIES = [
 
 export default function OnboardingCurrencyScreen() {
   const router = useRouter();
-  const { updateOnboarding } = useAuth();
-  const { setCurrency } = useCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   const handleContinue = async () => {
-    await setCurrency(selectedCurrency);
-    await updateOnboarding({ currency: selectedCurrency });
-    router.push("/onboarding-trial");
+    // Save currency preference
+    await AsyncStorage.setItem("user_currency", selectedCurrency);
+    
+    // Go to login page
+    router.replace("/login");
   };
 
   const handleBack = () => {
