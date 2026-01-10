@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 # Backend URL from frontend/.env
 BACKEND_URL = "https://cashflow-ai-14.preview.emergentagent.com/api"
 
-class IndonesianTransactionTester:
+class ComprehensiveBackendTester:
     def __init__(self):
         self.session_token = None
         self.user_id = None
