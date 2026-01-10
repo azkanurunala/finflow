@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Script for Indonesian Transaction Flow
-Tests complete transaction flow including Indonesian language parsing and manual transactions
+Backend API Testing Script for AI Personal Finance Assistant
+Tests complete transaction flow including Indonesian language parsing, exports, and AI insights
 """
 
 import asyncio
 import aiohttp
 import json
 import uuid
+import csv
+import io
 from datetime import datetime, timedelta
 
 # Backend URL from frontend/.env
