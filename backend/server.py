@@ -991,9 +991,29 @@ async def create_voice_transaction(
         # Decode base64 audio
         audio_data = base64.b64decode(request.audio_base64)
         
-        # Create a file-like object for the audio
-        audio_file = io.BytesIO(audio_data)
-        audio_file.name = "audio.m4a"
+        # Detect audio format from magic bytes
+        audio_format = "m4a"
+        mime_type = "audio/m4a"
+        
+        # Check for common audio format signatures
+        if audio_data[:4] == b'RIFF':
+            audio_format = "wav"
+            mime_type = "audio/wav"
+        elif audio_data[:3] == b'ID3' or audio_data[:2] == b'\xff\xfb':
+            audio_format = "mp3"
+            mime_type = "audio/mpeg"
+        elif audio_data[:4] == b'OggS':
+            audio_format = "ogg"
+            mime_type = "audio/ogg"
+        elif audio_data[:4] == b'fLaC':
+            audio_format = "flac"
+            mime_type = "audio/flac"
+        elif b'ftyp' in audio_data[:12]:
+            # M4A/MP4 format
+            audio_format = "m4a"
+            mime_type = "audio/mp4"
+        
+        logger.info(f"Detected audio format: {audio_format}, mime: {mime_type}, size: {len(audio_data)} bytes")
         
         # Call OpenAI Whisper API
         async with httpx.AsyncClient(timeout=60.0) as http_client:
@@ -1003,7 +1023,7 @@ async def create_voice_transaction(
                     "Authorization": f"Bearer {OPENAI_API_KEY}"
                 },
                 files={
-                    "file": ("audio.m4a", audio_data, "audio/m4a")
+                    "file": (f"audio.{audio_format}", audio_data, mime_type)
                 },
                 data={
                     "model": "whisper-1",
