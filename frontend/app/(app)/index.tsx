@@ -437,7 +437,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/(app)/chat")}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "#10B981" }]}>
-              <Ionicons name="chatbubble-ellipses" size={28} color="#fff" />
+              <Ionicons name="chatbubble-ellipses" size={26} color="#fff" />
             </View>
             <Text style={styles.actionButtonText}>Chat</Text>
           </TouchableOpacity>
@@ -448,7 +448,7 @@ export default function HomeScreen() {
           >
             <View style={styles.voiceIconCircle}>
               <View style={styles.voiceIconInner}>
-                <Ionicons name="mic" size={40} color="#fff" />
+                <Ionicons name="mic" size={44} color="#fff" />
               </View>
             </View>
             <Text style={styles.actionButtonTextLarge}>Voice Log</Text>
@@ -459,7 +459,7 @@ export default function HomeScreen() {
             onPress={() => setShowReceiptModal(true)}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "#F59E0B" }]}>
-              <Ionicons name="scan" size={28} color="#fff" />
+              <Ionicons name="scan" size={26} color="#fff" />
             </View>
             <Text style={styles.actionButtonText}>Scan</Text>
           </TouchableOpacity>
