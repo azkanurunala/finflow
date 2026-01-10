@@ -90,6 +90,21 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [isRecording]);
 
+  // Auto-start recording when voice modal opens
+  useEffect(() => {
+    if (showVoiceModal && !isRecording && !processingVoice) {
+      // Small delay to ensure modal is fully visible
+      const timer = setTimeout(() => {
+        startRecording();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    // Reset live transcription when modal closes
+    if (!showVoiceModal) {
+      setLiveTranscription("");
+    }
+  }, [showVoiceModal]);
+
   const requestPermissions = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     await ImagePicker.requestMediaLibraryPermissionsAsync();
