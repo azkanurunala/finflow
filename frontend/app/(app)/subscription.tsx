@@ -135,7 +135,6 @@ export default function SubscriptionScreen() {
   };
 
   const getPrice = (tier: any) => {
-    if (tier.isFree) return "$0";
     return billingPeriod === "monthly"
       ? `$${tier.monthlyPrice.toFixed(2)}`
       : `$${tier.yearlyPrice.toFixed(2)}`;
