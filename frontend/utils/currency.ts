@@ -93,16 +93,32 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
   
   if (!currency) return `${amount.toFixed(2)}`;
   
-  // Special formatting for certain currencies
-  if (currencyCode === 'JPY' || currencyCode === 'IDR') {
-    return `${currency.symbol}${Math.round(amount).toLocaleString()}`;
+  // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
+  if (currencyCode === 'IDR') {
+    const formatted = amount.toLocaleString('id-ID', {
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    });
+    return `${currency.symbol}${formatted}`;
   }
   
+  // Japanese Yen - no decimals
+  if (currencyCode === 'JPY') {
+    const formatted = Math.round(amount).toLocaleString('ja-JP');
+    return `${currency.symbol}${formatted}`;
+  }
+  
+  // Bitcoin - 8 decimal places
   if (currencyCode === 'BTC') {
     return `${currency.symbol}${amount.toFixed(8)}`;
   }
   
-  return `${currency.symbol}${amount.toFixed(2)}`;
+  // USD, EUR, GBP, etc. - uses , for thousands and . for decimals ($1,300.06)
+  const formatted = amount.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${currency.symbol}${formatted}`;
 };
 
 export const getUserCurrency = async (): Promise<string> => {
