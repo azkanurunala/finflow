@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -36,41 +37,47 @@ const TIERS = [
   {
     id: "basic",
     name: "Basic",
-    price: "Rp79.000",
+    tagline: "Essential for beginners",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     features: [
-      "150 minutes audio",
-      "150 OCR scans",
-      "300 chat messages",
-      "Export reports",
+      { icon: "mic", text: "10 mins Audio Log" },
+      { icon: "document-text", text: "5 Receipt Scans" },
+      { icon: "chatbubble", text: "20 AI Chat Messages" },
     ],
-    color: "#667eea",
+    color: "#4DB6AC",
+    isFree: true,
   },
   {
     id: "pro",
     name: "Pro",
-    price: "Rp129.000",
+    tagline: "For active budgeters",
+    monthlyPrice: 9.99,
+    yearlyPrice: 95.9,
     features: [
-      "300 minutes audio",
-      "300 OCR scans",
-      "600 chat messages",
-      "AI Financial Analysis",
-      "Priority queue",
+      { icon: "mic", text: "300 mins Audio Log" },
+      { icon: "document-text", text: "100 Receipt Scans" },
+      { icon: "infinite", text: "Unlimited AI Chat" },
+      { icon: "stats-chart", text: "Advanced Analytics" },
     ],
-    color: "#f093fb",
-    recommended: true,
+    color: "#4DB6AC",
+    mostPopular: true,
   },
   {
     id: "power",
     name: "Power",
-    price: "Rp199.000",
+    tagline: "The ultimate experience",
+    monthlyPrice: 29.99,
+    yearlyPrice: 287.9,
     features: [
-      "600 minutes audio",
-      "1,000 OCR scans",
-      "1,500 chat messages",
-      "Advanced insights",
-      "Forecast & predictions",
+      { icon: "infinite", text: "Unlimited Audio Log" },
+      { icon: "infinite", text: "Unlimited Scans" },
+      { icon: "infinite", text: "Unlimited AI Chat" },
+      { icon: "headset", text: "24/7 Priority Support" },
     ],
-    color: "#4facfe",
+    color: "#1E3A8A",
+    isDark: true,
+    isUnlimited: true,
   },
 ];
 
@@ -81,6 +88,9 @@ export default function SubscriptionScreen() {
     null
   );
   const [loading, setLoading] = useState(true);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
 
   useEffect(() => {
     fetchSubscription();
@@ -100,10 +110,11 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleUpgrade = (tierId: string) => {
+  const handleUpgrade = (tierId: string, tierName: string) => {
+    const period = billingPeriod === "monthly" ? "month" : "year";
     Alert.alert(
       "Upgrade Subscription",
-      "In-app purchases will be available soon. This will integrate with Google Play and App Store billing.",
+      `In-app purchases will be available soon. You'll be upgraded to ${tierName} (${period}ly billing) via Google Play/App Store.`,
       [{ text: "OK" }]
     );
   };
@@ -122,10 +133,19 @@ export default function SubscriptionScreen() {
     ]);
   };
 
+  const getPrice = (tier: any) => {
+    if (tier.isFree) return "$0";
+    return billingPeriod === "monthly"
+      ? `$${tier.monthlyPrice.toFixed(2)}`
+      : `$${tier.yearlyPrice.toFixed(2)}`;
+  };
+
+  const getPeriod = () => (billingPeriod === "monthly" ? "/mo" : "/yr");
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color="#4DB6AC" />
       </View>
     );
   }
@@ -137,150 +157,254 @@ export default function SubscriptionScreen() {
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Subscription</Text>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#ef4444" />
+          <Ionicons name="log-out-outline" size={24} color="#EF4444" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        {/* Current Plan */}
-        <View style={styles.currentPlanCard}>
-          <View style={styles.currentPlanHeader}>
-            <View>
-              <Text style={styles.currentPlanLabel}>Current Plan</Text>
-              <Text style={styles.currentPlanName}>
-                {subscription?.tier_name}
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                subscription?.is_active
-                  ? styles.statusActive
-                  : styles.statusInactive,
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {subscription?.is_active ? "Active" : "Expired"}
-              </Text>
-            </View>
-          </View>
-
-          {subscription?.tier === "free_trial" && (
-            <View style={styles.trialInfo}>
-              <Ionicons name="time-outline" size={16} color="#10b981" />
-              <Text style={styles.trialText}>
-                {subscription.days_remaining} days remaining in free trial
-              </Text>
-            </View>
-          )}
-
-          {/* Usage Stats */}
-          <View style={styles.usageStats}>
-            <Text style={styles.usageTitle}>Today's Usage</Text>
-            <View style={styles.usageGrid}>
-              <View style={styles.usageItem}>
-                <Ionicons name="chatbubble" size={16} color="#667eea" />
-                <Text style={styles.usageValue}>
-                  {subscription?.usage.chat_count}
-                </Text>
-                <Text style={styles.usageLabel}>Chat</Text>
-              </View>
-              <View style={styles.usageItem}>
-                <Ionicons name="camera" size={16} color="#667eea" />
-                <Text style={styles.usageValue}>
-                  {subscription?.usage.ocr_count}
-                </Text>
-                <Text style={styles.usageLabel}>OCR</Text>
-              </View>
-              <View style={styles.usageItem}>
-                <Ionicons name="mic" size={16} color="#667eea" />
-                <Text style={styles.usageValue}>
-                  {subscription?.usage.voice_minutes.toFixed(1)}
-                </Text>
-                <Text style={styles.usageLabel}>Min</Text>
-              </View>
-              <View style={styles.usageItem}>
-                <Ionicons name="flash" size={16} color="#667eea" />
-                <Text style={styles.usageValue}>
-                  {subscription?.usage.total_actions}
-                </Text>
-                <Text style={styles.usageLabel}>Total</Text>
-              </View>
-            </View>
-          </View>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Title Section */}
+        <View style={styles.titleSection}>
+          <Text style={styles.mainTitle}>Choose Your Plan</Text>
+          <Text style={styles.subtitle}>
+            Select the perfect plan for your financial tracking needs
+          </Text>
         </View>
 
-        {/* Subscription Tiers */}
-        <Text style={styles.sectionTitle}>Upgrade Your Plan</Text>
-
-        {TIERS.map((tier) => (
-          <View
-            key={tier.id}
+        {/* Billing Period Toggle */}
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
             style={[
-              styles.tierCard,
-              tier.recommended && styles.tierCardRecommended,
+              styles.toggleButton,
+              billingPeriod === "monthly" && styles.toggleButtonActive,
             ]}
+            onPress={() => setBillingPeriod("monthly")}
+            activeOpacity={0.7}
           >
-            {tier.recommended && (
-              <View style={styles.recommendedBadge}>
-                <Text style={styles.recommendedText}>RECOMMENDED</Text>
-              </View>
-            )}
+            <Text
+              style={[
+                styles.toggleText,
+                billingPeriod === "monthly" && styles.toggleTextActive,
+              ]}
+            >
+              Monthly
+            </Text>
+          </TouchableOpacity>
 
-            <View style={styles.tierHeader}>
-              <View>
-                <Text style={styles.tierName}>{tier.name}</Text>
-                <Text style={styles.tierPrice}>{tier.price}/month</Text>
-              </View>
+          <TouchableOpacity
+            style={[
+              styles.toggleButton,
+              billingPeriod === "yearly" && styles.toggleButtonActive,
+            ]}
+            onPress={() => setBillingPeriod("yearly")}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.toggleText,
+                billingPeriod === "yearly" && styles.toggleTextActive,
+              ]}
+            >
+              Yearly
+            </Text>
+            <View style={styles.discountBadge}>
+              <Text style={styles.discountText}>-20%</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Pricing Cards */}
+        <View style={styles.tiersContainer}>
+          {TIERS.map((tier, index) => {
+            const isCurrentPlan =
+              subscription?.tier === tier.id ||
+              (subscription?.tier === "free_trial" && tier.id === "basic");
+
+            return (
               <View
+                key={tier.id}
                 style={[
-                  styles.tierIcon,
-                  { backgroundColor: `${tier.color}20` },
+                  styles.tierCard,
+                  tier.isDark && styles.tierCardDark,
+                  tier.mostPopular && styles.tierCardPopular,
                 ]}
               >
-                <Ionicons name="star" size={24} color={tier.color} />
-              </View>
-            </View>
+                {/* Badges */}
+                {tier.mostPopular && (
+                  <View style={styles.mostPopularBadge}>
+                    <Text style={styles.mostPopularText}>MOST POPULAR</Text>
+                  </View>
+                )}
+                {tier.isUnlimited && (
+                  <View style={styles.unlimitedBadge}>
+                    <Text style={styles.unlimitedText}>UNLIMITED</Text>
+                  </View>
+                )}
+                {isCurrentPlan && (
+                  <View style={styles.currentPlanBadge}>
+                    <Text style={styles.currentPlanText}>Current Plan</Text>
+                  </View>
+                )}
 
-            <View style={styles.tierFeatures}>
-              {tier.features.map((feature, index) => (
-                <View key={index} style={styles.featureRow}>
-                  <Ionicons name="checkmark-circle" size={18} color={tier.color} />
-                  <Text style={styles.featureText}>{feature}</Text>
+                <View style={styles.tierHeader}>
+                  <View style={styles.tierInfo}>
+                    <Text
+                      style={[
+                        styles.tierName,
+                        tier.isDark && styles.tierNameDark,
+                      ]}
+                    >
+                      {tier.name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.tierTagline,
+                        tier.isDark && styles.tierTaglineDark,
+                      ]}
+                    >
+                      {tier.tagline}
+                    </Text>
+                  </View>
+                  <View style={styles.tierPricing}>
+                    <Text
+                      style={[
+                        styles.tierPrice,
+                        tier.isDark && styles.tierPriceDark,
+                      ]}
+                    >
+                      {getPrice(tier)}
+                    </Text>
+                    {!tier.isFree && (
+                      <Text
+                        style={[
+                          styles.tierPeriod,
+                          tier.isDark && styles.tierPeriodDark,
+                        ]}
+                      >
+                        {getPeriod()}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              ))}
-            </View>
 
-            <TouchableOpacity
-              style={[
-                styles.upgradeButton,
-                { backgroundColor: tier.color },
-                tier.recommended && styles.upgradeButtonRecommended,
-              ]}
-              onPress={() => handleUpgrade(tier.id)}
-            >
-              <Text style={styles.upgradeButtonText}>Upgrade to {tier.name}</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+                {/* Features */}
+                <View style={styles.featuresContainer}>
+                  {tier.features.map((feature, idx) => (
+                    <View key={idx} style={styles.featureRow}>
+                      <Ionicons
+                        name={feature.icon}
+                        size={18}
+                        color={tier.isDark ? "#FCD34D" : "#4DB6AC"}
+                      />
+                      <Text
+                        style={[
+                          styles.featureText,
+                          tier.isDark && styles.featureTextDark,
+                        ]}
+                      >
+                        {feature.text}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
 
-        {/* User Info */}
-        <View style={styles.userInfoCard}>
-          <Text style={styles.userInfoTitle}>Account</Text>
-          <View style={styles.userInfoRow}>
-            <Text style={styles.userInfoLabel}>Email</Text>
-            <Text style={styles.userInfoValue}>{user?.email}</Text>
+                {/* CTA Button */}
+                {isCurrentPlan ? (
+                  <View style={styles.currentPlanButton}>
+                    <Text style={styles.currentPlanButtonText}>
+                      Current Plan
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => handleUpgrade(tier.id, tier.name)}
+                    activeOpacity={0.8}
+                  >
+                    {tier.isDark ? (
+                      <View style={styles.powerButton}>
+                        <Text style={styles.powerButtonText}>
+                          Get {tier.name} Plan
+                        </Text>
+                      </View>
+                    ) : (
+                      <LinearGradient
+                        colors={["#4DB6AC", "#45A599"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.upgradeButton}
+                      >
+                        <Text style={styles.upgradeButtonText}>
+                          Upgrade to {tier.name}
+                        </Text>
+                      </LinearGradient>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
+        </View>
+
+        {/* Account Info */}
+        <View style={styles.accountCard}>
+          <Text style={styles.accountTitle}>Account Information</Text>
+          <View style={styles.accountRow}>
+            <Text style={styles.accountLabel}>Name</Text>
+            <Text style={styles.accountValue}>{user?.name}</Text>
           </View>
-          <View style={styles.userInfoRow}>
-            <Text style={styles.userInfoLabel}>Name</Text>
-            <Text style={styles.userInfoValue}>{user?.name}</Text>
+          <View style={styles.accountRow}>
+            <Text style={styles.accountLabel}>Email</Text>
+            <Text style={styles.accountValue}>{user?.email}</Text>
           </View>
         </View>
+
+        {/* Disclaimer */}
+        <Text style={styles.disclaimer}>
+          By continuing, you agree to our Terms of Service and Privacy Policy.
+          Subscriptions auto-renew unless cancelled.
+        </Text>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/(app)")}
+        >
+          <Ionicons name="home-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/(app)/history")}
+        >
+          <Ionicons name="list-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Transactions</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItemCenter}>
+          <View style={styles.navCenterButton}>
+            <Ionicons name="add" size={28} color="#fff" />
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/(app)/insights")}
+        >
+          <Ionicons name="analytics-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Analytics</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Ionicons name="person" size={24} color="#4DB6AC" />
+          <Text style={[styles.navText, styles.navTextActive]}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -288,11 +412,11 @@ export default function SubscriptionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A0E27",
+    backgroundColor: "#F9FAFB",
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#0A0E27",
+    backgroundColor: "#F9FAFB",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -302,226 +426,320 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#1e293b",
+    borderBottomColor: "#E5E7EB",
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1e293b",
+    backgroundColor: "#F9FAFB",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
+    color: "#1F2937",
   },
   logoutButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1e293b",
+    backgroundColor: "#FEE2E2",
     justifyContent: "center",
     alignItems: "center",
   },
   content: {
     flex: 1,
-    padding: 16,
   },
-  currentPlanCard: {
-    backgroundColor: "#1e293b",
-    borderRadius: 16,
-    padding: 20,
+  titleSection: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+  },
+  toggleContainer: {
+    flexDirection: "row",
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 12,
+    padding: 4,
+  },
+  toggleButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: "#fff",
+  },
+  toggleText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  toggleTextActive: {
+    color: "#1F2937",
+  },
+  discountBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  discountText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  tiersContainer: {
+    paddingHorizontal: 24,
+    gap: 16,
     marginBottom: 24,
   },
-  currentPlanHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  currentPlanLabel: {
-    fontSize: 12,
-    color: "#94a3b8",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  currentPlanName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#fff",
-    marginTop: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  statusActive: {
-    backgroundColor: "rgba(16, 185, 129, 0.2)",
-  },
-  statusInactive: {
-    backgroundColor: "rgba(239, 68, 68, 0.2)",
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#10b981",
-  },
-  trialInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(16, 185, 129, 0.1)",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  trialText: {
-    fontSize: 14,
-    color: "#10b981",
-  },
-  usageStats: {
-    marginTop: 8,
-  },
-  usageTitle: {
-    fontSize: 14,
-    color: "#94a3b8",
-    marginBottom: 12,
-  },
-  usageGrid: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  usageItem: {
-    flex: 1,
-    backgroundColor: "rgba(102, 126, 234, 0.1)",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    gap: 4,
-  },
-  usageValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  usageLabel: {
-    fontSize: 11,
-    color: "#94a3b8",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 16,
-  },
   tierCard: {
-    backgroundColor: "#1e293b",
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
     position: "relative",
   },
-  tierCardRecommended: {
+  tierCardPopular: {
+    borderColor: "#4DB6AC",
     borderWidth: 2,
-    borderColor: "#f093fb",
   },
-  recommendedBadge: {
+  tierCardDark: {
+    backgroundColor: "#1E3A8A",
+  },
+  mostPopularBadge: {
     position: "absolute",
     top: -10,
     right: 20,
-    backgroundColor: "#f093fb",
+    backgroundColor: "#4DB6AC",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
-  recommendedText: {
+  mostPopularText: {
     fontSize: 10,
     fontWeight: "bold",
     color: "#fff",
-    letterSpacing: 1,
+  },
+  unlimitedBadge: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    backgroundColor: "#FCD34D",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  unlimitedText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#1E3A8A",
+  },
+  currentPlanBadge: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  currentPlanText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#6B7280",
   },
   tierHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  tierInfo: {
+    flex: 1,
   },
   tierName: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 4,
+  },
+  tierNameDark: {
     color: "#fff",
   },
+  tierTagline: {
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  tierTaglineDark: {
+    color: "#93C5FD",
+  },
+  tierPricing: {
+    alignItems: "flex-end",
+  },
   tierPrice: {
-    fontSize: 16,
-    color: "#94a3b8",
-    marginTop: 4,
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#1F2937",
   },
-  tierIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
+  tierPriceDark: {
+    color: "#FCD34D",
   },
-  tierFeatures: {
+  tierPeriod: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  tierPeriodDark: {
+    color: "#93C5FD",
+  },
+  featuresContainer: {
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   featureRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   featureText: {
     fontSize: 14,
-    color: "#e2e8f0",
+    color: "#374151",
+  },
+  featureTextDark: {
+    color: "#E5E7EB",
   },
   upgradeButton: {
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: "center",
   },
-  upgradeButtonRecommended: {
-    shadowColor: "#f093fb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
   upgradeButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#fff",
   },
-  userInfoCard: {
-    backgroundColor: "#1e293b",
+  powerButton: {
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  powerButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E3A8A",
+  },
+  currentPlanButton: {
+    backgroundColor: "#E5E7EB",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  currentPlanButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  accountCard: {
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
-    marginBottom: 32,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
-  userInfoTitle: {
+  accountTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#fff",
+    color: "#1F2937",
     marginBottom: 16,
   },
-  userInfoRow: {
+  accountRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#334155",
+    borderBottomColor: "#F3F4F6",
   },
-  userInfoLabel: {
+  accountLabel: {
     fontSize: 14,
-    color: "#94a3b8",
+    color: "#6B7280",
   },
-  userInfoValue: {
+  accountValue: {
     fontSize: 14,
-    color: "#fff",
+    fontWeight: "500",
+    color: "#1F2937",
+  },
+  disclaimer: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    textAlign: "center",
+    lineHeight: 16,
+    paddingHorizontal: 32,
+    marginBottom: 24,
+  },
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    paddingBottom: 8,
+    paddingTop: 8,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navItemCenter: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  navCenterButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#4DB6AC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: -20,
+    elevation: 4,
+    shadowColor: "#4DB6AC",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  navText: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 4,
+  },
+  navTextActive: {
+    color: "#4DB6AC",
+    fontWeight: "600",
   },
 });
