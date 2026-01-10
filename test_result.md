@@ -539,3 +539,27 @@ agent_communication:
       
       🎉 INDONESIAN TRANSACTION FLOW IS FULLY FUNCTIONAL
       All 8 requested tests pass successfully including critical Indonesian language parsing capabilities.
+
+  - agent: "testing"
+    message: |
+      NEW FEATURES TESTING COMPLETED (13/13 tests passed - 100% success rate)
+      
+      🎯 REVIEW REQUEST FEATURES ALL WORKING:
+      ✅ Export Transactions CSV: GET /api/export/transactions?format=csv&days=30 - Returns proper CSV with headers
+      ✅ Export Transactions JSON: GET /api/export/transactions?format=json&days=30 - Returns JSON with transactions array
+      ✅ AI Insights: GET /api/insights/ai?days=30 - Returns summary, insights[], recommendations[], spending_trend, chart_data
+      ✅ Indonesian Transaction Parsing: POST /api/transactions/chat with "gaji masuk 15jt" - Correctly parsed as 15,000,000 IDR income
+      ✅ Currency Preservation: IDR transactions maintain IDR currency, USD transactions maintain USD currency
+      
+      🔧 COMPREHENSIVE TESTING RESULTS:
+      1. User Registration & Authentication: ✅ WORKING
+      2. Free Trial Management: ✅ WORKING  
+      3. Indonesian Language Parsing: ✅ WORKING (5jt=5M IDR, 50rb=50K IDR, gaji masuk=income, beli=expense)
+      4. Manual Transaction CRUD: ✅ WORKING (Create, Read, Update, Delete all functional)
+      5. CSV Export: ✅ WORKING (Proper headers, content-type, data formatting)
+      6. JSON Export: ✅ WORKING (Complete transaction objects with all required fields)
+      7. AI Insights: ✅ WORKING (GPT-5.2 generates personalized financial analysis)
+      8. Currency Preservation: ✅ WORKING (No unwanted USD conversion for IDR transactions)
+      
+      🌟 ALL NEW EXPORT AND AI FEATURES ARE FULLY FUNCTIONAL
+      The backend successfully handles all requested features from the review request with 100% test pass rate.
