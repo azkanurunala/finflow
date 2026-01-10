@@ -37,7 +37,196 @@ class FinanceAPITester:
         if self.session:
             await self.session.close()
     
-    async def test_api_health(self):
+    async def test_user_registration(self):
+        """Test POST /api/auth/register"""
+        logger.info("Testing user registration...")
+        try:
+            # Generate unique test user data
+            import uuid
+            unique_id = str(uuid.uuid4())[:8]
+            user_data = {
+                "name": f"Sarah Johnson {unique_id}",
+                "email": f"sarah.johnson.{unique_id}@example.com",
+                "password": "SecurePass123!"
+            }
+            
+            async with self.session.post(f"{BACKEND_URL}/auth/register", json=user_data) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    self.session_token = data.get("session_token")
+                    self.user_id = data.get("user_id")
+                    
+                    if self.session_token and self.user_id:
+                        logger.info(f"✅ User Registration: Created user {data['name']} ({data['email']}) - onboarding_completed: {data.get('onboarding_completed', False)}")
+                        return True
+                    else:
+                        logger.error("❌ User Registration: Missing session_token or user_id in response")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ User Registration failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ User Registration error: {str(e)}")
+            return False
+
+    async def test_start_trial(self):
+        """Test POST /api/auth/start-trial"""
+        logger.info("Testing start free trial...")
+        try:
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            
+            async with self.session.post(f"{BACKEND_URL}/auth/start-trial", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if data.get("success") and data.get("subscription_tier") == "free_trial":
+                        logger.info(f"✅ Start Trial: Free trial started - expires: {data.get('expires_at')}")
+                        return True
+                    else:
+                        logger.error("❌ Start Trial: Invalid response format or trial not started")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Start Trial failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Start Trial error: {str(e)}")
+            return False
+
+    async def test_subscription_status(self):
+        """Test GET /api/subscription"""
+        logger.info("Testing subscription status...")
+        try:
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            
+            async with self.session.get(f"{BACKEND_URL}/subscription", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if (data.get("tier") == "free_trial" and 
+                        data.get("tier_name") == "Free Trial" and 
+                        data.get("is_active") == True):
+                        
+                        logger.info(f"✅ Subscription Status: {data['tier_name']} - Active: {data['is_active']} - Days remaining: {data.get('days_remaining', 'N/A')}")
+                        return True
+                    else:
+                        logger.error(f"❌ Subscription Status: Unexpected subscription status: {data}")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Subscription Status failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Subscription Status error: {str(e)}")
+            return False
+
+    async def test_complete_transaction_flow(self):
+        """Test the complete transaction flow as requested"""
+        logger.info("🚀 Testing Complete Transaction Flow...")
+        
+        # Step 1: Register new user
+        if not await self.test_user_registration():
+            logger.error("❌ Registration failed - stopping flow test")
+            return False
+        
+        # Step 2: Start free trial
+        if not await self.test_start_trial():
+            logger.error("❌ Trial start failed - stopping flow test")
+            return False
+        
+        # Step 3: Test chat transaction with specific text
+        logger.info("Testing chat transaction with 'Spent $25 on lunch at McDonalds'...")
+        try:
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            transaction_text = {"text": "Spent $25 on lunch at McDonalds"}
+            
+            async with self.session.post(f"{BACKEND_URL}/transactions/chat", 
+                                      json=transaction_text, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    transaction = data.get("transaction")
+                    
+                    if transaction and transaction.get("amount") == 25.0:
+                        logger.info(f"✅ Chat Transaction: ${transaction['amount']} at {transaction.get('merchant', 'N/A')} - Category: {transaction.get('category', 'N/A')}")
+                        self.created_transactions.append(transaction["id"])
+                    else:
+                        logger.error("❌ Chat Transaction: Transaction not properly parsed or amount incorrect")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Chat Transaction failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Chat Transaction error: {str(e)}")
+            return False
+        
+        # Step 4: Test get transactions
+        logger.info("Testing get transactions...")
+        try:
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            
+            async with self.session.get(f"{BACKEND_URL}/transactions", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    transactions = data.get("transactions", [])
+                    count = data.get("count", 0)
+                    
+                    if count > 0 and len(transactions) > 0:
+                        # Check if our McDonald's transaction is there
+                        mcdonalds_found = any(
+                            t.get("merchant", "").lower() == "mcdonalds" and t.get("amount") == 25.0 
+                            for t in transactions
+                        )
+                        
+                        logger.info(f"✅ Get Transactions: Retrieved {count} transactions - McDonald's transaction found: {mcdonalds_found}")
+                    else:
+                        logger.error("❌ Get Transactions: No transactions found")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Get Transactions failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Get Transactions error: {str(e)}")
+            return False
+        
+        # Step 5: Test get insights
+        logger.info("Testing get insights for 30 days...")
+        try:
+            headers = {"Authorization": f"Bearer {self.session_token}"}
+            
+            async with self.session.get(f"{BACKEND_URL}/insights?days=30", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    required_fields = ["total_expenses", "total_income", "net", "by_category", "period"]
+                    if all(field in data for field in required_fields):
+                        logger.info(f"✅ Get Insights: {data['period']} - Expenses: ${data['total_expenses']}, Income: ${data['total_income']}, Net: ${data['net']}")
+                    else:
+                        missing = [f for f in required_fields if f not in data]
+                        logger.error(f"❌ Get Insights: Missing required fields: {missing}")
+                        return False
+                else:
+                    error_text = await response.text()
+                    logger.error(f"❌ Get Insights failed: {response.status}: {error_text}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"❌ Get Insights error: {str(e)}")
+            return False
+        
+        # Step 6: Test subscription status
+        if not await self.test_subscription_status():
+            logger.error("❌ Subscription status failed")
+            return False
+        
+        logger.info("🎉 Complete Transaction Flow Test: ALL STEPS PASSED!")
+        return True
         """Test basic API connectivity"""
         logger.info("Testing API health...")
         try:
