@@ -967,6 +967,91 @@ async def create_receipt_transaction(
         logger.error(f"Error creating receipt transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/transactions/voice")
+async def create_voice_transaction(
+    request: VoiceTransactionRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Process voice audio and create transaction using Whisper API"""
+    try:
+        # Check quota (voice)
+        if not await check_quota(current_user, "voice"):
+            raise HTTPException(
+                status_code=403,
+                detail="Quota exceeded. Please upgrade your subscription."
+            )
+        
+        # Check if OpenAI API key is available
+        if not OPENAI_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="Voice transcription service is not configured. Please contact support."
+            )
+        
+        # Decode base64 audio
+        audio_data = base64.b64decode(request.audio_base64)
+        
+        # Create a file-like object for the audio
+        audio_file = io.BytesIO(audio_data)
+        audio_file.name = "audio.m4a"
+        
+        # Call OpenAI Whisper API
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            response = await http_client.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}"
+                },
+                files={
+                    "file": ("audio.m4a", audio_data, "audio/m4a")
+                },
+                data={
+                    "model": "whisper-1",
+                    "language": "id"  # Indonesian
+                }
+            )
+        
+        if response.status_code != 200:
+            logger.error(f"Whisper API error: {response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to transcribe audio: {response.text}"
+            )
+        
+        transcription_result = response.json()
+        transcribed_text = transcription_result.get("text", "")
+        
+        if not transcribed_text:
+            raise HTTPException(
+                status_code=400,
+                detail="Could not transcribe audio. Please try again."
+            )
+        
+        # Parse transaction using GPT
+        transaction_data = await parse_transaction_text(transcribed_text, source="voice")
+        transaction_data["user_id"] = current_user.user_id
+        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["created_at"] = datetime.now(timezone.utc)
+        
+        # Save to database
+        await db.transactions.insert_one(transaction_data)
+        
+        # Increment usage (estimate 0.5 minute per voice note)
+        await increment_usage(current_user.user_id, "voice", 0.5)
+        
+        transaction = Transaction(**transaction_data)
+        
+        return {
+            "transaction": transaction,
+            "transcription": transcribed_text,
+            "message": f"Logged {transaction.currency} {transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating voice transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/transactions/voice-text")
 async def create_voice_text_transaction(
     request: ChatTransactionRequest,
