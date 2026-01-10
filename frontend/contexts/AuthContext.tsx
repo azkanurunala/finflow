@@ -13,16 +13,24 @@ interface User {
   email: string;
   name: string;
   picture?: string;
-  subscription_tier: string;
+  subscription_tier?: string;
   subscription_expires_at?: string;
+  is_subscription_active?: boolean;
+  onboarding_completed?: boolean;
+  language?: string;
+  currency?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateOnboarding: (data: { language?: string; currency?: string; onboarding_completed?: boolean }) => Promise<void>;
+  startTrial: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -109,9 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-
-      // Check if this is a new user (check if they just signed up)
-      const isNewUser = await AsyncStorage.getItem("is_new_user");
       
       // Set user data
       setUser(userData as User);
@@ -119,11 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clean up URL (web only)
       if (Platform.OS === "web") {
         window.history.replaceState(null, "", window.location.pathname);
-      }
-      
-      // Mark as not new user anymore
-      if (isNewUser === "true") {
-        await AsyncStorage.setItem("is_new_user", "false");
       }
     } catch (error) {
       console.error("Error processing auth callback:", error);
@@ -155,6 +155,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.error("Login error:", error);
+    }
+  };
+
+  const loginWithEmail = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
+        email,
+        password,
+      });
+
+      const { session_token, ...userData } = response.data;
+
+      // Store session token
+      await AsyncStorage.setItem("session_token", session_token);
+      
+      // Set user data
+      setUser(userData as User);
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Login failed";
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  const register = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/register`, {
+        name,
+        email,
+        password,
+      });
+
+      const { session_token, ...userData } = response.data;
+
+      // Store session token
+      await AsyncStorage.setItem("session_token", session_token);
+      
+      // Set user data (new user, onboarding not completed)
+      setUser(userData as User);
+
+      return { success: true };
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail || "Registration failed";
+      return { success: false, error: errorMessage };
     }
   };
 
@@ -196,8 +241,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateOnboarding = async (data: { language?: string; currency?: string; onboarding_completed?: boolean }) => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      if (sessionToken) {
+        await axios.put(
+          `${BACKEND_URL}/api/auth/onboarding`,
+          data,
+          { headers: { Authorization: `Bearer ${sessionToken}` } }
+        );
+        
+        // Update local user state
+        setUser(prev => prev ? { ...prev, ...data } : null);
+      }
+    } catch (error) {
+      console.error("Update onboarding error:", error);
+    }
+  };
+
+  const startTrial = async () => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      if (sessionToken) {
+        const response = await axios.post(
+          `${BACKEND_URL}/api/auth/start-trial`,
+          {},
+          { headers: { Authorization: `Bearer ${sessionToken}` } }
+        );
+        
+        // Update local user state
+        setUser(prev => prev ? { 
+          ...prev, 
+          subscription_tier: "free_trial",
+          is_subscription_active: true,
+          onboarding_completed: true
+        } : null);
+      }
+    } catch (error) {
+      console.error("Start trial error:", error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      loginWithEmail,
+      register,
+      logout, 
+      refreshUser,
+      updateOnboarding,
+      startTrial
+    }}>
       {children}
     </AuthContext.Provider>
   );
