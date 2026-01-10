@@ -824,8 +824,6 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
-        </View>
-      </Modal>
 
       {/* Success Modal */}
       <Modal
