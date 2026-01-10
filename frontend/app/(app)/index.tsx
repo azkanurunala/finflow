@@ -744,80 +744,86 @@ export default function HomeScreen() {
           }
         }}
       >
-        <View style={styles.fullModalOverlay}>
-          <SafeAreaView style={styles.fullModalContent} edges={["top", "bottom"]}>
-            <View style={styles.fullModalHeader}>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            if (!isRecording && !processingVoice) {
+              setShowVoiceModal(false);
+              if (recording) {
+                recording.stopAndUnloadAsync();
+                setRecording(null);
+              }
+            }
+          }}
+        >
+          <View style={styles.voiceBottomSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHandle} />
+            <View style={styles.bottomSheetHeader}>
+              <Text style={styles.bottomSheetTitle}>Voice Log</Text>
               <TouchableOpacity
                 onPress={() => {
-                  setShowVoiceModal(false);
-                  if (recording) {
-                    recording.stopAndUnloadAsync();
-                    setRecording(null);
-                    setIsRecording(false);
+                  if (!isRecording && !processingVoice) {
+                    setShowVoiceModal(false);
+                    if (recording) {
+                      recording.stopAndUnloadAsync();
+                      setRecording(null);
+                    }
                   }
                 }}
               >
-                <Ionicons name="close" size={28} color="#1F2937" />
+                <Ionicons name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
-              <Text style={styles.fullModalTitle}>Voice Log</Text>
-              <View style={{ width: 28 }} />
             </View>
 
-            <View style={styles.voiceContent}>
-              <View style={[styles.micCircle, isRecording && styles.micCircleRecording]}>
-                <View style={[styles.micInner, isRecording && styles.micInnerRecording]}>
+            <View style={styles.voiceContentCompact}>
+              <View style={[styles.micCircleSmall, isRecording && styles.micCircleRecording]}>
+                <View style={[styles.micInnerSmall, isRecording && styles.micInnerRecording]}>
                   <Ionicons
                     name="mic"
-                    size={48}
+                    size={36}
                     color={isRecording ? "#fff" : "#8B5CF6"}
                   />
                 </View>
               </View>
 
               {isRecording ? (
-                <View style={styles.recordingInfo}>
-                  <Text style={styles.recordingDuration}>{formatDuration(recordingDuration)}</Text>
-                  <Text style={styles.recordingLabel}>Recording...</Text>
+                <View style={styles.recordingInfoCompact}>
+                  <Text style={styles.recordingDurationSmall}>{formatDuration(recordingDuration)}</Text>
+                  <Text style={styles.recordingLabelSmall}>Recording...</Text>
                 </View>
               ) : (
-                <View style={styles.voiceInstructions}>
-                  <Text style={styles.voiceTitle}>Voice Recording</Text>
-                  <Text style={styles.voiceSubtitle}>
-                    Tap the button and speak your expense
-                  </Text>
-                </View>
+                <Text style={styles.voiceSubtitleCompact}>
+                  Tap the button and speak your expense
+                </Text>
               )}
 
-              <View style={styles.voiceExamples}>
-                <Text style={styles.examplesTitle}>Try saying:</Text>
-                <View style={styles.exampleBubble}>
-                  <Text style={styles.exampleText}>"Beli makan 50rb di warteg"</Text>
-                </View>
-                <View style={styles.exampleBubble}>
-                  <Text style={styles.exampleText}>"Gaji masuk 5 juta"</Text>
-                </View>
+              <View style={styles.voiceExamplesCompact}>
+                <Text style={styles.examplesTitleSmall}>Try: "Beli makan 50rb" atau "Gaji masuk 5 juta"</Text>
               </View>
 
-              <View style={styles.voiceActions}>
+              <View style={styles.voiceActionsCompact}>
                 {processingVoice ? (
-                  <View style={styles.processingContainer}>
-                    <ActivityIndicator size="large" color="#8B5CF6" />
-                    <Text style={styles.processingText}>Processing...</Text>
+                  <View style={styles.processingContainerCompact}>
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                    <Text style={styles.processingTextSmall}>Processing...</Text>
                   </View>
                 ) : isRecording ? (
-                  <TouchableOpacity style={styles.stopButton} onPress={stopRecording}>
-                    <Ionicons name="stop" size={24} color="#fff" />
-                    <Text style={styles.stopButtonText}>Stop Recording</Text>
+                  <TouchableOpacity style={styles.stopButtonCompact} onPress={stopRecording}>
+                    <Ionicons name="stop" size={20} color="#fff" />
+                    <Text style={styles.stopButtonTextSmall}>Stop</Text>
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity style={styles.recordButton} onPress={startRecording}>
-                    <Ionicons name="mic" size={24} color="#fff" />
-                    <Text style={styles.recordButtonText}>Start Recording</Text>
+                  <TouchableOpacity style={styles.recordButtonCompact} onPress={startRecording}>
+                    <Ionicons name="mic" size={20} color="#fff" />
+                    <Text style={styles.recordButtonTextSmall}>Start Recording</Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
-          </SafeAreaView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
         </View>
       </Modal>
 
