@@ -160,26 +160,65 @@ export default function AddScreen() {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
 
-      // Voice transcription not available with Emergent LLM key
+      if (!uri) {
+        throw new Error("No recording URI");
+      }
+
+      // Read the audio file and convert to base64
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          // Remove data URL prefix
+          const base64Data = base64String.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const audioBase64 = await base64Promise;
+      const sessionToken = await AsyncStorage.getItem("session_token");
+
+      // Send to backend for transcription
+      const apiResponse = await axios.post(
+        `${BACKEND_URL}/api/transactions/voice`,
+        { audio_base64: audioBase64 },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 60000, // 60 seconds timeout for transcription
+        }
+      );
+
       Alert.alert(
-        "Voice Feature Coming Soon",
-        "Voice transcription is currently under development.\n\nPlease use text chat or receipt photo for now.",
+        "Success",
+        `Transcribed: "${apiResponse.data.transcription}"\n\n${apiResponse.data.message}`,
         [
           {
-            text: "Use Chat",
-            onPress: () => router.push("/(app)/chat"),
+            text: "View Transactions",
+            onPress: () => router.replace("/(app)/history"),
           },
           {
-            text: "OK",
+            text: "Record Another",
             style: "cancel",
           },
         ]
       );
 
       setRecording(null);
-      setLoading(false);
-    } catch (error) {
-      Alert.alert("Error", "Failed to process recording");
+    } catch (error: any) {
+      console.error("Voice transcription error:", error);
+      Alert.alert(
+        "Error",
+        error.response?.data?.detail || "Failed to process voice recording. Please try again."
+      );
+    } finally {
       setLoading(false);
     }
   };
