@@ -159,12 +159,12 @@ export default function ProfileScreen() {
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>1</Text>
-              <Text style={styles.statLabel}>Accounts</Text>
+              <Text style={styles.statLabel}>{t('profile.accounts')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Goals</Text>
+              <Text style={styles.statLabel}>{t('profile.goals')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
