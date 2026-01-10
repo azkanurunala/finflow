@@ -605,28 +605,47 @@ class ComprehensiveBackendTester:
 
 async def main():
     """Main test execution"""
-    tester = IndonesianTransactionTester()
+    tester = ComprehensiveBackendTester()
     results = await tester.run_all_tests()
     
-    print("\n" + "=" * 60)
-    print("📊 TEST RESULTS SUMMARY")
-    print("=" * 60)
+    print("\n" + "=" * 80)
+    print("📊 COMPREHENSIVE TEST RESULTS SUMMARY")
+    print("=" * 80)
     
     passed = 0
     total = len(results)
     
     for test_name, success in results:
         status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{test_name:<30} {status}")
+        print(f"{test_name:<40} {status}")
         if success:
             passed += 1
     
     print(f"\nOverall: {passed}/{total} tests passed ({(passed/total)*100:.1f}%)")
     
     if passed == total:
-        print("🎉 ALL TESTS PASSED - Indonesian transaction flow is fully functional!")
+        print("🎉 ALL TESTS PASSED - Backend features are fully functional!")
     else:
         print("⚠️ Some tests failed - check individual test results above")
+        
+    # Highlight new features from review request
+    print("\n" + "=" * 80)
+    print("🔍 REVIEW REQUEST FEATURES STATUS")
+    print("=" * 80)
+    
+    review_features = [
+        ("Export CSV", results[-5][1] if len(results) >= 5 else False),
+        ("Export JSON", results[-4][1] if len(results) >= 4 else False),
+        ("AI Insights", results[-3][1] if len(results) >= 3 else False),
+        ("Indonesian Parsing (gaji masuk 15jt)", results[-2][1] if len(results) >= 2 else False),
+        ("Currency Preservation", results[-1][1] if len(results) >= 1 else False)
+    ]
+    
+    for feature, status in review_features:
+        status_text = "✅ WORKING" if status else "❌ FAILED"
+        print(f"{feature:<35} {status_text}")
+    
+    return passed == total
 
 if __name__ == "__main__":
     asyncio.run(main())
