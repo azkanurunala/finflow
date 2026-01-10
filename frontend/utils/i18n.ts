@@ -1,5 +1,5 @@
 import { I18n } from 'i18n-js';
-import * as Localization from 'expo-localization';
+import { getLocales } from 'expo-localization';
 import en from '../locales/en';
 import id from '../locales/id';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,8 +9,9 @@ const i18n = new I18n({
   id,
 });
 
-// Set initial locale
-i18n.locale = Localization.locale;
+// Set initial locale safely
+const locales = getLocales();
+i18n.locale = locales?.[0]?.languageCode || 'en';
 i18n.enableFallback = true;
 i18n.defaultLocale = 'en';
 
