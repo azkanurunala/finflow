@@ -136,49 +136,27 @@ export default function AddScreen() {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
 
-      if (uri) {
-        // Read file as base64
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const reader = new FileReader();
-
-        reader.onloadend = async () => {
-          const base64 = (reader.result as string).split(",")[1];
-
-          try {
-            const apiResponse = await axios.post(
-              `${BACKEND_URL}/api/transactions/voice`,
-              {
-                audio_base64: base64,
-              }
-            );
-
-            Alert.alert(
-              "Success",
-              `Transcribed: "${apiResponse.data.transcription}"\n\n${apiResponse.data.message}`,
-              [
-                {
-                  text: "OK",
-                  onPress: () => {
-                    router.back();
-                  },
-                },
-              ]
-            );
-          } catch (error: any) {
-            Alert.alert(
-              "Error",
-              error.response?.data?.detail || "Failed to process voice note"
-            );
-          } finally {
-            setLoading(false);
-          }
-        };
-
-        reader.readAsDataURL(blob);
-      }
+      // For now, voice transcription is not available with Emergent LLM key
+      // Show an informative message to the user
+      Alert.alert(
+        "Voice Feature Unavailable",
+        "Voice transcription requires a separate OpenAI API key (not included with Emergent LLM key).\n\nPlease use text chat or receipt photo instead, or contact support to add OpenAI Whisper support.",
+        [
+          {
+            text: "Use Text Chat",
+            onPress: () => {
+              router.back();
+            },
+          },
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+        ]
+      );
 
       setRecording(null);
+      setLoading(false);
     } catch (error) {
       Alert.alert("Error", "Failed to process recording");
       setLoading(false);
