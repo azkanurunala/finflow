@@ -132,6 +132,9 @@ class Transaction(BaseModel):
 class ChatTransactionRequest(BaseModel):
     text: str
 
+class ReceiptTransactionRequest(BaseModel):
+    image_base64: str
+
 class VoiceTransactionRequest(BaseModel):
     audio_base64: str
 
