@@ -650,7 +650,7 @@ export default function HomeScreen() {
         }}
       >
         <View style={styles.fullModalOverlay}>
-          <SafeAreaView style={styles.fullModalContent}>
+          <SafeAreaView style={styles.fullModalContent} edges={["top", "bottom"]}>
             <View style={styles.fullModalHeader}>
               <TouchableOpacity
                 onPress={() => {
