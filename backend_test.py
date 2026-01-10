@@ -292,6 +292,246 @@ class ComprehensiveBackendTester:
                     print(f"❌ Transaction deletion failed: {response.status} - {error_text}")
                     return False
     
+    async def test_export_csv(self):
+        """Test 9: Export transactions as CSV"""
+        print("\n📊 Testing CSV Export...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/export/transactions?format=csv&days=30", headers=headers) as response:
+                if response.status == 200:
+                    # Check content type
+                    content_type = response.headers.get("content-type", "")
+                    if "text/csv" in content_type:
+                        csv_content = await response.text()
+                        
+                        # Parse CSV to verify structure
+                        csv_reader = csv.reader(io.StringIO(csv_content))
+                        headers_row = next(csv_reader)
+                        rows = list(csv_reader)
+                        
+                        expected_headers = ["Date", "Merchant", "Category", "Amount", "Currency", "Type", "Notes", "Source"]
+                        
+                        if headers_row == expected_headers:
+                            print(f"✅ CSV export successful")
+                            print(f"   Headers: {headers_row}")
+                            print(f"   Rows: {len(rows)}")
+                            if len(rows) > 0:
+                                print(f"   Sample row: {rows[0]}")
+                            return True
+                        else:
+                            print(f"❌ CSV headers incorrect. Expected: {expected_headers}, Got: {headers_row}")
+                            return False
+                    else:
+                        print(f"❌ Wrong content type. Expected text/csv, got: {content_type}")
+                        return False
+                else:
+                    error_text = await response.text()
+                    print(f"❌ CSV export failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_export_json(self):
+        """Test 10: Export transactions as JSON"""
+        print("\n📊 Testing JSON Export...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/export/transactions?format=json&days=30", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    # Check required fields
+                    required_fields = ["transactions", "exported_at", "total_count"]
+                    missing_fields = [field for field in required_fields if field not in data]
+                    
+                    if not missing_fields:
+                        print(f"✅ JSON export successful")
+                        print(f"   Fields: {list(data.keys())}")
+                        print(f"   Total count: {data['total_count']}")
+                        print(f"   Transactions array length: {len(data['transactions'])}")
+                        
+                        # Check transactions array structure
+                        if len(data["transactions"]) > 0:
+                            sample_tx = data["transactions"][0]
+                            tx_fields = ["id", "amount", "currency", "category", "date", "transaction_type"]
+                            has_required = all(field in sample_tx for field in tx_fields)
+                            
+                            if has_required:
+                                print(f"   Sample transaction fields verified")
+                                return True
+                            else:
+                                missing_tx_fields = [f for f in tx_fields if f not in sample_tx]
+                                print(f"❌ Sample transaction missing fields: {missing_tx_fields}")
+                                return False
+                        else:
+                            print("   No transactions in export (empty array)")
+                            return True  # Still valid response
+                    else:
+                        print(f"❌ JSON missing required fields: {missing_fields}")
+                        return False
+                else:
+                    error_text = await response.text()
+                    print(f"❌ JSON export failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_ai_insights(self):
+        """Test 11: AI-powered insights"""
+        print("\n🤖 Testing AI Insights...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{BACKEND_URL}/insights/ai?days=30", headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    # Check required fields
+                    required_fields = ["summary", "insights", "recommendations", "spending_trend", "chart_data"]
+                    missing_fields = [field for field in required_fields if field not in data]
+                    
+                    if not missing_fields:
+                        print(f"✅ AI insights successful")
+                        print(f"   Summary: {data['summary'][:100]}...")
+                        print(f"   Insights count: {len(data['insights'])}")
+                        print(f"   Recommendations count: {len(data['recommendations'])}")
+                        print(f"   Spending trend: {data['spending_trend']}")
+                        
+                        # Check chart_data structure
+                        chart_data = data.get("chart_data", {})
+                        if "by_category" in chart_data and "income_vs_expenses" in chart_data:
+                            income_vs_exp = chart_data["income_vs_expenses"]
+                            if all(key in income_vs_exp for key in ["income", "expenses", "net"]):
+                                print(f"   Chart data verified: Income={income_vs_exp['income']}, Expenses={income_vs_exp['expenses']}, Net={income_vs_exp['net']}")
+                                return True
+                            else:
+                                print(f"❌ Income vs expenses missing fields")
+                                return False
+                        else:
+                            print(f"❌ Chart data missing required fields")
+                            return False
+                    else:
+                        print(f"❌ AI insights missing required fields: {missing_fields}")
+                        return False
+                else:
+                    error_text = await response.text()
+                    print(f"❌ AI insights failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_specific_indonesian_parsing(self):
+        """Test 12: Specific Indonesian parsing from review request - 'gaji masuk 15jt'"""
+        print("\n🇮🇩 Testing Specific Indonesian Parsing (Review Request)...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        test_data = {"text": "gaji masuk 15jt"}
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(f"{BACKEND_URL}/transactions/chat", json=test_data, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    transaction = data.get("transaction", {})
+                    
+                    # Check expected values from review request
+                    expected_amount = 15000000  # 15 million IDR
+                    expected_currency = "IDR"
+                    expected_type = "income"
+                    expected_category = "Income"
+                    
+                    amount = transaction.get("amount")
+                    currency = transaction.get("currency")
+                    trans_type = transaction.get("transaction_type")
+                    category = transaction.get("category")
+                    
+                    print(f"✅ Specific Indonesian parsing test")
+                    print(f"   Input: 'gaji masuk 15jt'")
+                    print(f"   Amount: {amount} (expected: {expected_amount}) {'✅' if amount == expected_amount else '❌'}")
+                    print(f"   Currency: {currency} (expected: {expected_currency}) {'✅' if currency == expected_currency else '❌'}")
+                    print(f"   Type: {trans_type} (expected: {expected_type}) {'✅' if trans_type == expected_type else '❌'}")
+                    print(f"   Category: {category} (expected: {expected_category}) {'✅' if category == expected_category else '❌'}")
+                    
+                    # All checks must pass
+                    success = (amount == expected_amount and 
+                             currency == expected_currency and 
+                             trans_type == expected_type and 
+                             category == expected_category)
+                    
+                    return success
+                else:
+                    error_text = await response.text()
+                    print(f"❌ Specific Indonesian parsing failed: {response.status} - {error_text}")
+                    return False
+    
+    async def test_currency_preservation(self):
+        """Test 13: Currency preservation (IDR not converted to USD)"""
+        print("\n💱 Testing Currency Preservation...")
+        
+        if not self.session_token:
+            print("❌ No session token available")
+            return False
+            
+        headers = {"Authorization": f"Bearer {self.session_token}"}
+        
+        # Test cases for currency preservation
+        test_cases = [
+            {"text": "beli kopi 25rb", "expected_currency": "IDR", "expected_amount": 25000},
+            {"text": "spent $50 on groceries", "expected_currency": "USD", "expected_amount": 50.0}
+        ]
+        
+        all_passed = True
+        
+        async with aiohttp.ClientSession() as session:
+            for i, test_case in enumerate(test_cases):
+                print(f"\n   Test {i+1}: {test_case['text']}")
+                
+                async with session.post(f"{BACKEND_URL}/transactions/chat", json={"text": test_case["text"]}, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        transaction = data.get("transaction", {})
+                        
+                        currency = transaction.get("currency")
+                        amount = transaction.get("amount")
+                        
+                        # Check currency preservation
+                        if currency == test_case["expected_currency"]:
+                            print(f"     ✅ Currency preserved: {currency}")
+                        else:
+                            print(f"     ❌ Currency not preserved: expected {test_case['expected_currency']}, got {currency}")
+                            all_passed = False
+                        
+                        # Check amount
+                        if amount == test_case["expected_amount"]:
+                            print(f"     ✅ Amount correct: {amount}")
+                        else:
+                            print(f"     ❌ Amount wrong: expected {test_case['expected_amount']}, got {amount}")
+                            all_passed = False
+                    else:
+                        print(f"     ❌ Request failed: {response.status}")
+                        all_passed = False
+        
+        if all_passed:
+            print(f"\n✅ Currency preservation test PASSED")
+        else:
+            print(f"\n❌ Currency preservation test FAILED")
+        
+        return all_passed
+    
     async def run_all_tests(self):
         """Run all tests in sequence"""
         print("🚀 Starting Complete Indonesian Transaction Flow Testing")
