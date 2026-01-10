@@ -65,6 +65,7 @@ export default function HomeScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [processingVoice, setProcessingVoice] = useState(false);
+  const [liveTranscription, setLiveTranscription] = useState("");
 
   // Refresh data when screen is focused
   useFocusEffect(
