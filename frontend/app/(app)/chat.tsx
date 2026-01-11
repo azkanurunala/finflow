@@ -290,7 +290,10 @@ export default function ChatScreen() {
 
         {/* Input Container */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
+          <TouchableOpacity 
+            style={styles.attachButton}
+            onPress={() => router.push("/(app)?openScan=true")}
+          >
             <Ionicons name="camera-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
           
@@ -306,7 +309,10 @@ export default function ChatScreen() {
             autoFocus={true}
           />
           
-          <TouchableOpacity style={styles.micButton}>
+          <TouchableOpacity 
+            style={styles.micButton}
+            onPress={() => router.push("/(app)?openVoice=true")}
+          >
             <Ionicons name="mic-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
           
