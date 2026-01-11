@@ -33,6 +33,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState('USD');
   const [loading, setLoading] = useState(true);
+  const [, forceUpdate] = useState({});
 
   useEffect(() => {
     loadCurrency();
