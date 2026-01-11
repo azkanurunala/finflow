@@ -89,13 +89,7 @@ export default function OnboardingCurrencyScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color="#6B7280" />
-        </TouchableOpacity>
+        <View style={{ width: 48 }} />
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
