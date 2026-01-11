@@ -30,13 +30,14 @@ export default function OnboardingCurrencyScreen() {
     // Mark onboarding as complete
     await AsyncStorage.setItem("onboarding_complete", "true");
     
-    // Go to login page
+    // Go to login page - use replace to prevent going back to onboarding
     router.replace("/login");
   };
 
-  const handleBack = () => {
-    router.back();
-  };
+  // Remove back button - once at currency, must complete
+  // const handleBack = () => {
+  //   router.back();
+  // };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
