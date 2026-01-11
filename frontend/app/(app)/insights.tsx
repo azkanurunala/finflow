@@ -211,7 +211,7 @@ export default function AdvancedAnalyticsScreen() {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4DB6AC" />
+            <ActivityIndicator size="large" color="#10B981" />
             <Text style={styles.loadingText}>Analyzing your finances...</Text>
           </View>
         ) : insights ? (
@@ -219,20 +219,20 @@ export default function AdvancedAnalyticsScreen() {
             {/* AI Summary Card */}
             <View style={styles.summaryCard}>
               <View style={styles.summaryHeader}>
-                <View style={[styles.trendBadge, { backgroundColor: getTrendColor(insights.spending_trend) + "20" }]}>
+                <View style={[styles.trendBadge, { backgroundColor: getTrendColor(insights?.spending_trend || 'good') + "20" }]}>
                   <Ionicons 
-                    name={getTrendIcon(insights.spending_trend) as any} 
+                    name={getTrendIcon(insights?.spending_trend || 'good') as any} 
                     size={20} 
-                    color={getTrendColor(insights.spending_trend)} 
+                    color={getTrendColor(insights?.spending_trend || 'good')} 
                   />
-                  <Text style={[styles.trendText, { color: getTrendColor(insights.spending_trend) }]}>
-                    {insights.spending_trend === "good" ? "On Track" : 
-                     insights.spending_trend === "needs_attention" ? "Needs Attention" : "Review Needed"}
+                  <Text style={[styles.trendText, { color: getTrendColor(insights?.spending_trend || 'good') }]}>
+                    {(insights?.spending_trend || 'good') === "good" ? "On Track" : 
+                     (insights?.spending_trend || 'good') === "needs_attention" ? "Needs Attention" : "Review Needed"}
                   </Text>
                 </View>
                 <Ionicons name="sparkles" size={24} color="#F59E0B" />
               </View>
-              <Text style={styles.summaryText}>{insights.summary}</Text>
+              <Text style={styles.summaryText}>{insights?.summary || 'No summary available'}</Text>
             </View>
 
             {/* Income vs Expenses */}
