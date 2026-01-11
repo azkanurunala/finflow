@@ -478,6 +478,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  incomeIcon: {
+    backgroundColor: "#D1FAE5",
+  },
   transactionInfo: {
     flex: 1,
   },
@@ -487,23 +490,30 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 2,
   },
-  transactionLimit: {
+  transactionMerchant: {
     fontSize: 12,
     color: "#6B7280",
   },
   transactionAmounts: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
   },
   transactionAmount: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#EF4444",
   },
-  transactionRemaining: {
-    fontSize: 14,
-    color: "#6B7280",
+  incomeAmount: {
+    color: "#10B981",
+  },
+  editHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  editHintText: {
+    fontSize: 11,
+    color: "#9CA3AF",
   },
   loadingContainer: {
     flexDirection: "row",
