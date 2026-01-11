@@ -15,6 +15,22 @@ import i18n from "../utils/i18n";
 const LANGUAGES = [
   { code: "en", name: "English", native: "English", flag: "🇺🇸" },
   { code: "id", name: "Indonesian", native: "Bahasa Indonesia", flag: "🇮🇩" },
+  { code: "es", name: "Spanish", native: "Español", flag: "🇪🇸" },
+  { code: "fr", name: "French", native: "Français", flag: "🇫🇷" },
+  { code: "de", name: "German", native: "Deutsch", flag: "🇩🇪" },
+  { code: "it", name: "Italian", native: "Italiano", flag: "🇮🇹" },
+  { code: "pt", name: "Portuguese", native: "Português", flag: "🇧🇷" },
+  { code: "zh", name: "Chinese", native: "中文", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵" },
+  { code: "ko", name: "Korean", native: "한국어", flag: "🇰🇷" },
+  { code: "ar", name: "Arabic", native: "العربية", flag: "🇸🇦" },
+  { code: "hi", name: "Hindi", native: "हिन्दी", flag: "🇮🇳" },
+  { code: "th", name: "Thai", native: "ไทย", flag: "🇹🇭" },
+  { code: "vi", name: "Vietnamese", native: "Tiếng Việt", flag: "🇻🇳" },
+  { code: "ms", name: "Malay", native: "Bahasa Melayu", flag: "🇲🇾" },
+  { code: "ru", name: "Russian", native: "Русский", flag: "🇷🇺" },
+  { code: "tr", name: "Turkish", native: "Türkçe", flag: "🇹🇷" },
+  { code: "nl", name: "Dutch", native: "Nederlands", flag: "🇳🇱" },
 ];
 
 export default function OnboardingLanguageScreen() {
