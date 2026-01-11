@@ -42,8 +42,8 @@ export default function OnboardingLanguageScreen() {
     await AsyncStorage.setItem("user_locale", selectedLanguage);
     i18n.locale = selectedLanguage;
     
-    // Go to currency selection
-    router.replace("/onboarding-currency");
+    // Go to currency selection - use push to allow proper navigation
+    router.push("/onboarding-currency");
   };
 
   return (
