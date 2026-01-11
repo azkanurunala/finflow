@@ -243,14 +243,14 @@ export default function AdvancedAnalyticsScreen() {
                   <Ionicons name="arrow-down-circle" size={24} color="#10B981" />
                   <Text style={styles.statLabel}>Income</Text>
                   <Text style={[styles.statValue, { color: "#10B981" }]}>
-                    {formatAmount(insights.chart_data.income_vs_expenses.income)}
+                    {formatAmount(insights?.chart_data?.income_vs_expenses?.income || 0)}
                   </Text>
                 </View>
                 <View style={[styles.statBox, styles.expenseBox]}>
                   <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
                   <Text style={styles.statLabel}>Expenses</Text>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
-                    {formatAmount(insights.chart_data.income_vs_expenses.expenses)}
+                    {formatAmount(insights?.chart_data?.income_vs_expenses?.expenses || 0)}
                   </Text>
                 </View>
               </View>
