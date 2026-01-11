@@ -7,22 +7,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export default function Index() {
   const { user, loading } = useAuth();
   const [checking, setChecking] = useState(true);
-  const [hasLanguage, setHasLanguage] = useState(false);
-  const [hasCurrency, setHasCurrency] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
-    checkPreferences();
+    checkOnboarding();
   }, []);
 
-  const checkPreferences = async () => {
+  const checkOnboarding = async () => {
     try {
       const savedLanguage = await AsyncStorage.getItem("user_locale");
       const savedCurrency = await AsyncStorage.getItem("user_currency");
+      const onboardingDone = await AsyncStorage.getItem("onboarding_complete");
       
-      setHasLanguage(!!savedLanguage);
-      setHasCurrency(!!savedCurrency);
+      // If onboarding was explicitly marked complete, skip onboarding
+      if (onboardingDone === "true") {
+        setOnboardingComplete(true);
+      } else if (savedLanguage && savedCurrency) {
+        // If both are set, mark onboarding as complete
+        await AsyncStorage.setItem("onboarding_complete", "true");
+        setOnboardingComplete(true);
+      } else {
+        setOnboardingComplete(false);
+      }
     } catch (error) {
-      console.error("Error checking preferences:", error);
+      console.error("Error checking onboarding:", error);
+      setOnboardingComplete(false);
     } finally {
       setChecking(false);
     }
@@ -31,32 +40,27 @@ export default function Index() {
   if (loading || checking) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4DB6AC" />
+        <ActivityIndicator size="large" color="#10B981" />
       </View>
     );
   }
 
-  // Step 1: Must select language first
-  if (!hasLanguage) {
+  // Step 1: Complete onboarding first
+  if (!onboardingComplete) {
     return <Redirect href="/onboarding-language" />;
   }
 
-  // Step 2: Must select currency second
-  if (!hasCurrency) {
-    return <Redirect href="/onboarding-currency" />;
-  }
-
-  // Step 3: Must login/register
+  // Step 2: Must login/register
   if (!user) {
     return <Redirect href="/login" />;
   }
 
-  // Step 4: Check subscription status
+  // Step 3: Check subscription status
   if (!user.is_subscription_active) {
     return <Redirect href="/onboarding-trial" />;
   }
 
-  // Step 5: Go to home
+  // Step 4: Go to home
   return <Redirect href="/(app)" />;
 }
 
