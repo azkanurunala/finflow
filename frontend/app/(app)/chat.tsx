@@ -200,29 +200,45 @@ export default function ChatScreen() {
                 </Text>
                 
                 {message.transaction && (
-                  <View style={styles.transactionCard}>
+                  <TouchableOpacity 
+                    style={styles.transactionCard}
+                    onPress={() => router.push(`/(app)/edit-transaction?id=${message.transaction.id}`)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.transactionHeader}>
-                      <View style={styles.transactionIcon}>
-                        <Ionicons name="fast-food" size={20} color="#F59E0B" />
+                      <View style={[
+                        styles.transactionIcon,
+                        message.transaction.transaction_type === "income" && styles.incomeIcon
+                      ]}>
+                        <Ionicons 
+                          name={message.transaction.transaction_type === "income" ? "arrow-down" : "fast-food"} 
+                          size={20} 
+                          color={message.transaction.transaction_type === "income" ? "#10B981" : "#F59E0B"} 
+                        />
                       </View>
                       <View style={styles.transactionInfo}>
                         <Text style={styles.transactionCategory}>
                           {message.transaction.category}
                         </Text>
-                        <Text style={styles.transactionLimit}>
-                          Daily Limit: $40.00
+                        <Text style={styles.transactionMerchant}>
+                          {message.transaction.merchant || "Transaction recorded"}
                         </Text>
                       </View>
                     </View>
                     <View style={styles.transactionAmounts}>
-                      <Text style={styles.transactionAmount}>
-                        -${message.transaction.amount.toFixed(2)}
+                      <Text style={[
+                        styles.transactionAmount,
+                        message.transaction.transaction_type === "income" && styles.incomeAmount
+                      ]}>
+                        {message.transaction.transaction_type === "income" ? "+" : "-"}
+                        {formatAmount(message.transaction.amount, message.transaction.currency)}
                       </Text>
-                      <Text style={styles.transactionRemaining}>
-                        $17.00 left
-                      </Text>
+                      <View style={styles.editHint}>
+                        <Ionicons name="create-outline" size={14} color="#9CA3AF" />
+                        <Text style={styles.editHintText}>Tap to edit</Text>
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 )}
               </View>
 
