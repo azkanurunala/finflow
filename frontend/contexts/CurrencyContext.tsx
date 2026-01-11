@@ -55,6 +55,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const setCurrency = async (code: string) => {
     setCurrencyState(code);
     await AsyncStorage.setItem('user_currency', code);
+    // Force re-render to update all currency displays
+    forceUpdate({});
   };
 
   const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
