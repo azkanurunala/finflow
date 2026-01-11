@@ -283,10 +283,10 @@ export default function AdvancedAnalyticsScreen() {
             {/* Recommendations */}
             <View style={styles.recommendationsCard}>
               <View style={styles.cardHeader}>
-                <Ionicons name="checkmark-circle" size={24} color="#4DB6AC" />
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 <Text style={styles.sectionTitle}>Recommendations</Text>
               </View>
-              {insights.recommendations.map((rec, index) => (
+              {(insights?.recommendations || []).map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
                   <View style={[styles.recNumber, { backgroundColor: getCategoryColor(index) }]}>
                     <Text style={styles.recNumberText}>{index + 1}</Text>
@@ -297,15 +297,15 @@ export default function AdvancedAnalyticsScreen() {
             </View>
 
             {/* Spending by Category */}
-            {insights.chart_data.by_category.length > 0 && (
+            {(insights?.chart_data?.by_category?.length || 0) > 0 && (
               <View style={styles.categoryCard}>
                 <Text style={styles.sectionTitle}>Spending by Category</Text>
                 <View style={styles.categoryList}>
-                  {insights.chart_data.by_category.map((item, index) => 
+                  {(insights?.chart_data?.by_category || []).map((item, index) => 
                     renderCategoryBar(
                       item, 
                       index, 
-                      Math.max(...insights.chart_data.by_category.map(c => c.amount))
+                      Math.max(...(insights?.chart_data?.by_category || []).map(c => c.amount || 0), 1)
                     )
                   )}
                 </View>
