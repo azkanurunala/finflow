@@ -258,10 +258,10 @@ export default function AdvancedAnalyticsScreen() {
                 <Text style={styles.netLabel}>Net Balance</Text>
                 <Text style={[
                   styles.netValue,
-                  { color: insights.chart_data.income_vs_expenses.net >= 0 ? "#10B981" : "#EF4444" }
+                  { color: (insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "#10B981" : "#EF4444" }
                 ]}>
-                  {insights.chart_data.income_vs_expenses.net >= 0 ? "+" : ""}
-                  {formatAmount(insights.chart_data.income_vs_expenses.net)}
+                  {(insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "+" : ""}
+                  {formatAmount(insights?.chart_data?.income_vs_expenses?.net || 0)}
                 </Text>
               </View>
             </View>
@@ -272,7 +272,7 @@ export default function AdvancedAnalyticsScreen() {
                 <Ionicons name="bulb" size={24} color="#F59E0B" />
                 <Text style={styles.sectionTitle}>AI Insights</Text>
               </View>
-              {insights.insights.map((insight, index) => (
+              {(insights?.insights || []).map((insight, index) => (
                 <View key={index} style={styles.insightItem}>
                   <View style={styles.insightDot} />
                   <Text style={styles.insightText}>{insight}</Text>
