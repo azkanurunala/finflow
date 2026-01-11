@@ -10,8 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { changeLocale } from "../../utils/i18n";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 interface Language {
   code: string;
@@ -30,32 +29,34 @@ const ALL_LANGUAGES: Language[] = [
   { code: "de", name: "Deutsch", nativeName: "German", flag: "🇩🇪" },
   { code: "es", name: "Español", nativeName: "Spanish", flag: "🇪🇸" },
   { code: "fr", name: "Français", nativeName: "French", flag: "🇫🇷" },
+  { code: "hi", name: "हिन्दी", nativeName: "Hindi", flag: "🇮🇳" },
+  { code: "it", name: "Italiano", nativeName: "Italian", flag: "🇮🇹" },
   { code: "ja", name: "日本語", nativeName: "Japanese", flag: "🇯🇵" },
-  { code: "zh", name: "中文", nativeName: "Chinese (Simplified)", flag: "🇨🇳" },
   { code: "ko", name: "한국어", nativeName: "Korean", flag: "🇰🇷" },
+  { code: "ms", name: "Bahasa Melayu", nativeName: "Malay", flag: "🇲🇾" },
+  { code: "nl", name: "Nederlands", nativeName: "Dutch", flag: "🇳🇱" },
   { code: "pt", name: "Português", nativeName: "Portuguese", flag: "🇧🇷" },
+  { code: "ru", name: "Русский", nativeName: "Russian", flag: "🇷🇺" },
+  { code: "th", name: "ไทย", nativeName: "Thai", flag: "🇹🇭" },
+  { code: "tr", name: "Türkçe", nativeName: "Turkish", flag: "🇹🇷" },
+  { code: "vi", name: "Tiếng Việt", nativeName: "Vietnamese", flag: "🇻🇳" },
+  { code: "zh", name: "中文", nativeName: "Chinese (Simplified)", flag: "🇨🇳" },
 ];
 
 export default function LanguageSelectionScreen() {
   const router = useRouter();
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const { language, setLanguage } = useLanguage();
+  const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadSelectedLanguage();
-  }, []);
-
-  const loadSelectedLanguage = async () => {
-    const saved = await AsyncStorage.getItem("user_locale");
-    if (saved) {
-      setSelectedLanguage(saved);
-    }
-  };
+    setSelectedLanguage(language);
+  }, [language]);
 
   const handleSelectLanguage = async (code: string) => {
     setSelectedLanguage(code);
-    await changeLocale(code);
-    // Optional: update backend
+    // Instant update via context
+    await setLanguage(code);
   };
 
   const handleApply = () => {
