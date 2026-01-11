@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,19 +28,18 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (user && !loading) {
-      // Check if onboarding is completed
-      if (user.onboarding_completed === false) {
-        router.replace("/onboarding-language");
-      } else {
-        // Check subscription status
+    const handleUserRedirect = async () => {
+      if (user && !loading) {
+        // Always go to app or trial after login - onboarding is already done if we're here
         if (!user.is_subscription_active && !user.subscription_tier) {
           router.replace("/onboarding-trial");
         } else {
           router.replace("/(app)");
         }
       }
-    }
+    };
+    
+    handleUserRedirect();
   }, [user, loading]);
 
   const handleEmailLogin = async () => {
