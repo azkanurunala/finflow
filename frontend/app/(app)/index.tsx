@@ -67,6 +67,26 @@ export default function HomeScreen() {
   const [processingVoice, setProcessingVoice] = useState(false);
   const [liveTranscription, setLiveTranscription] = useState("");
 
+  // Handle query params from chat screen
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const openVoice = url.searchParams.get('openVoice');
+    const openScan = url.searchParams.get('openScan');
+    
+    if (openVoice === 'true') {
+      setShowVoiceModal(true);
+      // Clean up URL
+      url.searchParams.delete('openVoice');
+      window.history.replaceState({}, '', url.toString());
+    }
+    if (openScan === 'true') {
+      setShowReceiptModal(true);
+      // Clean up URL
+      url.searchParams.delete('openScan');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
   // Refresh data when screen is focused
   useFocusEffect(
     useCallback(() => {
