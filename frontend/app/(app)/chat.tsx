@@ -200,29 +200,45 @@ export default function ChatScreen() {
                 </Text>
                 
                 {message.transaction && (
-                  <View style={styles.transactionCard}>
+                  <TouchableOpacity 
+                    style={styles.transactionCard}
+                    onPress={() => router.push(`/(app)/edit-transaction?id=${message.transaction.id}`)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.transactionHeader}>
-                      <View style={styles.transactionIcon}>
-                        <Ionicons name="fast-food" size={20} color="#F59E0B" />
+                      <View style={[
+                        styles.transactionIcon,
+                        message.transaction.transaction_type === "income" && styles.incomeIcon
+                      ]}>
+                        <Ionicons 
+                          name={message.transaction.transaction_type === "income" ? "arrow-down" : "fast-food"} 
+                          size={20} 
+                          color={message.transaction.transaction_type === "income" ? "#10B981" : "#F59E0B"} 
+                        />
                       </View>
                       <View style={styles.transactionInfo}>
                         <Text style={styles.transactionCategory}>
                           {message.transaction.category}
                         </Text>
-                        <Text style={styles.transactionLimit}>
-                          Daily Limit: $40.00
+                        <Text style={styles.transactionMerchant}>
+                          {message.transaction.merchant || "Transaction recorded"}
                         </Text>
                       </View>
                     </View>
                     <View style={styles.transactionAmounts}>
-                      <Text style={styles.transactionAmount}>
-                        -${message.transaction.amount.toFixed(2)}
+                      <Text style={[
+                        styles.transactionAmount,
+                        message.transaction.transaction_type === "income" && styles.incomeAmount
+                      ]}>
+                        {message.transaction.transaction_type === "income" ? "+" : "-"}
+                        {formatAmount(message.transaction.amount, message.transaction.currency)}
                       </Text>
-                      <Text style={styles.transactionRemaining}>
-                        $17.00 left
-                      </Text>
+                      <View style={styles.editHint}>
+                        <Ionicons name="create-outline" size={14} color="#9CA3AF" />
+                        <Text style={styles.editHintText}>Tap to edit</Text>
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 )}
               </View>
 
@@ -274,7 +290,10 @@ export default function ChatScreen() {
 
         {/* Input Container */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
+          <TouchableOpacity 
+            style={styles.attachButton}
+            onPress={() => router.push("/(app)?openScan=true")}
+          >
             <Ionicons name="camera-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
           
@@ -290,7 +309,10 @@ export default function ChatScreen() {
             autoFocus={true}
           />
           
-          <TouchableOpacity style={styles.micButton}>
+          <TouchableOpacity 
+            style={styles.micButton}
+            onPress={() => router.push("/(app)?openVoice=true")}
+          >
             <Ionicons name="mic-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
           
@@ -462,6 +484,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  incomeIcon: {
+    backgroundColor: "#D1FAE5",
+  },
   transactionInfo: {
     flex: 1,
   },
@@ -471,23 +496,30 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 2,
   },
-  transactionLimit: {
+  transactionMerchant: {
     fontSize: 12,
     color: "#6B7280",
   },
   transactionAmounts: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
   },
   transactionAmount: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#EF4444",
   },
-  transactionRemaining: {
-    fontSize: 14,
-    color: "#6B7280",
+  incomeAmount: {
+    color: "#10B981",
+  },
+  editHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 4,
+  },
+  editHintText: {
+    fontSize: 11,
+    color: "#9CA3AF",
   },
   loadingContainer: {
     flexDirection: "row",

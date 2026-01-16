@@ -34,6 +34,15 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Root endpoint for health check
+@app.get("/")
+async def root():
+    return {"status": "healthy", "app": "FinFlow API", "version": "1.0.0"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

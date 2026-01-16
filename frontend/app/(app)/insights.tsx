@@ -211,7 +211,7 @@ export default function AdvancedAnalyticsScreen() {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4DB6AC" />
+            <ActivityIndicator size="large" color="#10B981" />
             <Text style={styles.loadingText}>Analyzing your finances...</Text>
           </View>
         ) : insights ? (
@@ -219,20 +219,20 @@ export default function AdvancedAnalyticsScreen() {
             {/* AI Summary Card */}
             <View style={styles.summaryCard}>
               <View style={styles.summaryHeader}>
-                <View style={[styles.trendBadge, { backgroundColor: getTrendColor(insights.spending_trend) + "20" }]}>
+                <View style={[styles.trendBadge, { backgroundColor: getTrendColor(insights?.spending_trend || 'good') + "20" }]}>
                   <Ionicons 
-                    name={getTrendIcon(insights.spending_trend) as any} 
+                    name={getTrendIcon(insights?.spending_trend || 'good') as any} 
                     size={20} 
-                    color={getTrendColor(insights.spending_trend)} 
+                    color={getTrendColor(insights?.spending_trend || 'good')} 
                   />
-                  <Text style={[styles.trendText, { color: getTrendColor(insights.spending_trend) }]}>
-                    {insights.spending_trend === "good" ? "On Track" : 
-                     insights.spending_trend === "needs_attention" ? "Needs Attention" : "Review Needed"}
+                  <Text style={[styles.trendText, { color: getTrendColor(insights?.spending_trend || 'good') }]}>
+                    {(insights?.spending_trend || 'good') === "good" ? "On Track" : 
+                     (insights?.spending_trend || 'good') === "needs_attention" ? "Needs Attention" : "Review Needed"}
                   </Text>
                 </View>
                 <Ionicons name="sparkles" size={24} color="#F59E0B" />
               </View>
-              <Text style={styles.summaryText}>{insights.summary}</Text>
+              <Text style={styles.summaryText}>{insights?.summary || 'No summary available'}</Text>
             </View>
 
             {/* Income vs Expenses */}
@@ -243,14 +243,14 @@ export default function AdvancedAnalyticsScreen() {
                   <Ionicons name="arrow-down-circle" size={24} color="#10B981" />
                   <Text style={styles.statLabel}>Income</Text>
                   <Text style={[styles.statValue, { color: "#10B981" }]}>
-                    {formatAmount(insights.chart_data.income_vs_expenses.income)}
+                    {formatAmount(insights?.chart_data?.income_vs_expenses?.income || 0)}
                   </Text>
                 </View>
                 <View style={[styles.statBox, styles.expenseBox]}>
                   <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
                   <Text style={styles.statLabel}>Expenses</Text>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
-                    {formatAmount(insights.chart_data.income_vs_expenses.expenses)}
+                    {formatAmount(insights?.chart_data?.income_vs_expenses?.expenses || 0)}
                   </Text>
                 </View>
               </View>
@@ -258,10 +258,10 @@ export default function AdvancedAnalyticsScreen() {
                 <Text style={styles.netLabel}>Net Balance</Text>
                 <Text style={[
                   styles.netValue,
-                  { color: insights.chart_data.income_vs_expenses.net >= 0 ? "#10B981" : "#EF4444" }
+                  { color: (insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "#10B981" : "#EF4444" }
                 ]}>
-                  {insights.chart_data.income_vs_expenses.net >= 0 ? "+" : ""}
-                  {formatAmount(insights.chart_data.income_vs_expenses.net)}
+                  {(insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "+" : ""}
+                  {formatAmount(insights?.chart_data?.income_vs_expenses?.net || 0)}
                 </Text>
               </View>
             </View>
@@ -272,7 +272,7 @@ export default function AdvancedAnalyticsScreen() {
                 <Ionicons name="bulb" size={24} color="#F59E0B" />
                 <Text style={styles.sectionTitle}>AI Insights</Text>
               </View>
-              {insights.insights.map((insight, index) => (
+              {(insights?.insights || []).map((insight, index) => (
                 <View key={index} style={styles.insightItem}>
                   <View style={styles.insightDot} />
                   <Text style={styles.insightText}>{insight}</Text>
@@ -283,10 +283,10 @@ export default function AdvancedAnalyticsScreen() {
             {/* Recommendations */}
             <View style={styles.recommendationsCard}>
               <View style={styles.cardHeader}>
-                <Ionicons name="checkmark-circle" size={24} color="#4DB6AC" />
+                <Ionicons name="checkmark-circle" size={24} color="#10B981" />
                 <Text style={styles.sectionTitle}>Recommendations</Text>
               </View>
-              {insights.recommendations.map((rec, index) => (
+              {(insights?.recommendations || []).map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
                   <View style={[styles.recNumber, { backgroundColor: getCategoryColor(index) }]}>
                     <Text style={styles.recNumberText}>{index + 1}</Text>
@@ -297,15 +297,15 @@ export default function AdvancedAnalyticsScreen() {
             </View>
 
             {/* Spending by Category */}
-            {insights.chart_data.by_category.length > 0 && (
+            {(insights?.chart_data?.by_category?.length || 0) > 0 && (
               <View style={styles.categoryCard}>
                 <Text style={styles.sectionTitle}>Spending by Category</Text>
                 <View style={styles.categoryList}>
-                  {insights.chart_data.by_category.map((item, index) => 
+                  {(insights?.chart_data?.by_category || []).map((item, index) => 
                     renderCategoryBar(
                       item, 
                       index, 
-                      Math.max(...insights.chart_data.by_category.map(c => c.amount))
+                      Math.max(...(insights?.chart_data?.by_category || []).map(c => c.amount || 0), 1)
                     )
                   )}
                 </View>

@@ -27,14 +27,17 @@ export default function OnboardingCurrencyScreen() {
   const handleContinue = async () => {
     // Save currency preference
     await AsyncStorage.setItem("user_currency", selectedCurrency);
+    // Mark onboarding as complete
+    await AsyncStorage.setItem("onboarding_complete", "true");
     
-    // Go to login page
+    // Go to login page - use replace to prevent going back to onboarding
     router.replace("/login");
   };
 
-  const handleBack = () => {
-    router.back();
-  };
+  // Remove back button - once at currency, must complete
+  // const handleBack = () => {
+  //   router.back();
+  // };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -86,13 +89,7 @@ export default function OnboardingCurrencyScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color="#6B7280" />
-        </TouchableOpacity>
+        <View style={{ width: 48 }} />
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
