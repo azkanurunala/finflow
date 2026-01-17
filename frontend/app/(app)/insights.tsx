@@ -95,9 +95,11 @@ export default function AdvancedAnalyticsScreen() {
         return;
       }
       
+      const days = getFilterDays();
+      
       if (format === "json") {
         const response = await axios.get(
-          `${BACKEND_URL}/api/export/transactions?format=json&days=${selectedPeriod}`,
+          `${BACKEND_URL}/api/export/transactions?format=json&days=${days}`,
           { 
             headers: { Authorization: `Bearer ${sessionToken}` },
             timeout: 30000
