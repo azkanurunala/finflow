@@ -460,7 +460,7 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.statLabel}>Expenses</Text>
             </View>
-            <Text style={styles.expenseAmount}>
+            <Text style={styles.expenseAmount} numberOfLines={1} adjustsFontSizeToFit>
               -{formatAmount(insights?.total_expenses || 0)}
             </Text>
           </View>
