@@ -959,6 +959,7 @@ async def create_receipt_transaction(
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
         transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["currency"] = request.currency  # Use user's preferred currency
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
@@ -970,11 +971,15 @@ async def create_receipt_transaction(
         
         tip_info = ""
         if transaction.metadata and transaction.metadata.get("tip"):
-            tip_info = f" (includes ${transaction.metadata['tip']:.2f} tip)"
+            tip_info = f" (includes {transaction.metadata['tip']:.2f} tip)"
+        
+        # Get currency symbol for display
+        currency_symbols = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "IDR": "Rp", "SGD": "S$"}
+        symbol = currency_symbols.get(request.currency, request.currency)
         
         return {
             "transaction": transaction,
-            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+            "message": f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
         }
     except HTTPException:
         raise
