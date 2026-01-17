@@ -103,8 +103,8 @@ export default function EditTransactionScreen() {
       
       const t = response.data;
       const amountStr = t.amount.toString();
-      setAmount(amountStr);
-      setDisplayAmount(formatWithThousandSeparator(amountStr));
+      // Format the amount using the currency context
+      setDisplayAmount(formatInputValue(amountStr));
       setMerchant(t.merchant || "");
       setCategory(t.category);
       setTransactionType(t.transaction_type);
