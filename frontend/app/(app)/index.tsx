@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Modal,
   Image,
   Alert,
   Dimensions,
@@ -21,8 +20,7 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
-import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
+import RecordingModal from "../../components/RecordingModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
