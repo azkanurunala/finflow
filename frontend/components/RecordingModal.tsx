@@ -53,15 +53,63 @@ export default function RecordingModal({
   const [processingReceipt, setProcessingReceipt] = useState(false);
 
   // Reset state when modal opens/closes
+  // AUTO-START: Voice recording or Camera when modal opens
   useEffect(() => {
     if (!visible) {
+      // Cleanup when closing
       setRecording(null);
       setIsRecording(false);
       setProcessingVoice(false);
       setSelectedImage(null);
       setProcessingReceipt(false);
+    } else {
+      // AUTO-START when modal opens
+      const autoStart = async () => {
+        if (mode === "voice") {
+          // Small delay to ensure modal is visible
+          setTimeout(() => startRecording(), 300);
+        } else if (mode === "scan") {
+          // Auto-open camera for scan
+          setTimeout(() => autoOpenCamera(), 300);
+        }
+      };
+      autoStart();
     }
-  }, [visible]);
+  }, [visible, mode]);
+
+  // Auto open camera function
+  const autoOpenCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          language === "id" ? "Izin Diperlukan" : "Permission Required",
+          language === "id"
+            ? "Akses kamera diperlukan untuk scan struk"
+            : "Camera access is needed to scan receipts"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setSelectedImage(result.assets[0].base64);
+      } else {
+        // User cancelled camera, close modal
+        onClose();
+      }
+    } catch (error) {
+      console.error("Camera error:", error);
+      Alert.alert("Error", "Failed to open camera");
+      onClose();
+    }
+  };
 
   // ==================== VOICE HANDLERS ====================
   const startRecording = async () => {
