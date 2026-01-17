@@ -182,6 +182,9 @@ export default function ChatScreen() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    // Save user message to server
+    saveMessageToServer(userMessage);
+    
     const messageText = chatText;
     setChatText("");
     setLoading(true);
@@ -199,10 +202,14 @@ export default function ChatScreen() {
         type: "assistant",
         text: response.data.message,
         transaction: response.data.transaction,
+        transaction_id: response.data.transaction?.id,
+        transaction_data: response.data.transaction,
         timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      // Save assistant message to server
+      saveMessageToServer(assistantMessage);
     } catch (error: any) {
       const errorMsg = error.response?.data?.detail || "Failed to process transaction";
       
