@@ -27,11 +27,9 @@ export default function OnboardingCurrencyScreen() {
   const handleContinue = async () => {
     // Save currency preference
     await AsyncStorage.setItem("user_currency", selectedCurrency);
-    // Mark onboarding as complete
-    await AsyncStorage.setItem("onboarding_complete", "true");
     
-    // Go to login page - use replace to prevent going back to onboarding
-    router.replace("/login");
+    // Go to trial page to complete onboarding
+    router.push("/onboarding-trial");
   };
 
   // Remove back button - once at currency, must complete
