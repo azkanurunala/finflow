@@ -22,8 +22,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-const CATEGORIES = [
-  { id: "Income", icon: "cash", color: "#10B981" },
+const DEFAULT_CATEGORIES = [
   { id: "Groceries", icon: "cart", color: "#10B981" },
   { id: "Dining & Coffee", icon: "restaurant", color: "#F59E0B" },
   { id: "Transportation", icon: "car", color: "#3B82F6" },
@@ -45,18 +44,59 @@ export default function EditTransactionScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [amount, setAmount] = useState("");
+  const [displayAmount, setDisplayAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [category, setCategory] = useState("Other");
   const [transactionType, setTransactionType] = useState<"expense" | "income">("expense");
   const [date, setDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [notes, setNotes] = useState("");
-  const [transactionCurrency, setTransactionCurrency] = useState("USD");
+  const [transactionCurrency, setTransactionCurrency] = useState(currency);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+  const [showAddCategory, setShowAddCategory] = useState(false);
   
   // Source info for displaying context
   const isFromVoice = source === "voice";
   const isFromReceipt = source === "receipt";
   const decodedTranscription = transcription ? decodeURIComponent(transcription as string) : null;
+
+  // Format number with thousand separators
+  const formatWithThousandSeparator = (value: string) => {
+    const numericValue = value.replace(/[^0-9.]/g, "");
+    const parts = numericValue.split(".");
+    let integerPart = parts[0] || "";
+    const decimalPart = parts.length > 1 ? parts[1] : "";
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
+  };
+
+  const handleAmountChange = (value: string) => {
+    const rawValue = value.replace(/,/g, "");
+    setAmount(rawValue);
+    setDisplayAmount(formatWithThousandSeparator(rawValue));
+  };
+
+  // Add custom category
+  const handleAddCategory = () => {
+    if (newCategoryInput.trim() && !customCategories.includes(newCategoryInput.trim())) {
+      const newCategory = newCategoryInput.trim();
+      setCustomCategories([...customCategories, newCategory]);
+      setCategory(newCategory);
+      setNewCategoryInput("");
+      setShowAddCategory(false);
+    }
+  };
+
+  // Get all categories
+  const getAllCategories = () => {
+    const customCats = customCategories.map(cat => ({
+      id: cat,
+      icon: "pricetag",
+      color: "#6366F1"
+    }));
+    return [...DEFAULT_CATEGORIES, ...customCats];
+  };
 
   useEffect(() => {
     fetchTransaction();
