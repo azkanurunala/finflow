@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const SCREEN_WIDTH = Dimensions.get("window").width;
