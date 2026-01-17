@@ -41,6 +41,7 @@ export default function ChatScreen() {
   const { formatAmount, currency } = useCurrency();
   const [chatText, setChatText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [messages, setMessages] = useState<any[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -55,27 +56,120 @@ export default function ChatScreen() {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [processingVoice, setProcessingVoice] = useState(false);
+  
+  // Reset confirmation modal
+  const [showResetModal, setShowResetModal] = useState(false);
 
+  // Load chat history on mount (persisted like WhatsApp)
   useEffect(() => {
-    // Add welcome message based on language
-    const welcomeMessage = language === 'id' 
-      ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu. Coba bilang "Beli makan 50rb" atau "Gaji masuk 5 juta".`
-      : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. Try saying "Spent $15 on lunch" or "Got paid $500".`;
-    
-    setMessages([
-      {
+    loadChatHistory();
+  }, []);
+
+  const loadChatHistory = async () => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      const response = await axios.get(`${BACKEND_URL}/api/chat/history`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      
+      if (response.data.messages && response.data.messages.length > 0) {
+        // Convert timestamps and set messages
+        const loadedMessages = response.data.messages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }));
+        setMessages(loadedMessages);
+      } else {
+        // Show welcome message for new users
+        const welcomeMessage = language === 'id' 
+          ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu. Coba bilang "Beli makan 50rb" atau "Gaji masuk 5 juta".`
+          : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. Try saying "Spent $15 on lunch" or "Got paid $500".`;
+        
+        const welcomeMsg = {
+          id: "welcome",
+          type: "assistant",
+          text: welcomeMessage,
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMsg]);
+        
+        // Save welcome message to database
+        await saveMessageToServer(welcomeMsg);
+      }
+    } catch (error) {
+      console.error("Load chat history error:", error);
+      // Fallback to welcome message
+      const welcomeMessage = language === 'id' 
+        ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu.`
+        : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses.`;
+      
+      setMessages([{
         id: "welcome",
         type: "assistant",
         text: welcomeMessage,
         timestamp: new Date(),
-      },
-    ]);
-    
-    // Auto focus input after a short delay
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 500);
-  }, [language]);
+      }]);
+    } finally {
+      setLoadingHistory(false);
+      // Auto focus input after loading
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 500);
+    }
+  };
+
+  const saveMessageToServer = async (message: any) => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      await axios.post(
+        `${BACKEND_URL}/api/chat/message`,
+        {
+          type: message.type,
+          text: message.text,
+          transcription: message.transcription,
+          image_base64: message.image_base64,
+          parsed_data: message.parsed_data,
+          transaction_id: message.transaction_id,
+          transaction_data: message.transaction_data,
+        },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+    } catch (error) {
+      console.error("Save message error:", error);
+    }
+  };
+
+  const handleResetChat = async () => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      await axios.delete(`${BACKEND_URL}/api/chat/history`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      
+      // Reset to welcome message
+      const welcomeMessage = language === 'id' 
+        ? `Chat direset. Saya siap membantu mencatat pengeluaranmu kembali!`
+        : `Chat reset. I'm ready to help you log your expenses again!`;
+      
+      const welcomeMsg = {
+        id: "welcome_reset",
+        type: "assistant",
+        text: welcomeMessage,
+        timestamp: new Date(),
+      };
+      
+      setMessages([welcomeMsg]);
+      await saveMessageToServer(welcomeMsg);
+      
+      setShowResetModal(false);
+      Alert.alert(
+        language === 'id' ? "Berhasil" : "Success",
+        language === 'id' ? "Riwayat chat telah dihapus" : "Chat history has been cleared"
+      );
+    } catch (error) {
+      Alert.alert("Error", "Failed to reset chat");
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!chatText.trim()) return;
