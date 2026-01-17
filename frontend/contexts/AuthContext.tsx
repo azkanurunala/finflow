@@ -31,6 +31,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateOnboarding: (data: { language?: string; currency?: string; onboarding_completed?: boolean }) => Promise<void>;
   startTrial: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
