@@ -1,155 +1,110 @@
 <analysis>
 
 **original_problem_statement:**
-The user has provided a series of feature requests and bug reports throughout the conversation. The initial request was to update the home page layout. Subsequent requests include:
-- All modals should be non-full-height bottom sheets.
-- The app name on the Google login screen should be FinFlow.
-- Fix an onboarding loop where the user is stuck between language and currency selection after deployment.
-- Implement instant UI updates across the entire app when settings (like language or currency) are changed.
-- Add thousands separators for all currency values.
-- On the Chat screen:
-    - The voice and file attachment buttons are not working. They should open the voice recording and receipt scanning modals.
-    - AI-logged income transactions are incorrectly displayed in red with a minus sign.
-- New feature requirements:
-    - A corrective flow: after voice or scan, the user must be taken to an edit screen to verify/correct the data before saving.
-    - The voice recording modal should start recording and show live transcription automatically upon opening.
-    - Items in the Recent Activity list on the home screen must be clickable, leading to an edit/detail view.
-- The bottom navigation bar should be consistent on all pages (Home, History, Insights, Profile) with a white background.
-- Show a comprehensive list of all languages during language selection, not just a few.
-- Fix various deployment and runtime errors, including  reference errors and dependency issues.
+The user has provided a series of detailed feature requests and specifications to be implemented sequentially. The main goals are to enhance existing features and ensure a consistent, high-quality user experience across the application.
+
+**Key Specifications from User (New Source of Truth):**
+1.  **Chat Persistence**: Chat history (including text, voice logs, and OCR scans) must be persistent, similar to WhatsApp. A manual, explicit Reset Chat option with confirmation should be available.
+2.  **Single Modal for Audio & OCR**: A single, reusable, parameterized bottom sheet/modal component should be used for all Audio Log and OCR Scan entry points (from Chat, Home, etc.) to ensure UI/UX consistency.
+3.  **Audio & OCR logs in Chat**: Every voice or OCR action must automatically create a corresponding item in the chat history thread.
+4.  **Consistent Currency Formatting**: A strict, global rule for currency formatting must be applied everywhere (display and input):
+    *   **IDR (Rupiah)**: Thousands separator:  (dot), Decimal separator:  (comma). Example: .
+    *   **Non-IDR**: Thousands separator:  (comma), Decimal separator:  (dot). Example: .
+    This requires masked input for amount fields.
+5.  **Transactions Page Tabs**: The Transactions page must have three tabs (All, Income, Expenses) and support deep-linking from the Home screen (e.g., clicking Income on Home opens the Income tab on the Transactions page).
+6.  **Shared Filter & Sort**: The same filtering (by date range) and sorting logic must be used consistently on both the Transactions and Analytics pages.
+7.  **Vertical Pricing Layout**: The subscription/pricing packages page must display packages in a single vertical column (full-width rows), not a side-by-side layout.
 
 **User's preferred language**: Bahasa Indonesia. The next agent MUST respond in Bahasa Indonesia.
 
 **what currently exists?**
-A full-stack mobile application built with Expo (React Native) for the frontend and FastAPI for the backend, using MongoDB as the database. The agent has implemented numerous UI changes to the home screen, modals, and navigation. It has also attempted to fix several bugs and add new features like an edit flow for transactions. However, the application is currently facing critical deployment and runtime issues.
+The agent has completed a significant number of tasks based on a series of user prompts. Key accomplishments include:
+- Fixing multiple critical deployment errors (, missing health check endpoint).
+- Implementing UI changes on the Home screen (font size reduction).
+- A major overhaul of the Create/Edit Transaction screens (, ), adding features like default currency, thousand separators (initial version), horizontally scrollable categories, and auto-reloading on deletion.
+- Refactoring the bottom navigation to use a global modal for adding transactions ().
+- Fixing the OCR and Voice Log flows to respect the user's selected currency.
+- Implementing a full Login with Apple flow (frontend and backend).
+- Implementing a mock Apple In-App Purchase flow after discovering the  library was incompatible with the web-based development environment.
+- Creating a notification system (UI screen and backend endpoints).
+- Implementing chat persistence, including fetching/saving messages to the database and adding a Reset Chat feature.
+- Creating a reusable  component for OCR/Voice input.
 
 **Last working item**:
-- **Last item agent was working**: Fixing fatal EAS (Expo Application Services) build errors that are preventing deployment. The latest build log indicated two primary issues: a missing  file and a missing  peer dependency required by .
+- **Last item agent was working**: Implementing **#4 Consistent Currency Formatting**. The agent successfully updated the  to include new helper functions ( and ) to handle the specific formatting rules for IDR and non-IDR currencies. The agent was just about to apply these new functions to create a masked input experience in .
 - **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: Manual testing by user. After the agent fixes the build issues, the user needs to be instructed to trigger a new deployment to verify the fix.
-- **User Testing Done**: N (User is blocked by the failing deployment).
+- **Which testing method agent to use?**: Frontend testing agent. After implementing the masked input in all relevant files (, ), the agent should use the testing agent to verify that the input formatting works correctly for both IDR and non-IDR currencies and that the parsed values are saved correctly.
+- **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: (P0) EAS Build/Deployment Failure**
-- **Issue 2: (P1) Onboarding Infinite Loop**
-- **Issue 3: (P2) Settings Changes (Language/Currency) Are Not Instant**
-- **Issue 4: (P3) Chat Screen Bugs**
-- **Issue 5: (P4) Runtime Null Pointer Error in Insights Screen**
+- **Issue 1: (P0) Incomplete Currency Formatting Implementation**
+- **Issue 2: (P1) Incomplete Refactoring of Audio/OCR Modals**
+- **Issue 3: (P2) Original Onboarding Infinite Loop**
+- **Issue 4: (P3) Original Lack of Instant UI Updates on Settings Change**
+- **Issue 5: (P4) Original Runtime Null Pointer Error in Insights Screen**
 
 **Issues Detail:**
-- **Issue 1: (P0) EAS Build/Deployment Failure**
-    - **Attempted fixes**: The agent successfully created the missing  file. It also previously fixed  schema errors and resized icon assets to be square.
+- **Issue 1: (P0) Incomplete Currency Formatting Implementation**
+    - **Attempted fixes**: The foundational logic has been added to .
     - **Next debug checklist**:
-        1.  Open .
-        2.  Add  to  to satisfy the peer dependency for .
-        3.  While in , also add other missing peer dependencies reported in logs to prevent future build failures:  and .
-        4.  Run yarn install v1.22.22
-[1/4] Resolving packages...
-success Already up-to-date.
-$ node apply-expo-patch.js || true
-[EAS_LOG] Applying patches...
-[EAS_LOG] Applying RCTReleaseLevel patches...
-[EAS_LOG]   ℹ ExpoReactNativeFactory.swift not found (expected in non-iOS builds)
-[EAS_LOG] ✔ Patches applied
-Done in 0.47s. inside the  directory.
-        5.  Inform the user that the build issues have been addressed and they should try deploying again.
-    - **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker. Fixing it will allow the application to be successfully built and deployed, enabling the user to test all the other changes and features.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: Y (Deployment has failed multiple times with different root causes).
-    - **Should Test frontend/backend/both after fix?**: User will test via deployment.
-    - **Blocked on other issue**: None. This is the main blocker.
-
-- **Issue 2: (P1) Onboarding Infinite Loop**
-    - **Attempted fixes**: The agent tried setting an  flag in  after currency selection and removing the back button from the currency screen. These fixes were ineffective in the deployed environment.
-    - **Next debug checklist**:
-        1.  Review the logic in . The check for  might be flawed or racing with auth state.
-        2.  Verify in  that  is correctly ed before navigating.
-        3.  The current navigation  might not be clearing the navigation stack correctly. Consider using a stack-resetting navigation action to prevent users from going back to the onboarding flow. Example: .
-    - **Why fix this issue and what will be achieved with the fix?**: The app is unusable for new users as they cannot get past the initial setup.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on other issue**: Issue 1 (Deployment Failure).
-
-- **Issue 3: (P2) Settings Changes (Language/Currency) Are Not Instant**
-    - **Attempted fixes**: The agent added a  function to  and . This did not solve the problem.
-    - **Next debug checklist**:
-        1.  The  pattern is an anti-pattern. Remove it.
-        2.  Ensure that the state update function (e.g., ) in the context provider is correctly re-creating the  object for the provider, which is what triggers re-renders in consumers. Example: .
-        3.  Verify that components consuming the context are correctly re-rendering when the context value changes.
-    - **Why fix this issue and what will be achieved with the fix?**: Provides a much better and more responsive user experience.
-    - **Status**: IN PROGRESS
-    - **Is recurring issue?**: Y
-    - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on other issue**: Issue 1 (Deployment Failure).
-
-- **Issue 4: (P3) Chat Screen Bugs**
-    - **Attempted fixes**: Agent made the voice/attach buttons navigate to the Home screen with query params to open the modals. It also added styling logic to change the color of income transactions.
-    - **Next debug checklist**:
-        1.  **Buttons not working**: The query param approach is complex and likely failing. A better approach is to refactor the modals (Voice and Scan) into a global context or a reusable component that can be invoked from any screen, including .
-        2.  **Income color wrong**: Review the JSX in  where AI messages are rendered. The logic that checks if a transaction is 'income' and applies the green color and  prefix is flawed. The minus sign is likely being hardcoded or incorrectly calculated.
-    - **Why fix this issue and what will be achieved with the fix?**: Restores core functionality to the AI chat feature.
+        1.  Open  (or  if that's the file being used for manual entry).
+        2.  Locate the  for the transaction amount.
+        3.  Use the  function from  in the  handler to create a masked input effect. The state should store the raw numeric value, while the input displays the formatted string.
+        4.  Use the  function before saving the transaction to convert the formatted string back to a number.
+        5.  Repeat this implementation for .
+        6.  Verify that all other currency displays throughout the app (Home, History, etc.) are using the  function from the context.
+    - **Why fix this issue and what will be achieved with the fix?**: Fulfills a critical user requirement for a professional and error-free financial input experience.
     - **Status**: IN PROGRESS
     - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on other issue**: Issue 1 (Deployment Failure).
+    - **Blocked on other issue**: None.
 
-- **Issue 5: (P4) Runtime Null Pointer Error in Insights Screen**
-    - **Attempted fixes**: The agent added multiple optional chaining operators () throughout  to prevent crashes when the  object or its nested properties are  or .
+- **Issue 2: (P1) Incomplete Refactoring of Audio/OCR Modals**
+    - **Attempted fixes**: The agent created a reusable  and integrated it into . However, it abandoned a full cleanup of old, now-dead code (old state, old handler functions) within  due to complexity. The refactoring for  was also abandoned.
     - **Next debug checklist**:
-        1.  The last error screenshot showed the crash still happening. The agent restarted expo, believing it was an old bundle. This needs to be verified.
-        2.  Perform a thorough review of  again. Ensure that every access to , , , etc., is guarded with a null check or optional chaining.
-        3.  Add a loading state or an empty state to the UI to handle the case where the  data has not yet been fetched from the backend.
-    - **Why fix this issue and what will be achieved with the fix?**: Prevents the app from crashing when the user navigates to the Insights tab.
+        1.  Review  and identify all state (, , etc.) and handler functions (, , etc.) that were made obsolete by .
+        2.  Carefully remove the dead code to reduce complexity and potential bugs.
+        3.  Repeat the process for , replacing its duplicate voice/scan modal logic with the reusable  component.
+    - **Why fix this issue and what will be achieved with the fix?**: Reduces technical debt, improves maintainability, and ensures the Single Source of UI principle from the user's spec is fully met.
     - **Status**: IN PROGRESS
-    - **Is recurring issue?**: Y
+    - **Is recurring issue?**: N
     - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on other issue**: Issue 1 (Deployment Failure).
+    - **Blocked on other issue**: None.
 
+- **Issue 3, 4, 5 (P2, P3, P4)**: These are outstanding issues from the initial problem statement that were de-prioritized by the user's subsequent requests. They remain unfixed.
+    - **Onboarding Loop**: An infinite loop between language and currency selection on deployed builds.
+    - **Instant UI Updates**: Settings changes (language, currency) do not reflect globally in the app without a reload.
+    - **Insights Crash**: A null pointer error crashes the app on the Insights screen.
+    - **Status**: NOT STARTED
+    - **Next debug checklist**: Refer to the  in the first message of the LLM history for the detailed debugging steps.
 
 **In progress Task List**:
-- **Task 1: (P0) Corrective Flow for Scan/Audio**
-    - **Where to resume**: The agent implemented the logic to redirect to  after a scan/voice input. This is pending verification by the user.
-    - **What will be achieved with this?**: Ensures data accuracy by allowing users to review AI-parsed data before saving.
-    - **Status**: USER VERIFICATION PENDING
-    - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on something**: Issue 1 (Deployment Failure).
-
-- **Task 2: (P1) Live Transcription & Auto-start Recording**
-    - **Where to resume**: The agent added a  to auto-start recording. The live transcription part is likely not truly live and needs to be properly implemented or clarified with the user.
-    - **What will be achieved with this?**: Improves the user experience of the voice-to-text feature.
-    - **Status**: USER VERIFICATION PENDING
-    - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on something**: Issue 1 (Deployment Failure).
-
-- **Task 3: (P2) Refactor Bottom Navigation**
-    - **Where to resume**: The agent created a component at  but did not use it. Instead, it copy-pasted the navigation UI into each screen. This needs to be refactored.
-    - **What will be achieved with this?**: Improves code maintainability and follows the DRY (Don't Repeat Yourself) principle.
-    - **Status**: NOT STARTED (Refactoring part)
-    - **Should Test frontend/backend/both after fix?**: Frontend.
-    - **Blocked on something**: Issue 1 (Deployment Failure).
+- See All Pending/In progress Issue list.
 
 **Upcoming and Future Tasks**
+*This list is derived from the user's detailed specification in message #318.*
 - **Upcoming Tasks**:
-    - **(P1) Full-App State Consistency**: The user's request for instant reload...di SEMUA TEMPAT points to a need for a more robust global state management solution to ensure that changes in settings (language, currency) or data (new transactions) are reflected everywhere immediately without manual reloads. The current React Context implementation is proving insufficient.
-    - **(P2) Google OAuth App Name**: The agent correctly identified this is a configuration change in the Google Cloud Console. The next agent should remind the user of these steps, as it cannot be done from within the codebase.
+    - **(P1) Transactions Page Tabs & Deep-linking**: Implement the tabbed layout (All, Income, Expenses) on  and add logic to handle navigation parameters from the Home screen to open the correct tab.
+    - **(P2) Shared Filter & Sort**: Create a reusable component or hook for date filtering and sorting. Implement it on the  and  screens.
+    - **(P3) Verify Audio/OCR Logs in Chat**: Confirm that when a transaction is created via Voice or OCR, a corresponding entry (e.g., thumbnail, transcription) is saved as a message in the chat history via the  endpoint.
 
 **Completed work in this session**
-- **Recently completed**:
-  - Home page UI layout updated to match user's request. (DONE)
-  - Modals refactored to a non-full-height, bottom-sheet style. (DONE)
-  - OpenAI API key was updated. (DONE)
-  -  was added to modals to prevent content from overlapping with the status bar. (DONE)
-  - Auto-focus was implemented for the text input on the chat screen. (DONE)
-  - A health-check endpoint () was added to the backend for deployment readiness. (DONE)
-  - Clickable Recent Activity items on the home screen implemented. (USER VERIFICATION PENDING)
-  - Thousands separators added to currency formatting via . (USER VERIFICATION PENDING)
-  - The list of languages on the onboarding and settings screens was expanded. (USER VERIFICATION PENDING)
-  - Multiple deployment-blocking issues were fixed (malformed , incorrect  colors, non-square icon assets). (DONE)
+- **Deployment & Stability:**
+  - Fixed EAS build failures by moving  to . (DONE)
+  - Added a  endpoint to pass deployment health checks. (DONE)
+- **Feature Implementation & Refactoring:**
+  - **Transaction Module**: Implemented default currency, thousand separators, scrollable/custom categories, and auto-reload on delete. (DONE)
+  - **Home Screen**: Reduced font size for Income/Expense amounts. (DONE)
+  - **Bottom Navigation**: Refactored to use a single, global modal for adding transactions. (DONE)
+  - **Scan/Voice Flow**: Fixed currency handling in backend and frontend for OCR/Voice. (DONE)
+  - **Authentication**: Implemented a complete Login with Apple flow. (DONE)
+  - **Payments**: Implemented a mock Apple IAP flow to unblock development. (DONE)
+  - **Notifications**: Created a UI and backend for in-app notifications. (DONE)
+  - **Chat**: Implemented full persistence (DB storage), including a Reset Chat feature. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-- See All Pending/In progress Issue list. The main ones are the onboarding loop, lack of instant UI updates, and the chat screen bugs.
+- See All Pending/In progress Issue list for Issues 3, 4, and 5. These critical bugs from the initial state were never addressed as new user requests took priority.
 
 **Known issue recurrence from previous fork**
 - N/A
@@ -158,104 +113,97 @@ Done in 0.47s. inside the  directory.
 
 
 **Key Technical Concepts**
-- **Frontend**: React Native, Expo, Expo Router (file-based routing), TypeScript
+- **Frontend**: React Native, Expo, Expo Router, TypeScript
 - **Backend**: Python, FastAPI
 - **Database**: MongoDB
 - **State Management**: React Context API
-- **Styling**: React Native  (no CSS or Tailwind)
-- **Deployment**: EAS (Expo Application Services) for building and deploying to Kubernetes.
+- **Key Patterns**: Reusable Components, Global Modals via Context, Masked Input (custom implementation), Mocking Native Modules ().
 
 **key DB schema**
 - **users**: 
 - **transactions**: 
+- **chat_messages**: (New) 
 
 **changes in tech stack**
-- None.
+-  was added and then removed due to web compatibility issues.
+-  was added.
+-  was added to the backend.
 
 **All files of reference**
 - **Created**:
-  - : Created to hold reusable navigation UI, but not currently used.
-  - : Created to fix a specific EAS build error.
+  - : Reusable bottom nav with the global Add modal trigger.
+  - : Reusable modal for both OCR and Voice recording flows.
+  - : Context to control the global Add modal.
+  - : Screen to display user notifications.
 - **Updated heavily**:
-  - : The main home screen, contains logic for modals, recent activity, and quick actions.
-  - : Has a recurring null pointer crash.
-  - : Contains bugs related to UI and functionality.
-  - : Part of the broken onboarding flow.
-  - : Root navigator, part of the broken onboarding flow.
-  - : Updated multiple times to fix dependency issues.
-  - : Updated to fix schema violations for deployment.
-  - : Added a root health check endpoint.
+  - : Added numerous endpoints for Apple Auth, IAP verification, notifications, and chat persistence.
+  - : Major overhaul for persistence, modals, and reset functionality.
+  - : Rewritten to include Apple Login and a new layout.
+  - : Rewritten to use a mock IAP flow.
+  - : Updated with new currency formatting logic.
+  -  & : Overhauled for new transaction features.
+  - All main screens (, , ) were updated to use the new .
 
 **Areas that need refactoring**:
-- **Bottom Navigation**: The component at  should be used across all main screens (, , , ) instead of the current copy-paste implementation.
-- **Global Modals**: The approach of using router query parameters to open modals from different screens is fragile. A global modal context/provider should be implemented to allow any component to trigger the Voice or Scan modals.
+- **Code Cleanup in  and **: Remove the old, now-dead code for handling voice/scan modals that was superseded by the  component.
+- **Unused Component**:  from the very first session is still present and unused. It should be deleted to avoid confusion.
 
 **key api endpoints**
-- : Health check.
-- : Health check.
-- : Processes user chat messages for the AI assistant.
-- : Creates a transaction from a voice recording.
-- : Creates a transaction by scanning a receipt image.
-- : Fetches a list of transactions.
-- : Updates an existing transaction.
-- : Fetches financial summary and insights.
-- : Updates user language/currency preferences.
+- **Chat**: , , 
+- **Auth**: 
+- **Subscription**: 
+- **Notifications**: , 
+- **Export**:  (fixed)
 
 **Critical Info for New Agent**
-- **Deployment is the priority**: The app is currently un-deployable due to EAS build errors. Your first task is to fix the  dependencies.
-- **The onboarding loop is real**: This bug only appears in the deployed/production build, not in the local dev environment. Be mindful that  behavior or navigation stack persistence might differ.
-- **State management is weak**: The current React Context-based state management for settings (language, currency) is not reliably triggering UI updates. Be prepared to debug or refactor it.
-- **Refactor before building**: The bottom navigation and modal-triggering logic are poorly implemented. Before adding new features, consider refactoring these for better maintainability.
+- **The User's Spec is King**: The detailed specification provided by the user in message #318 is the primary source of truth for all upcoming work. Refer to it before implementing any feature.
+- **Proceed Sequentially**: The user has explicitly requested to work on the items from the spec one by one. Your next task is to finish #4 (Currency Formatting) and then ask to proceed to #5 (Transaction Page Tabs).
+- **IAP is Mocked**: The real Apple In-App Purchase flow is not implemented.  was removed. The current implementation in  calls the backend directly. Do not attempt to use  unless instructed.
+- **Original Bugs Still Exist**: Critical bugs like the onboarding loop and insights screen crash are still in the codebase but have been de-prioritized. Be aware of them, but focus on the user's current requests.
 
 **documents created in this job**
-- 
-- 
+- /app/frontend/components/BottomNavWithAddModal.tsx
+- /app/frontend/components/RecordingModal.tsx
+- /app/frontend/contexts/AddModalContext.tsx
+- /app/frontend/app/(app)/notifications.tsx
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User asks to fix new deployment error**: Provides logs showing  not found and  missing. **Status: IN PROGRESS**
-2.  **User asks to fix another deployment error**: Provides logs for a different build failure. **Status: Addressed by agent, but led to the next error.**
-3.  **User reports  crash**: Provides screenshot of a null pointer error. **Status: IN PROGRESS**
-4.  **User confirms onboarding loop is still happening**: Reports the loop persists after the agent's fix. **Status: IN PROGRESS**
-5.  **User reports onboarding loop and ngrok error post-deployment**: **Status: IN PROGRESS**
-6.  **User asks for deployment readiness check**: **Status: Addressed by agent.**
-7.  **User reports multiple issues at once**: Null error in insights, wants all languages, settings changes not instant, chat buttons broken, wrong color for income in chat, wants thousands separators. **Status: Multiple IN PROGRESS issues created from this.**
-8.  **User provides new deployment logs**: **Status: Addressed by agent.**
-9.  **User reports Failed to download remote update**: A post-deployment error. **Status: Addressed by agent.**
-10. **User asks to change app name in Google Login**: **Status: Addressed by agent (explained it's a Google Console setting).**
+1.  **user: lanjut** (continue) - *Status: Addressed*. Agent started on task 2.
+2.  **user: ya lanjutkan** (yes, continue) - *Status: Addressed*. Agent started on task 4.
+3.  **user: satu per satu kak, semua sudah sesuai urutannya** (one by one, everything is in the correct order) - *Status: Addressed*. User confirmed the agent's plan to follow the spec sequentially.
+4.  **user: [Detailed Specification Document]** - *Status: Acknowledged*. User provided the new source of truth for all future work.
+5.  **user: [PROMPT 9 & 10]** - *Status: Completed*.
+6.  **user: [PROMPT 7 & 8]** - *Status: Completed*.
+7.  **user: [PROMPT 5 & 6]** - *Status: Completed*.
+8.  **user: [PROMPT 3 & 4]** - *Status: Completed*.
+9.  **user: [PROMPT 2]** - *Status: Completed*.
+10. **user: [PROMPT 1]** - *Status: Completed*.
 
 **Project Health Check:**
 - **Broken**:
-    - **Deployment Pipeline**: The EAS build is currently failing, which is the highest priority issue.
-    - **Onboarding Flow**: A critical infinite loop prevents new users from accessing the app in a deployed state.
-    - **Settings State Management**: Language and currency changes do not update the UI instantly.
-    - **Chat Functionality**: Voice/scan buttons are non-functional, and income transaction display is buggy.
+  - Onboarding Flow (in deployment).
+  - Instant UI updates for settings.
+  - Insights screen can crash due to null data.
 - **Mocked**:
-    - **Live Transcription**: The feature is likely not a true live transcription but rather shows the result after processing is complete.
+  - Apple In-App Purchase flow. The frontend UI calls the backend directly without a real App Store transaction.
 
 **3rd Party Integrations**
-- **OpenAI GPT**: Used for chat functionality and voice-to-text transcription. Likely uses a User API Key managed in .
-- **Google OAuth**: Used for user authentication.
-- **exchangerate-api.com**: Public API used for fetching currency exchange rates.
+- **OpenAI GPT**: For chat and transcription (via ).
+- **Google OAuth**: For user authentication.
+- **Apple Authentication**: For user authentication ().
+- **exchangerate-api.com**: For currency rates.
 
 **Testing status**
 - **Testing agent used after significant changes**: NO
 - **Troubleshoot agent used after agent stuck in loop**: NO
 - **Test files created**: []
-- **Known regressions**: The onboarding loop, which was thought to be fixed, is a major regression.
+- **Known regressions**: None in this session, but original bugs remain.
 
 **Credentials to test flow:**
 N/A
 
 **What agent forgot to execute**
-- The agent started fixing the latest deployment error by creating  but did not complete the fix by adding the missing peer dependencies (, etc.) to  and running yarn install v1.22.22
-[1/4] Resolving packages...
-success Already up-to-date.
-$ node apply-expo-patch.js || true
-[EAS_LOG] Applying patches...
-[EAS_LOG] Applying RCTReleaseLevel patches...
-[EAS_LOG]   ℹ ExpoReactNativeFactory.swift not found (expected in non-iOS builds)
-[EAS_LOG] ✔ Patches applied
-Done in 0.41s..
-- The agent created a reusable  component but then implemented the navigation UI by copying and pasting code into each screen, completely ignoring the component it just made.
+- The agent did not fully complete the refactoring of  and  to remove old code after introducing the  component. It consciously chose to leave dead code behind due to time/complexity constraints.
+- The agent created a  component but left the original, unused  file in the codebase, which could cause confusion.
 
 </analysis>
