@@ -1336,20 +1336,53 @@ async def export_transactions(
     try:
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
         
-        transactions = await db.transactions.find(
-            {
-                "user_id": current_user.user_id,
-                "date": {"$gte": start_date}
-            },
+        # Get all transactions for the user first
+        all_transactions = await db.transactions.find(
+            {"user_id": current_user.user_id},
             {"_id": 0}
-        ).sort("date", -1).to_list(1000)
+        ).sort("created_at", -1).to_list(1000)
+        
+        # Filter by date manually to handle both string and datetime formats
+        transactions = []
+        for t in all_transactions:
+            try:
+                # Try to parse date from various formats
+                tx_date = t.get("date") or t.get("created_at")
+                if tx_date:
+                    if isinstance(tx_date, str):
+                        # Parse string date
+                        if 'T' in tx_date:
+                            tx_date = datetime.fromisoformat(tx_date.replace('Z', '+00:00'))
+                        else:
+                            tx_date = datetime.strptime(tx_date[:10], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                    
+                    if tx_date.tzinfo is None:
+                        tx_date = tx_date.replace(tzinfo=timezone.utc)
+                    
+                    if tx_date >= start_date:
+                        transactions.append(t)
+                else:
+                    # If no date, include it
+                    transactions.append(t)
+            except Exception as date_error:
+                logger.warning(f"Date parsing error for transaction: {date_error}")
+                transactions.append(t)  # Include anyway
         
         if format == "json":
-            # Return as JSON for Excel/Google Sheets import
+            # Serialize transactions properly
+            serialized = []
+            for t in transactions:
+                tx = dict(t)
+                # Convert datetime objects to strings
+                for key, value in tx.items():
+                    if isinstance(value, datetime):
+                        tx[key] = value.isoformat()
+                serialized.append(tx)
+            
             return {
-                "transactions": transactions,
+                "transactions": serialized,
                 "exported_at": datetime.now(timezone.utc).isoformat(),
-                "total_count": len(transactions)
+                "total_count": len(serialized)
             }
         
         # Default CSV format
@@ -1367,17 +1400,31 @@ async def export_transactions(
         
         # Data rows
         for t in transactions:
-            date_str = t["date"].strftime("%Y-%m-%d") if hasattr(t["date"], "strftime") else str(t["date"])[:10]
-            writer.writerow([
-                date_str,
-                t.get("merchant", ""),
-                t.get("category", ""),
-                t.get("amount", 0),
-                t.get("currency", "USD"),
-                t.get("transaction_type", "expense"),
-                t.get("notes", ""),
-                t.get("source", "")
-            ])
+            try:
+                tx_date = t.get("date") or t.get("created_at")
+                if tx_date:
+                    if hasattr(tx_date, "strftime"):
+                        date_str = tx_date.strftime("%Y-%m-%d")
+                    elif isinstance(tx_date, str):
+                        date_str = tx_date[:10]
+                    else:
+                        date_str = str(tx_date)[:10]
+                else:
+                    date_str = ""
+                    
+                writer.writerow([
+                    date_str,
+                    t.get("merchant", ""),
+                    t.get("category", ""),
+                    t.get("amount", 0),
+                    t.get("currency", "USD"),
+                    t.get("transaction_type", "expense"),
+                    t.get("notes", ""),
+                    t.get("source", "")
+                ])
+            except Exception as row_error:
+                logger.warning(f"Error writing row: {row_error}")
+                continue
         
         csv_content = output.getvalue()
         
@@ -1391,7 +1438,7 @@ async def export_transactions(
         
     except Exception as e:
         logger.error(f"Error exporting transactions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 @api_router.get("/insights/ai")
 async def get_ai_insights(
