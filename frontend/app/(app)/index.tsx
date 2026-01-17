@@ -47,32 +47,33 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
-  // Modal states
+  // Modal states - simplified with RecordingModal
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successTransaction, setSuccessTransaction] = useState<any>(null);
-  
-  // Receipt states
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [processingReceipt, setProcessingReceipt] = useState(false);
-  
-  // Voice states
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [processingVoice, setProcessingVoice] = useState(false);
-  const [liveTranscription, setLiveTranscription] = useState("");
 
   // Handle query params from chat screen
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const openVoice = url.searchParams.get('openVoice');
-    const openScan = url.searchParams.get('openScan');
-    
-    if (openVoice === 'true') {
-      setShowVoiceModal(true);
+    try {
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        const openVoice = url.searchParams.get('openVoice');
+        const openScan = url.searchParams.get('openScan');
+        
+        if (openVoice === 'true') {
+          setRecordingMode("voice");
+          setShowRecordingModal(true);
+        } else if (openScan === 'true') {
+          setRecordingMode("scan");
+          setShowRecordingModal(true);
+        }
+      }
+    } catch (e) {
+      // Ignore - not in browser
+    }
+  }, []);
       // Clean up URL
       url.searchParams.delete('openVoice');
       window.history.replaceState({}, '', url.toString());
