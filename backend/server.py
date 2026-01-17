@@ -43,6 +43,11 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
+# API health endpoint for deployment checks
+@api_router.get("/health")
+async def api_health_check():
+    return {"status": "healthy", "app": "FinFlow API", "version": "1.0.0"}
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
