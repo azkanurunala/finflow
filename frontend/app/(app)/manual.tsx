@@ -115,7 +115,8 @@ export default function ManualInputScreen() {
   };
 
   const handleSave = async () => {
-    if (!amount || parseFloat(formatInputAmount(amount)) <= 0) {
+    const numericAmount = parseFloat(amount);
+    if (!amount || numericAmount <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
       return;
     }
@@ -123,13 +124,12 @@ export default function ManualInputScreen() {
     setLoading(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const numericAmount = parseFloat(formatInputAmount(amount));
       
       await axios.post(
         `${BACKEND_URL}/api/transactions/manual`,
         {
           amount: numericAmount,
-          currency: currency,
+          currency: currency, // Use user's global currency setting
           merchant: merchant || null,
           category: transactionType === "income" ? "Income" : category,
           date: date.toISOString().split("T")[0],
@@ -152,6 +152,7 @@ export default function ManualInputScreen() {
 
   const resetForm = () => {
     setAmount("");
+    setDisplayAmount("");
     setMerchant("");
     setCategory("Other");
     setTransactionType("expense");
