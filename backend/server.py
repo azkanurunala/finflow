@@ -876,7 +876,9 @@ async def register(request: RegisterRequest, response: Response):
             "email": request.email.lower(),
             "name": request.name,
             "session_token": session_token,
-            "onboarding_completed": False
+            "onboarding_completed": False,
+            "is_subscription_active": False,
+            "subscription_tier": None
         }
         
     except HTTPException:
@@ -925,6 +927,16 @@ async def login(request: LoginRequest, response: Response):
             path="/"
         )
         
+        # Check subscription status
+        is_subscription_active = True
+        if user.get("subscription_expires_at"):
+            expires_at = user["subscription_expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            is_subscription_active = expires_at > datetime.now(timezone.utc)
+        else:
+            is_subscription_active = False
+        
         return {
             "user_id": user["user_id"],
             "email": user["email"],
@@ -932,7 +944,8 @@ async def login(request: LoginRequest, response: Response):
             "picture": user.get("picture"),
             "session_token": session_token,
             "onboarding_completed": user.get("onboarding_completed", True),
-            "subscription_tier": user.get("subscription_tier")
+            "subscription_tier": user.get("subscription_tier"),
+            "is_subscription_active": is_subscription_active
         }
         
     except HTTPException:
