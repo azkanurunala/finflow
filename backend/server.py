@@ -171,6 +171,7 @@ class UpdateTransactionRequest(BaseModel):
 
 class VoiceTransactionRequest(BaseModel):
     audio_base64: str
+    currency: str = "USD"  # User's preferred currency
 
 class UsageStats(BaseModel):
     user_id: str
