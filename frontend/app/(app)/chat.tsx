@@ -44,16 +44,9 @@ export default function ChatScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
   
-  // Scan Receipt Modal State
-  const [showScanModal, setShowScanModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [processingReceipt, setProcessingReceipt] = useState(false);
-  
-  // Voice Log Modal State
-  const [showVoiceModal, setShowVoiceModal] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [processingVoice, setProcessingVoice] = useState(false);
+  // Recording Modal State - Single component for both Voice & Scan
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
   
   // Reset confirmation modal
   const [showResetModal, setShowResetModal] = useState(false);
@@ -71,17 +64,15 @@ export default function ChatScreen() {
       });
       
       if (response.data.messages && response.data.messages.length > 0) {
-        // Convert timestamps and set messages
         const loadedMessages = response.data.messages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         }));
         setMessages(loadedMessages);
       } else {
-        // Show welcome message for new users
         const welcomeMessage = language === 'id' 
-          ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu. Coba bilang "Beli makan 50rb" atau "Gaji masuk 5 juta".`
-          : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. Try saying "Spent $15 on lunch" or "Got paid $500".`;
+          ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu.`
+          : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses.`;
         
         const welcomeMsg = {
           id: "welcome",
@@ -90,13 +81,10 @@ export default function ChatScreen() {
           timestamp: new Date(),
         };
         setMessages([welcomeMsg]);
-        
-        // Save welcome message to database
         await saveMessageToServer(welcomeMsg);
       }
     } catch (error) {
       console.error("Load chat history error:", error);
-      // Fallback to welcome message
       const welcomeMessage = language === 'id' 
         ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu.`
         : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses.`;
@@ -109,10 +97,7 @@ export default function ChatScreen() {
       }]);
     } finally {
       setLoadingHistory(false);
-      // Auto focus input after loading
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 500);
+      setTimeout(() => inputRef.current?.focus(), 500);
     }
   };
 
@@ -144,7 +129,6 @@ export default function ChatScreen() {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
       
-      // Reset to welcome message
       const welcomeMessage = language === 'id' 
         ? `Chat direset. Saya siap membantu mencatat pengeluaranmu kembali!`
         : `Chat reset. I'm ready to help you log your expenses again!`;
@@ -158,7 +142,6 @@ export default function ChatScreen() {
       
       setMessages([welcomeMsg]);
       await saveMessageToServer(welcomeMsg);
-      
       setShowResetModal(false);
       Alert.alert(
         language === 'id' ? "Berhasil" : "Success",
@@ -166,6 +149,48 @@ export default function ChatScreen() {
       );
     } catch (error) {
       Alert.alert("Error", "Failed to reset chat");
+    }
+  };
+
+  // Handle recording modal completion - save to chat history
+  const handleRecordingComplete = async (result: {
+    transaction?: any;
+    transcription?: string;
+    imageBase64?: string;
+    parsedData?: any;
+  }) => {
+    // Create chat message for voice/scan result
+    const messageType = recordingMode === "voice" ? "voice" : "ocr";
+    const chatMessage = {
+      id: Date.now().toString(),
+      type: messageType,
+      text: recordingMode === "voice" 
+        ? result.transcription || "Voice message recorded"
+        : "Receipt scanned",
+      transcription: result.transcription,
+      image_base64: result.imageBase64,
+      parsed_data: result.parsedData,
+      transaction_id: result.transaction?.id,
+      transaction_data: result.transaction,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prev => [...prev, chatMessage]);
+    await saveMessageToServer(chatMessage);
+    
+    // Add assistant response
+    if (result.transaction) {
+      const assistantMsg = {
+        id: Date.now().toString() + "_assistant",
+        type: "assistant",
+        text: recordingMode === "voice"
+          ? `Recorded: "${result.transcription}". Transaction logged successfully!`
+          : `Receipt processed! ${result.transaction.merchant || "Transaction"} - ${formatAmount(result.transaction.amount)}`,
+        transaction: result.transaction,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, assistantMsg]);
+      await saveMessageToServer(assistantMsg);
     }
   };
 
