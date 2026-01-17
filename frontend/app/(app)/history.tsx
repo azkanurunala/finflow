@@ -11,13 +11,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import axios from "axios";
 import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
+import TransactionFilter, { 
+  defaultFilters, 
+  applyFiltersAndSort,
+  SortOption,
+  DatePreset 
+} from "../../components/TransactionFilter";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -34,13 +40,27 @@ interface Transaction {
   source: string;
 }
 
+type TabType = "all" | "income" | "expense";
+
 export default function HistoryScreen() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const params = useLocalSearchParams();
+  const { t, language } = useLanguage();
   const { formatAmount } = useCurrency();
+  
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("all");
+  const [filters, setFilters] = useState(defaultFilters);
+
+  // Handle deep-linking from Home screen
+  useEffect(() => {
+    const tab = params.tab as string;
+    if (tab === "income" || tab === "expense") {
+      setActiveTab(tab);
+    }
+  }, [params.tab]);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -48,15 +68,7 @@ export default function HistoryScreen() {
       const response = await axios.get(`${BACKEND_URL}/api/transactions`, {
         headers: { Authorization: `Bearer ${sessionToken}` },
       });
-      
-      // Sort by created_at or date (newest first)
-      const sortedTransactions = response.data.transactions.sort((a: Transaction, b: Transaction) => {
-        const dateA = new Date(a.created_at || a.date);
-        const dateB = new Date(b.created_at || b.date);
-        return dateB.getTime() - dateA.getTime();
-      });
-      
-      setTransactions(sortedTransactions);
+      setTransactions(response.data.transactions || []);
     } catch (error) {
       Alert.alert(t('common.error'), "Failed to fetch transactions");
     } finally {
@@ -65,7 +77,6 @@ export default function HistoryScreen() {
     }
   }, []);
 
-  // Reload data when screen is focused (after edit/delete)
   useFocusEffect(
     useCallback(() => {
       fetchTransactions();
@@ -80,7 +91,7 @@ export default function HistoryScreen() {
   const handleDelete = (id: string) => {
     Alert.alert(
       t('common.delete'),
-      "Are you sure you want to delete this transaction?",
+      language === 'id' ? "Yakin ingin menghapus transaksi ini?" : "Are you sure you want to delete this transaction?",
       [
         { text: t('common.cancel'), style: "cancel" },
         {
@@ -143,9 +154,26 @@ export default function HistoryScreen() {
       chat: "chatbubble",
       receipt: "camera",
       voice: "mic",
+      manual: "create",
     };
     return icons[source] || "document";
   };
+
+  // Apply filters and get displayed transactions
+  const displayedTransactions = applyFiltersAndSort(transactions, filters, activeTab);
+
+  // Calculate totals for tabs
+  const totals = {
+    all: transactions.length,
+    income: transactions.filter((t) => t.transaction_type === "income").length,
+    expense: transactions.filter((t) => t.transaction_type === "expense").length,
+  };
+
+  const tabs: { id: TabType; label: string; count: number }[] = [
+    { id: "all", label: language === 'id' ? "Semua" : "All", count: totals.all },
+    { id: "income", label: language === 'id' ? "Pemasukan" : "Income", count: totals.income },
+    { id: "expense", label: language === 'id' ? "Pengeluaran" : "Expenses", count: totals.expense },
+  ];
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const categoryColor = getCategoryColor(item.category);
@@ -201,6 +229,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -208,25 +237,57 @@ export default function HistoryScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction History</Text>
+        <Text style={styles.headerTitle}>
+          {language === 'id' ? "Riwayat Transaksi" : "Transaction History"}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.id}
+            style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+            onPress={() => setActiveTab(tab.id)}
+          >
+            <Text style={[styles.tabText, activeTab === tab.id && styles.tabTextActive]}>
+              {tab.label}
+            </Text>
+            <View style={[styles.tabBadge, activeTab === tab.id && styles.tabBadgeActive]}>
+              <Text style={[styles.tabBadgeText, activeTab === tab.id && styles.tabBadgeTextActive]}>
+                {tab.count}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Filter & Sort */}
+      <TransactionFilter filters={filters} onFiltersChange={setFilters} />
+
+      {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4DB6AC" />
         </View>
-      ) : transactions.length === 0 ? (
+      ) : displayedTransactions.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyText}>{t('home.noTransactions')}</Text>
+          <Text style={styles.emptyText}>
+            {activeTab === "all" 
+              ? (language === 'id' ? "Belum ada transaksi" : "No transactions yet")
+              : activeTab === "income"
+              ? (language === 'id' ? "Belum ada pemasukan" : "No income yet")
+              : (language === 'id' ? "Belum ada pengeluaran" : "No expenses yet")}
+          </Text>
           <Text style={styles.emptySubtext}>
-            {t('home.startLogging')}
+            {language === 'id' ? "Mulai catat keuangan Anda" : "Start logging your finances"}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={transactions}
+          data={displayedTransactions}
           renderItem={renderTransaction}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -240,7 +301,6 @@ export default function HistoryScreen() {
         />
       )}
 
-      {/* Bottom Navigation with Add Modal */}
       <BottomNavWithAddModal />
     </SafeAreaView>
   );
@@ -277,6 +337,55 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  // Tabs
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+  },
+  tabActive: {
+    backgroundColor: "#10B981",
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  tabTextActive: {
+    color: "#fff",
+  },
+  tabBadge: {
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  tabBadgeActive: {
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  tabBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  tabBadgeTextActive: {
+    color: "#fff",
+  },
+  // Content
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -377,55 +486,5 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 8,
     fontStyle: "italic",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingBottom: 20,
-    paddingTop: 12,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  navItemCenter: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  navCenterButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#10B981",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: -28,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  navText: {
-    fontSize: 10,
-    color: "#9CA3AF",
-    marginTop: 4,
-  },
-  navTextActive: {
-    color: "#10B981",
-    fontWeight: "600",
   },
 });
