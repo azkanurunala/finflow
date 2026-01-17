@@ -1007,4 +1007,142 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: "#E5E7EB",
   },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    maxHeight: "80%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  // Scan Receipt Modal Styles
+  scanOptions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 20,
+  },
+  scanOption: {
+    alignItems: "center",
+    gap: 12,
+  },
+  scanOptionIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanOptionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  previewContainer: {
+    alignItems: "center",
+    gap: 16,
+  },
+  previewImage: {
+    width: "100%",
+    height: 250,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+  },
+  previewActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  retakeButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+  },
+  retakeButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  processButton: {
+    flex: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#4DB6AC",
+    alignItems: "center",
+  },
+  processButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  // Voice Modal Styles
+  voiceContainer: {
+    alignItems: "center",
+    paddingVertical: 30,
+    gap: 20,
+  },
+  recordButton: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#E0F2F1",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: "#4DB6AC",
+  },
+  recordButtonActive: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#EF4444",
+  },
+  recordButtonInner: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  recordingStatus: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    textAlign: "center",
+  },
+  recordingHint: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  processingContainer: {
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 20,
+  },
+  processingText: {
+    fontSize: 16,
+    color: "#6B7280",
+  },
 });
