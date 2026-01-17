@@ -37,10 +37,9 @@ const DEFAULT_CATEGORIES = [
 
 export default function ManualInputScreen() {
   const router = useRouter();
-  const { currency, currencySymbol } = useCurrency();
+  const { currency, currencySymbol, formatInputValue, parseInputValue, getDecimalSeparator } = useCurrency();
   const { t } = useLanguage();
   
-  const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [category, setCategory] = useState("Other");
@@ -53,44 +52,12 @@ export default function ManualInputScreen() {
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
 
-  // Format number with thousand separators
-  const formatWithThousandSeparator = (value: string) => {
-    // Remove all non-numeric characters except decimal
-    const numericValue = value.replace(/[^0-9.]/g, "");
-    
-    // Split integer and decimal parts
-    const parts = numericValue.split(".");
-    let integerPart = parts[0] || "";
-    const decimalPart = parts.length > 1 ? parts[1] : "";
-    
-    // Add thousand separators
-    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    
-    // Combine with decimal if exists
-    return decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
-  };
-
-  // Handle amount input change with thousand separator
+  // Handle amount input change with proper currency formatting
+  // IDR: 1.250.000,50 (. for thousands, , for decimals)
+  // USD/etc: 1,250.00 (, for thousands, . for decimals)
   const handleAmountChange = (value: string) => {
-    // Remove thousand separators for raw value
-    const rawValue = value.replace(/,/g, "");
-    setAmount(rawValue);
-    setDisplayAmount(formatWithThousandSeparator(rawValue));
-  };
-
-  const formatInputAmount = (value: string) => {
-    // Remove non-numeric characters except decimal point/comma
-    let cleaned = value.replace(/[^0-9.,]/g, "");
-    
-    // Handle Indonesian format (comma as decimal)
-    if (currency === "IDR") {
-      cleaned = cleaned.replace(/\./g, ""); // Remove thousand separators
-      cleaned = cleaned.replace(",", "."); // Convert decimal comma to point
-    } else {
-      cleaned = cleaned.replace(/,/g, ""); // Remove thousand separators
-    }
-    
-    return cleaned;
+    const formatted = formatInputValue(value);
+    setDisplayAmount(formatted);
   };
 
   // Add custom category
