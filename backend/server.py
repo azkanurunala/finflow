@@ -1020,6 +1020,378 @@ async def get_subscription_tiers():
     """Get available subscription tiers"""
     return SUBSCRIPTION_TIERS
 
+# Apple In-App Purchase Verification
+class AppleIAPVerifyRequest(BaseModel):
+    receipt_data: str
+    product_id: str
+    transaction_id: str
+
+@api_router.post("/subscription/verify-apple")
+async def verify_apple_purchase(
+    request: AppleIAPVerifyRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Verify Apple In-App Purchase receipt and activate subscription"""
+    try:
+        # Map product IDs to subscription tiers
+        product_tier_map = {
+            "com.finflow.subscription.basic": {
+                "tier": "basic",
+                "tier_name": "Basic Package",
+                "duration_days": 30,
+                "limits": {
+                    "chat_messages": -1,  # Unlimited
+                    "voice_minutes": 30,
+                    "ocr_count": 30,
+                }
+            },
+            "com.finflow.subscription.premium": {
+                "tier": "premium",
+                "tier_name": "Premium Package",
+                "duration_days": 30,
+                "limits": {
+                    "chat_messages": -1,
+                    "voice_minutes": -1,
+                    "ocr_count": -1,
+                }
+            },
+            "com.finflow.subscription.yearly": {
+                "tier": "yearly",
+                "tier_name": "Annual Plan",
+                "duration_days": 365,
+                "limits": {
+                    "chat_messages": -1,
+                    "voice_minutes": -1,
+                    "ocr_count": -1,
+                }
+            },
+            "com.finflow.subscription.monthly": {
+                "tier": "monthly_full",
+                "tier_name": "Monthly Full Access",
+                "duration_days": 30,
+                "limits": {
+                    "chat_messages": -1,
+                    "voice_minutes": -1,
+                    "ocr_count": -1,
+                }
+            },
+        }
+        
+        tier_info = product_tier_map.get(request.product_id)
+        if not tier_info:
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        
+        # In production, verify receipt with Apple's servers
+        # https://developer.apple.com/documentation/appstorereceipts/verifyreceipt
+        # For now, we trust the client (implement server-side verification in production)
+        
+        # Calculate expiration date
+        expires_at = datetime.now(timezone.utc) + timedelta(days=tier_info["duration_days"])
+        
+        # Update user subscription
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": tier_info["tier"],
+                    "subscription_tier_name": tier_info["tier_name"],
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": expires_at,
+                    "subscription_limits": tier_info["limits"],
+                    "apple_transaction_id": request.transaction_id,
+                    "apple_product_id": request.product_id,
+                }
+            }
+        )
+        
+        # Record purchase
+        purchase_record = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "product_id": request.product_id,
+            "transaction_id": request.transaction_id,
+            "tier": tier_info["tier"],
+            "amount": get_product_price(request.product_id),
+            "currency": "USD",
+            "status": "completed",
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.purchases.insert_one(purchase_record)
+        
+        # Create subscription activated notification
+        await create_notification(
+            current_user.user_id,
+            "subscription_activated",
+            "Subscription Activated! 🎉",
+            f"Your {tier_info['tier_name']} subscription is now active. Enjoy all the features!",
+            {"tier": tier_info["tier"], "expires_at": expires_at.isoformat()}
+        )
+        
+        return {
+            "success": True,
+            "message": "Subscription activated successfully",
+            "tier": tier_info["tier"],
+            "expires_at": expires_at.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error verifying Apple purchase: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def get_product_price(product_id: str) -> float:
+    prices = {
+        "com.finflow.subscription.basic": 2.99,
+        "com.finflow.subscription.premium": 9.99,
+        "com.finflow.subscription.yearly": 99.00,
+        "com.finflow.subscription.monthly": 29.00,
+    }
+    return prices.get(product_id, 0)
+
+@api_router.post("/subscription/start-trial")
+async def start_subscription_trial(
+    current_user: User = Depends(require_auth)
+):
+    """Start a 14-day free trial"""
+    try:
+        # Check if user already had a trial
+        user_doc = await db.users.find_one({"user_id": current_user.user_id})
+        if user_doc and user_doc.get("had_trial"):
+            raise HTTPException(status_code=400, detail="You have already used your free trial")
+        
+        trial_expires = datetime.now(timezone.utc) + timedelta(days=14)
+        
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": "trial",
+                    "subscription_tier_name": "14-Day Free Trial",
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": trial_expires,
+                    "subscription_limits": {
+                        "chat_messages": -1,
+                        "voice_minutes": 30,
+                        "ocr_count": 30,
+                    },
+                    "had_trial": True,
+                    "is_subscription_active": True,
+                    "onboarding_completed": True,
+                }
+            }
+        )
+        
+        # Create trial started notification
+        await create_notification(
+            current_user.user_id,
+            "trial_started",
+            "Welcome to FinFlow! 🚀",
+            "Your 14-day free trial has started. Explore all features and track your finances with AI!",
+            {"trial_expires": trial_expires.isoformat()}
+        )
+        
+        return {
+            "success": True,
+            "message": "14-day trial started",
+            "expires_at": trial_expires.isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting trial: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== NOTIFICATION SYSTEM ====================
+
+class NotificationRequest(BaseModel):
+    title: str
+    message: str
+    type: str = "general"
+    data: Optional[Dict[str, Any]] = None
+
+async def create_notification(
+    user_id: str,
+    notification_type: str,
+    title: str,
+    message: str,
+    data: Optional[Dict[str, Any]] = None
+):
+    """Create an in-app notification"""
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": notification_type,
+        "title": title,
+        "message": message,
+        "data": data or {},
+        "read": False,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.notifications.insert_one(notification)
+    return notification
+
+@api_router.get("/notifications")
+async def get_notifications(
+    limit: int = 20,
+    unread_only: bool = False,
+    current_user: User = Depends(require_auth)
+):
+    """Get user notifications"""
+    try:
+        query = {"user_id": current_user.user_id}
+        if unread_only:
+            query["read"] = False
+        
+        notifications = await db.notifications.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit).to_list(limit)
+        
+        unread_count = await db.notifications.count_documents({
+            "user_id": current_user.user_id,
+            "read": False
+        })
+        
+        return {
+            "notifications": notifications,
+            "unread_count": unread_count
+        }
+    except Exception as e:
+        logger.error(f"Error fetching notifications: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    current_user: User = Depends(require_auth)
+):
+    """Mark a notification as read"""
+    try:
+        result = await db.notifications.update_one(
+            {"id": notification_id, "user_id": current_user.user_id},
+            {"$set": {"read": True, "read_at": datetime.now(timezone.utc)}}
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="Notification not found")
+        
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking notification read: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/notifications/read-all")
+async def mark_all_notifications_read(
+    current_user: User = Depends(require_auth)
+):
+    """Mark all notifications as read"""
+    try:
+        await db.notifications.update_many(
+            {"user_id": current_user.user_id, "read": False},
+            {"$set": {"read": True, "read_at": datetime.now(timezone.utc)}}
+        )
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Error marking all notifications read: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Email notification helper (integrate with email service like SendGrid, SES, etc.)
+async def send_email_notification(
+    email: str,
+    subject: str,
+    body: str,
+    html_body: Optional[str] = None
+):
+    """Send email notification - placeholder for email service integration"""
+    # In production, integrate with email service provider
+    # Example: SendGrid, AWS SES, Mailgun, etc.
+    try:
+        # Log email for now (replace with actual email service)
+        logger.info(f"Email notification to {email}: {subject}")
+        
+        # Record email in database
+        email_record = {
+            "id": str(uuid.uuid4()),
+            "to_email": email,
+            "subject": subject,
+            "body": body,
+            "html_body": html_body,
+            "status": "queued",  # In production: pending, sent, failed
+            "created_at": datetime.now(timezone.utc),
+        }
+        await db.email_notifications.insert_one(email_record)
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error sending email: {str(e)}")
+        return False
+
+# Transaction notification triggers
+async def notify_transaction_created(user_id: str, transaction: dict):
+    """Send notification when transaction is created"""
+    amount = transaction.get("amount", 0)
+    category = transaction.get("category", "Other")
+    tx_type = transaction.get("transaction_type", "expense")
+    
+    if tx_type == "expense":
+        title = f"Expense Logged: {category}"
+        message = f"${amount:,.2f} expense recorded under {category}"
+    else:
+        title = f"Income Logged: {category}"
+        message = f"${amount:,.2f} income recorded"
+    
+    await create_notification(
+        user_id,
+        "transaction_created",
+        title,
+        message,
+        {"transaction_id": transaction.get("id")}
+    )
+
+async def notify_budget_alert(user_id: str, category: str, percentage: float):
+    """Send notification when budget threshold is reached"""
+    if percentage >= 100:
+        title = f"⚠️ Budget Exceeded: {category}"
+        message = f"You've exceeded your {category} budget by {percentage - 100:.0f}%"
+    elif percentage >= 80:
+        title = f"Budget Alert: {category}"
+        message = f"You've used {percentage:.0f}% of your {category} budget"
+    else:
+        return
+    
+    await create_notification(
+        user_id,
+        "budget_alert",
+        title,
+        message,
+        {"category": category, "percentage": percentage}
+    )
+
+async def notify_subscription_expiring(user_id: str, email: str, days_remaining: int):
+    """Send notification when subscription is about to expire"""
+    title = f"Subscription Expiring Soon"
+    message = f"Your subscription expires in {days_remaining} days. Renew now to continue enjoying all features!"
+    
+    # In-app notification
+    await create_notification(
+        user_id,
+        "subscription_expiring",
+        title,
+        message,
+        {"days_remaining": days_remaining}
+    )
+    
+    # Email notification
+    await send_email_notification(
+        email,
+        f"FinFlow: Your subscription expires in {days_remaining} days",
+        message
+    )
+
 # Transaction Routes
 @api_router.get("/")
 async def root():
