@@ -92,33 +92,6 @@ export default function HomeScreen() {
     requestPermissions();
   }, []);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingDuration(0);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording]);
-
-  // Auto-start recording when voice modal opens
-  useEffect(() => {
-    if (showVoiceModal && !isRecording && !processingVoice) {
-      // Small delay to ensure modal is fully visible
-      const timer = setTimeout(() => {
-        startRecording();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-    // Reset live transcription when modal closes
-    if (!showVoiceModal) {
-      setLiveTranscription("");
-    }
-  }, [showVoiceModal]);
-
   const requestPermissions = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     await ImagePicker.requestMediaLibraryPermissionsAsync();
