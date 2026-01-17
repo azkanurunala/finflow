@@ -69,18 +69,31 @@ const PLANS = [
 
 export default function OnboardingTrialScreen() {
   const router = useRouter();
-  const { startTrial, refreshUser } = useAuth();
+  const { user, startTrial, refreshUser } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState("free_trial");
   const [loading, setLoading] = useState(false);
 
   const handleStartTrial = async () => {
     setLoading(true);
     try {
-      await startTrial();
-      await refreshUser();
-      router.replace("/(app)");
+      // Save onboarding preference locally
+      await AsyncStorage.setItem("selected_plan", selectedPlan);
+      await AsyncStorage.setItem("onboarding_preferences_saved", "true");
+      
+      // If user is already logged in, start trial directly
+      if (user) {
+        await startTrial();
+        await refreshUser();
+        router.replace("/(app)");
+      } else {
+        // Not logged in, go to login page
+        // After login, AuthContext will check and start trial
+        router.replace("/login");
+      }
     } catch (error) {
-      console.error("Error starting trial:", error);
+      console.error("Error in onboarding trial:", error);
+      // Still navigate to login on error
+      router.replace("/login");
     } finally {
       setLoading(false);
     }
