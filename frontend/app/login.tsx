@@ -180,24 +180,8 @@ export default function LoginScreen() {
 
           {/* Social Login Buttons - Now at TOP, Full Width */}
           <View style={styles.socialButtonsContainer}>
-            {/* Apple Login Button - Full Width */}
-            {Platform.OS === "ios" && appleAuthAvailable ? (
-              <TouchableOpacity
-                style={styles.socialButtonFull}
-                onPress={handleAppleLogin}
-                activeOpacity={0.7}
-                disabled={isAppleLoggingIn}
-              >
-                {isAppleLoggingIn ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="logo-apple" size={22} color="#fff" />
-                    <Text style={styles.socialButtonTextApple}>Continue with Apple</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            ) : (
+            {/* Apple Login Button - Only show if available (iOS) */}
+            {appleAuthAvailable && (
               <TouchableOpacity
                 style={styles.socialButtonFullApple}
                 onPress={handleAppleLogin}
