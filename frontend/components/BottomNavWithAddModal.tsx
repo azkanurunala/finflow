@@ -8,25 +8,32 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
+import RecordingModal from "./RecordingModal";
 
-interface BottomNavWithAddModalProps {
-  onScanReceipt?: () => void;
-  onVoiceLog?: () => void;
-}
-
-export default function BottomNavWithAddModal({ 
-  onScanReceipt, 
-  onVoiceLog 
-}: BottomNavWithAddModalProps) {
+export default function BottomNavWithAddModal() {
   const router = useRouter();
   const pathname = usePathname();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
 
   const isActive = (route: string) => {
     if (route === "/(app)" || route === "/(app)/index") {
       return pathname === "/(app)" || pathname === "/" || pathname === "/(app)/index";
     }
     return pathname.includes(route);
+  };
+
+  const handleScanReceipt = () => {
+    setShowAddModal(false);
+    setRecordingMode("scan");
+    setShowRecordingModal(true);
+  };
+
+  const handleVoiceLog = () => {
+    setShowAddModal(false);
+    setRecordingMode("voice");
+    setShowRecordingModal(true);
   };
 
   return (
@@ -156,14 +163,7 @@ export default function BottomNavWithAddModal({
 
             <TouchableOpacity
               style={styles.modalOption}
-              onPress={() => {
-                setShowAddModal(false);
-                if (onScanReceipt) {
-                  onScanReceipt();
-                } else {
-                  router.push("/(app)/add?mode=receipt");
-                }
-              }}
+              onPress={handleScanReceipt}
             >
               <View style={[styles.modalOptionIcon, { backgroundColor: "#FEF3C7" }]}>
                 <Ionicons name="camera" size={24} color="#F59E0B" />
@@ -176,14 +176,7 @@ export default function BottomNavWithAddModal({
 
             <TouchableOpacity
               style={styles.modalOption}
-              onPress={() => {
-                setShowAddModal(false);
-                if (onVoiceLog) {
-                  onVoiceLog();
-                } else {
-                  router.push("/(app)/add?mode=voice");
-                }
-              }}
+              onPress={handleVoiceLog}
             >
               <View style={[styles.modalOptionIcon, { backgroundColor: "#EDE9FE" }]}>
                 <Ionicons name="mic" size={24} color="#8B5CF6" />
@@ -196,6 +189,16 @@ export default function BottomNavWithAddModal({
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Recording Modal for Voice & Scan */}
+      <RecordingModal
+        visible={showRecordingModal}
+        mode={recordingMode}
+        onClose={() => setShowRecordingModal(false)}
+        onComplete={() => {
+          setShowRecordingModal(false);
+        }}
+      />
     </>
   );
 }
