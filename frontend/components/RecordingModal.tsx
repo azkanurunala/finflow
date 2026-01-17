@@ -160,40 +160,6 @@ export default function RecordingModal({
   };
 
   // ==================== VOICE HANDLERS ====================
-  const startRecording = async () => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          language === "id" ? "Izin Diperlukan" : "Permission Required",
-          language === "id"
-            ? "Akses mikrofon diperlukan untuk merekam suara"
-            : "Microphone access is needed to record voice"
-        );
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Recording start error:", error);
-      Alert.alert(
-        language === "id" ? "Error" : "Error",
-        language === "id"
-          ? "Gagal memulai rekaman. Pastikan mikrofon tersedia."
-          : "Failed to start recording. Please ensure microphone is available."
-      );
-    }
-  };
 
   const stopRecording = async () => {
     if (!recording) {
