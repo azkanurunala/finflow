@@ -173,6 +173,33 @@ class VoiceTransactionRequest(BaseModel):
     audio_base64: str
     currency: str = "USD"  # User's preferred currency
 
+# Chat Message Models for Persistence
+class ChatMessage(BaseModel):
+    id: str
+    user_id: str
+    type: str  # 'user', 'assistant', 'voice', 'ocr'
+    text: Optional[str] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # For voice messages
+    audio_url: Optional[str] = None
+    transcription: Optional[str] = None
+    # For OCR messages
+    image_base64: Optional[str] = None
+    parsed_data: Optional[Dict[str, Any]] = None
+    # For transaction results
+    transaction_id: Optional[str] = None
+    transaction_data: Optional[Dict[str, Any]] = None
+
+class SaveChatMessageRequest(BaseModel):
+    type: str
+    text: Optional[str] = None
+    audio_url: Optional[str] = None
+    transcription: Optional[str] = None
+    image_base64: Optional[str] = None
+    parsed_data: Optional[Dict[str, Any]] = None
+    transaction_id: Optional[str] = None
+    transaction_data: Optional[Dict[str, Any]] = None
+
 class UsageStats(BaseModel):
     user_id: str
     date: str  # YYYY-MM-DD format
