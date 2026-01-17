@@ -70,11 +70,26 @@ export default function AdvancedAnalyticsScreen() {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       
+      if (!sessionToken) {
+        Alert.alert("Error", "Please login again to export data");
+        setExporting(false);
+        return;
+      }
+      
       if (format === "json") {
         const response = await axios.get(
           `${BACKEND_URL}/api/export/transactions?format=json&days=${selectedPeriod}`,
-          { headers: { Authorization: `Bearer ${sessionToken}` } }
+          { 
+            headers: { Authorization: `Bearer ${sessionToken}` },
+            timeout: 30000
+          }
         );
+        
+        if (!response.data || !response.data.transactions) {
+          Alert.alert("Info", "No transactions to export");
+          setExporting(false);
+          return;
+        }
         
         const jsonString = JSON.stringify(response.data, null, 2);
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.json`;
@@ -86,10 +101,22 @@ export default function AdvancedAnalyticsScreen() {
           a.href = url;
           a.download = filename;
           a.click();
+          URL.revokeObjectURL(url);
         } else {
           const fileUri = FileSystem.documentDirectory + filename;
-          await FileSystem.writeAsStringAsync(fileUri, jsonString);
-          await Sharing.shareAsync(fileUri);
+          await FileSystem.writeAsStringAsync(fileUri, jsonString, {
+            encoding: FileSystem.EncodingType.UTF8
+          });
+          
+          const isSharingAvailable = await Sharing.isAvailableAsync();
+          if (isSharingAvailable) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "application/json",
+              dialogTitle: "Export Transactions"
+            });
+          } else {
+            Alert.alert("Success", `File saved to: ${fileUri}`);
+          }
         }
       } else {
         // CSV export
@@ -97,29 +124,50 @@ export default function AdvancedAnalyticsScreen() {
           `${BACKEND_URL}/api/export/transactions?format=csv&days=${selectedPeriod}`,
           { 
             headers: { Authorization: `Bearer ${sessionToken}` },
-            responseType: "text"
+            responseType: "text",
+            timeout: 30000
           }
         );
+        
+        if (!response.data || response.data.trim() === "") {
+          Alert.alert("Info", "No transactions to export");
+          setExporting(false);
+          return;
+        }
         
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
         
         if (Platform.OS === "web") {
-          const blob = new Blob([response.data], { type: "text/csv" });
+          const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
           a.download = filename;
           a.click();
+          URL.revokeObjectURL(url);
         } else {
           const fileUri = FileSystem.documentDirectory + filename;
-          await FileSystem.writeAsStringAsync(fileUri, response.data);
-          await Sharing.shareAsync(fileUri);
+          await FileSystem.writeAsStringAsync(fileUri, response.data, {
+            encoding: FileSystem.EncodingType.UTF8
+          });
+          
+          const isSharingAvailable = await Sharing.isAvailableAsync();
+          if (isSharingAvailable) {
+            await Sharing.shareAsync(fileUri, {
+              mimeType: "text/csv",
+              dialogTitle: "Export Transactions"
+            });
+          } else {
+            Alert.alert("Success", `File saved to: ${fileUri}`);
+          }
         }
       }
       
       Alert.alert("Success", "Export completed successfully!");
-    } catch (error) {
-      Alert.alert("Error", "Failed to export data");
+    } catch (error: any) {
+      console.error("Export error:", error);
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to export data";
+      Alert.alert("Export Error", errorMessage);
     } finally {
       setExporting(false);
     }
