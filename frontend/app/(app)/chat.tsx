@@ -745,7 +745,10 @@ export default function ChatScreen() {
         <View style={styles.inputContainer}>
           <TouchableOpacity 
             style={styles.attachButton}
-            onPress={() => setShowScanModal(true)}
+            onPress={() => {
+              setRecordingMode("scan");
+              setShowRecordingModal(true);
+            }}
           >
             <Ionicons name="scan-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
@@ -764,7 +767,10 @@ export default function ChatScreen() {
           
           <TouchableOpacity 
             style={styles.micButton}
-            onPress={() => setShowVoiceModal(true)}
+            onPress={() => {
+              setRecordingMode("voice");
+              setShowRecordingModal(true);
+            }}
           >
             <Ionicons name="mic-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
