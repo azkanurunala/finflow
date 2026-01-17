@@ -498,6 +498,20 @@ export default function ChatScreen() {
     setShowVoiceModal(false);
   };
 
+  // Loading state for chat history
+  if (loadingHistory) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4DB6AC" />
+          <Text style={styles.loadingText}>
+            {language === 'id' ? "Memuat riwayat chat..." : "Loading chat history..."}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
@@ -515,10 +529,54 @@ export default function ChatScreen() {
             <Text style={styles.onlineText}>ONLINE</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="ellipsis-horizontal" size={24} color="#1F2937" />
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setShowResetModal(true)}
+        >
+          <Ionicons name="trash-outline" size={22} color="#EF4444" />
         </TouchableOpacity>
       </View>
+
+      {/* Reset Chat Confirmation Modal */}
+      <Modal
+        visible={showResetModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowResetModal(false)}
+      >
+        <View style={styles.resetModalOverlay}>
+          <View style={styles.resetModalContent}>
+            <Ionicons name="warning" size={48} color="#EF4444" />
+            <Text style={styles.resetModalTitle}>
+              {language === 'id' ? "Reset Chat?" : "Reset Chat?"}
+            </Text>
+            <Text style={styles.resetModalText}>
+              {language === 'id' 
+                ? "Semua riwayat percakapan akan dihapus permanen. Transaksi yang sudah tersimpan tidak akan terpengaruh."
+                : "All conversation history will be permanently deleted. Saved transactions will not be affected."
+              }
+            </Text>
+            <View style={styles.resetModalButtons}>
+              <TouchableOpacity
+                style={styles.resetCancelButton}
+                onPress={() => setShowResetModal(false)}
+              >
+                <Text style={styles.resetCancelText}>
+                  {language === 'id' ? "Batal" : "Cancel"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.resetConfirmButton}
+                onPress={handleResetChat}
+              >
+                <Text style={styles.resetConfirmText}>
+                  {language === 'id' ? "Hapus Semua" : "Delete All"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <KeyboardAvoidingView
         style={styles.content}
