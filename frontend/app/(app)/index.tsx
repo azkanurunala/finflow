@@ -402,7 +402,7 @@ export default function HomeScreen() {
         visible={showRecordingModal}
         onClose={() => setShowRecordingModal(false)}
         mode={recordingMode}
-        onSuccess={(transaction) => {
+        onComplete={(result) => {
           setShowRecordingModal(false);
           fetchData();
         }}
