@@ -1289,6 +1289,83 @@ async def get_notifications(
         logger.error(f"Error fetching notifications: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== CHAT PERSISTENCE ENDPOINTS ====================
+
+@api_router.get("/chat/history")
+async def get_chat_history(
+    limit: int = 100,
+    current_user: User = Depends(require_auth)
+):
+    """Get user's chat history - persisted like WhatsApp"""
+    try:
+        messages = await db.chat_messages.find(
+            {"user_id": current_user.user_id},
+            {"_id": 0}
+        ).sort("timestamp", 1).limit(limit).to_list(limit)
+        
+        # Serialize datetime objects
+        for msg in messages:
+            if "timestamp" in msg and hasattr(msg["timestamp"], "isoformat"):
+                msg["timestamp"] = msg["timestamp"].isoformat()
+        
+        return {
+            "messages": messages,
+            "count": len(messages)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching chat history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/chat/message")
+async def save_chat_message(
+    request: SaveChatMessageRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Save a chat message to history"""
+    try:
+        message = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "type": request.type,  # 'user', 'assistant', 'voice', 'ocr'
+            "text": request.text,
+            "timestamp": datetime.now(timezone.utc),
+            "audio_url": request.audio_url,
+            "transcription": request.transcription,
+            "image_base64": request.image_base64[:100] if request.image_base64 else None,  # Store thumbnail only
+            "parsed_data": request.parsed_data,
+            "transaction_id": request.transaction_id,
+            "transaction_data": request.transaction_data,
+        }
+        
+        await db.chat_messages.insert_one(message)
+        
+        # Serialize for response
+        message["timestamp"] = message["timestamp"].isoformat()
+        
+        return {"message": message, "success": True}
+    except Exception as e:
+        logger.error(f"Error saving chat message: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.delete("/chat/history")
+async def clear_chat_history(
+    current_user: User = Depends(require_auth)
+):
+    """Clear all chat history - explicit reset like WhatsApp clear chat"""
+    try:
+        result = await db.chat_messages.delete_many(
+            {"user_id": current_user.user_id}
+        )
+        
+        return {
+            "success": True,
+            "deleted_count": result.deleted_count,
+            "message": "Chat history cleared successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error clearing chat history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/notifications/{notification_id}/read")
 async def mark_notification_read(
     notification_id: str,
