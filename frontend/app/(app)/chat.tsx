@@ -141,6 +141,262 @@ export default function ChatScreen() {
     setChatText(`I want to log ${category}`);
   };
 
+  // ==================== SCAN RECEIPT HANDLERS ====================
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Camera access is needed to scan receipts");
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setSelectedImage(result.assets[0].base64);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to open camera");
+    }
+  };
+
+  const handlePickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setSelectedImage(result.assets[0].base64);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to open gallery");
+    }
+  };
+
+  const handleProcessReceipt = async () => {
+    if (!selectedImage) return;
+
+    setProcessingReceipt(true);
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      
+      const response = await axios.post(
+        `${BACKEND_URL}/api/transactions/receipt`,
+        { 
+          image_base64: selectedImage,
+          currency: currency
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      setShowScanModal(false);
+      setSelectedImage(null);
+      
+      const transaction = response.data.transaction;
+      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=receipt`);
+      
+    } catch (error: any) {
+      Alert.alert(
+        "Error",
+        error.response?.data?.detail || "Failed to process receipt"
+      );
+    } finally {
+      setProcessingReceipt(false);
+    }
+  };
+
+  // ==================== VOICE LOG HANDLERS (with A-1 & A-2 fixes) ====================
+  const startRecording = async () => {
+    try {
+      // A-2: Proper initialization with permission check
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "Microphone access is needed to record voice");
+        return;
+      }
+
+      // A-2: Reset audio mode before starting
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      // A-2: Create recording with error handling
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Recording start error:", error);
+      Alert.alert(
+        language === 'id' ? "Error" : "Error",
+        language === 'id' 
+          ? "Gagal memulai rekaman. Pastikan mikrofon tersedia." 
+          : "Failed to start recording. Please ensure microphone is available."
+      );
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) {
+      // A-1: User-friendly message for no recording
+      Alert.alert(
+        language === 'id' ? "Info" : "Info",
+        language === 'id' 
+          ? "Tidak ada rekaman untuk diproses. Silakan rekam terlebih dahulu." 
+          : "No recording to process. Please record first."
+      );
+      return;
+    }
+
+    setIsRecording(false);
+    setProcessingVoice(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+
+      // A-1: Check if URI exists
+      if (!uri) {
+        Alert.alert(
+          language === 'id' ? "Info" : "Info",
+          language === 'id' 
+            ? "Tidak ada audio yang terekam. Silakan coba lagi." 
+            : "No audio was recorded. Please try again."
+        );
+        setRecording(null);
+        setProcessingVoice(false);
+        return;
+      }
+
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      
+      // A-1: Check blob size - if too small, likely empty recording
+      if (blob.size < 1000) {
+        Alert.alert(
+          language === 'id' ? "Audio Terlalu Pendek" : "Audio Too Short",
+          language === 'id' 
+            ? "Rekaman terlalu pendek untuk ditranskripsi. Silakan rekam lebih lama." 
+            : "Recording is too short to transcribe. Please record longer."
+        );
+        setRecording(null);
+        setProcessingVoice(false);
+        return;
+      }
+      
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          if (!base64String) {
+            reject(new Error("Failed to convert audio"));
+            return;
+          }
+          const base64Data = base64String.split(',')[1];
+          if (!base64Data) {
+            reject(new Error("Invalid audio data"));
+            return;
+          }
+          resolve(base64Data);
+        };
+        reader.onerror = () => reject(new Error("Failed to read audio file"));
+        reader.readAsDataURL(blob);
+      });
+
+      const audioBase64 = await base64Promise;
+      
+      // A-1: Additional check for empty base64
+      if (!audioBase64 || audioBase64.length < 100) {
+        Alert.alert(
+          language === 'id' ? "Info" : "Info",
+          language === 'id' 
+            ? "Tidak ada audio yang bisa ditranskripsi. Silakan coba rekam lagi." 
+            : "No audio could be transcribed. Please try recording again."
+        );
+        setRecording(null);
+        setProcessingVoice(false);
+        return;
+      }
+      
+      const sessionToken = await AsyncStorage.getItem("session_token");
+
+      const apiResponse = await axios.post(
+        `${BACKEND_URL}/api/transactions/voice`,
+        { 
+          audio_base64: audioBase64,
+          currency: currency
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            "Content-Type": "application/json",
+          },
+          timeout: 60000,
+        }
+      );
+
+      setShowVoiceModal(false);
+      setRecording(null);
+      
+      const transaction = apiResponse.data.transaction;
+      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=voice&transcription=${encodeURIComponent(apiResponse.data.transcription || '')}`);
+      
+    } catch (error: any) {
+      console.error("Voice transcription error:", error);
+      
+      // A-1: User-friendly error messages
+      let errorMessage = language === 'id' 
+        ? "Gagal memproses rekaman suara" 
+        : "Failed to process voice recording";
+      
+      if (error.message?.includes("float()") || error.message?.includes("NoneType")) {
+        errorMessage = language === 'id' 
+          ? "Tidak ada audio yang bisa ditranskripsi. Silakan rekam ulang dengan suara yang jelas." 
+          : "No audio could be transcribed. Please record again with clear voice.";
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      
+      Alert.alert(
+        language === 'id' ? "Gagal" : "Error",
+        errorMessage
+      );
+    } finally {
+      setProcessingVoice(false);
+      setRecording(null);
+    }
+  };
+
+  const cancelRecording = async () => {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch (e) {
+        // Ignore errors when canceling
+      }
+    }
+    setRecording(null);
+    setIsRecording(false);
+    setShowVoiceModal(false);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
