@@ -527,31 +527,41 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Income & Expenses Cards - New Layout */}
+        {/* Income & Expenses Cards - New Layout with Deep-linking */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => router.push("/(app)/history?tab=income")}
+            activeOpacity={0.7}
+          >
             <View style={styles.statHeader}>
               <View style={styles.statIconDown}>
                 <Ionicons name="arrow-down" size={14} color="#10B981" />
               </View>
-              <Text style={styles.statLabel}>Income</Text>
+              <Text style={styles.statLabel}>{language === 'id' ? 'Pemasukan' : 'Income'}</Text>
+              <Ionicons name="chevron-forward" size={14} color="#9CA3AF" style={{ marginLeft: 'auto' }} />
             </View>
             <Text style={styles.incomeAmount} numberOfLines={1} adjustsFontSizeToFit>
               +{formatAmount(insights?.total_income || 0)}
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => router.push("/(app)/history?tab=expense")}
+            activeOpacity={0.7}
+          >
             <View style={styles.statHeader}>
               <View style={styles.statIconUp}>
                 <Ionicons name="arrow-up" size={14} color="#EF4444" />
               </View>
-              <Text style={styles.statLabel}>Expenses</Text>
+              <Text style={styles.statLabel}>{language === 'id' ? 'Pengeluaran' : 'Expenses'}</Text>
+              <Ionicons name="chevron-forward" size={14} color="#9CA3AF" style={{ marginLeft: 'auto' }} />
             </View>
             <Text style={styles.expenseAmount} numberOfLines={1} adjustsFontSizeToFit>
               -{formatAmount(insights?.total_expenses || 0)}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Actions - Chat, Voice Log, Scan */}
