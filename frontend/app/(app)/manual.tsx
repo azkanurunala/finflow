@@ -257,8 +257,13 @@ export default function ManualInputScreen() {
           {transactionType === "expense" && (
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Category</Text>
-              <View style={styles.categoriesGrid}>
-                {CATEGORIES.filter(c => c.id !== "Income").map((cat) => (
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.categoriesScrollView}
+                contentContainerStyle={styles.categoriesScrollContent}
+              >
+                {getAllCategories().map((cat) => (
                   <TouchableOpacity
                     key={cat.id}
                     style={[
@@ -282,7 +287,44 @@ export default function ManualInputScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
+                {/* Add Custom Category Button */}
+                <TouchableOpacity
+                  style={styles.addCategoryChip}
+                  onPress={() => setShowAddCategory(true)}
+                >
+                  <Ionicons name="add" size={16} color="#4DB6AC" />
+                  <Text style={styles.addCategoryText}>Add</Text>
+                </TouchableOpacity>
+              </ScrollView>
+              
+              {/* Add Category Input */}
+              {showAddCategory && (
+                <View style={styles.addCategoryContainer}>
+                  <TextInput
+                    style={styles.addCategoryInput}
+                    placeholder="Enter new category name"
+                    placeholderTextColor="#9CA3AF"
+                    value={newCategoryInput}
+                    onChangeText={setNewCategoryInput}
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    style={styles.addCategoryButton}
+                    onPress={handleAddCategory}
+                  >
+                    <Ionicons name="checkmark" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.cancelCategoryButton}
+                    onPress={() => {
+                      setShowAddCategory(false);
+                      setNewCategoryInput("");
+                    }}
+                  >
+                    <Ionicons name="close" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           )}
 
