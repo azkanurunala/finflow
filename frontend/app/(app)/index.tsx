@@ -21,6 +21,8 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
+import * as ImagePicker from "expo-image-picker";
+import { Audio } from "expo-av";
 import RecordingModal from "../../components/RecordingModal";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
