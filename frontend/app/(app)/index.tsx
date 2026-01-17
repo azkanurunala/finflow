@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Dimensions,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
 import RecordingModal from "../../components/RecordingModal";
+import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
