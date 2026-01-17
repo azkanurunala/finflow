@@ -18,20 +18,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Conditionally import react-native-iap only on native platforms
-let RNIap: any = null;
-if (Platform.OS !== 'web') {
-  RNIap = require('react-native-iap');
-}
-
 // Apple IAP Product IDs (configure in App Store Connect)
-const PRODUCT_IDS = Platform.select({
-  ios: [
-    'com.finflow.subscription.basic',      // $2.99/month
-    'com.finflow.subscription.premium',    // $9.99/month  
-    'com.finflow.subscription.yearly',     // $99/year
-    'com.finflow.subscription.monthly',    // $29/month
-  ],
+// Note: react-native-iap should be installed separately for iOS builds
+const PRODUCT_IDS = [
+  'com.finflow.subscription.basic',      // $2.99/month
+  'com.finflow.subscription.premium',    // $9.99/month  
+  'com.finflow.subscription.yearly',     // $99/year
+  'com.finflow.subscription.monthly',    // $29/month
+];
   default: [],
 }) as string[];
 
