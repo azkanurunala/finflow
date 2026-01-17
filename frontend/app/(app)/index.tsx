@@ -551,7 +551,10 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.actionButtonLarge}
-            onPress={() => setShowVoiceModal(true)}
+            onPress={() => {
+              setRecordingMode("voice");
+              setShowRecordingModal(true);
+            }}
           >
             <View style={styles.voiceIconCircle}>
               <View style={styles.voiceIconInner}>
@@ -563,7 +566,10 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.actionButtonSmall}
-            onPress={() => setShowReceiptModal(true)}
+            onPress={() => {
+              setRecordingMode("scan");
+              setShowRecordingModal(true);
+            }}
           >
             <View style={[styles.actionIconCircle, { backgroundColor: "#F59E0B" }]}>
               <Ionicons name="scan" size={26} color="#fff" />
