@@ -293,7 +293,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout, 
       refreshUser,
       updateOnboarding,
-      startTrial
+      startTrial,
+      setUser
     }}>
       {children}
     </AuthContext.Provider>
