@@ -119,7 +119,6 @@ export default function ManualInputScreen() {
   };
 
   const resetForm = () => {
-    setAmount("");
     setDisplayAmount("");
     setMerchant("");
     setCategory("Other");
