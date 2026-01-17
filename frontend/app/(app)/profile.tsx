@@ -15,6 +15,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUserCurrency } from "../../utils/currency";
+import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
 export default function ProfileScreen() {
   const router = useRouter();
