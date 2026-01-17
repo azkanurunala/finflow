@@ -1,0 +1,362 @@
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter, useFocusEffect } from "expo-router";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { formatDistanceToNow } from "date-fns";
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  data?: any;
+  read: boolean;
+  created_at: string;
+}
+
+export default function NotificationsScreen() {
+  const router = useRouter();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      const response = await axios.get(`${BACKEND_URL}/api/notifications`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      setNotifications(response.data.notifications);
+      setUnreadCount(response.data.unread_count);
+    } catch (error) {
+      console.error("Fetch notifications error:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [fetchNotifications])
+  );
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchNotifications();
+  };
+
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      await axios.post(
+        `${BACKEND_URL}/api/notifications/${notificationId}/read`,
+        {},
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      
+      setNotifications(prev =>
+        prev.map(n =>
+          n.id === notificationId ? { ...n, read: true } : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error("Mark as read error:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      await axios.post(
+        `${BACKEND_URL}/api/notifications/read-all`,
+        {},
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Mark all as read error:", error);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    const icons: Record<string, { name: string; color: string; bg: string }> = {
+      transaction_created: { name: "receipt", color: "#10B981", bg: "#D1FAE5" },
+      subscription_activated: { name: "diamond", color: "#8B5CF6", bg: "#EDE9FE" },
+      subscription_expiring: { name: "warning", color: "#F59E0B", bg: "#FEF3C7" },
+      trial_started: { name: "rocket", color: "#3B82F6", bg: "#DBEAFE" },
+      budget_alert: { name: "alert-circle", color: "#EF4444", bg: "#FEE2E2" },
+      general: { name: "notifications", color: "#6B7280", bg: "#F3F4F6" },
+    };
+    return icons[type] || icons.general;
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    } catch {
+      return "Just now";
+    }
+  };
+
+  const handleNotificationPress = async (notification: Notification) => {
+    if (!notification.read) {
+      await markAsRead(notification.id);
+    }
+    
+    // Navigate based on notification type
+    switch (notification.type) {
+      case "transaction_created":
+        if (notification.data?.transaction_id) {
+          router.push(`/(app)/edit-transaction?id=${notification.data.transaction_id}`);
+        }
+        break;
+      case "subscription_activated":
+      case "subscription_expiring":
+        router.push("/(app)/subscription");
+        break;
+      case "budget_alert":
+        router.push("/(app)/insights");
+        break;
+      default:
+        break;
+    }
+  };
+
+  const renderNotification = ({ item }: { item: Notification }) => {
+    const icon = getNotificationIcon(item.type);
+    
+    return (
+      <TouchableOpacity
+        style={[styles.notificationItem, !item.read && styles.unreadItem]}
+        onPress={() => handleNotificationPress(item)}
+      >
+        <View style={[styles.iconContainer, { backgroundColor: icon.bg }]}>
+          <Ionicons name={icon.name as any} size={22} color={icon.color} />
+        </View>
+        <View style={styles.contentContainer}>
+          <View style={styles.headerRow}>
+            <Text style={[styles.title, !item.read && styles.unreadTitle]}>
+              {item.title}
+            </Text>
+            {!item.read && <View style={styles.unreadDot} />}
+          </View>
+          <Text style={styles.message} numberOfLines={2}>
+            {item.message}
+          </Text>
+          <Text style={styles.time}>{formatTime(item.created_at)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4DB6AC" />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unreadCount}</Text>
+            </View>
+          )}
+        </View>
+        {unreadCount > 0 && (
+          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
+            <Text style={styles.markAllText}>Read All</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Notifications List */}
+      {notifications.length > 0 ? (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotification}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={["#4DB6AC"]}
+              tintColor="#4DB6AC"
+            />
+          }
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
+          <Text style={styles.emptyTitle}>No Notifications</Text>
+          <Text style={styles.emptyText}>
+            You're all caught up! We'll notify you when something important happens.
+          </Text>
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F9FAFB",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  badge: {
+    backgroundColor: "#EF4444",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: "center",
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  markAllButton: {
+    padding: 8,
+  },
+  markAllText: {
+    fontSize: 14,
+    color: "#4DB6AC",
+    fontWeight: "600",
+  },
+  listContent: {
+    paddingVertical: 8,
+  },
+  notificationItem: {
+    flexDirection: "row",
+    padding: 16,
+    backgroundColor: "#fff",
+    gap: 12,
+  },
+  unreadItem: {
+    backgroundColor: "#F0FDF4",
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  contentContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1F2937",
+    flex: 1,
+  },
+  unreadTitle: {
+    fontWeight: "700",
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4DB6AC",
+  },
+  message: {
+    fontSize: 14,
+    color: "#6B7280",
+    lineHeight: 20,
+  },
+  time: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 4,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+});
