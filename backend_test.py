@@ -20,7 +20,7 @@ import base64
 from datetime import datetime, timedelta
 
 # Backend URL from frontend/.env
-BACKEND_URL = "https://money-manager-1863.preview.emergentagent.com/api"
+BACKEND_URL = "https://bugfix-brigade-3.preview.emergentagent.com/api"
 
 # Test credentials from review request
 TEST_CREDENTIALS = {

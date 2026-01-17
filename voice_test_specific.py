@@ -10,7 +10,7 @@ import base64
 import json
 
 # Backend URL
-BACKEND_URL = "https://money-manager-1863.preview.emergentagent.com/api"
+BACKEND_URL = "https://bugfix-brigade-3.preview.emergentagent.com/api"
 
 # Test credentials
 TEST_CREDENTIALS = {

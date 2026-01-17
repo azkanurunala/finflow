@@ -8,7 +8,7 @@ import aiohttp
 import base64
 import json
 
-BACKEND_URL = "https://money-manager-1863.preview.emergentagent.com/api"
+BACKEND_URL = "https://bugfix-brigade-3.preview.emergentagent.com/api"
 
 async def test_with_trial_user():
     """Test with existing trial user"""
