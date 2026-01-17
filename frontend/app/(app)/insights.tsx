@@ -43,21 +43,37 @@ interface AIInsights {
 export default function AdvancedAnalyticsScreen() {
   const router = useRouter();
   const { formatAmount, currency } = useCurrency();
+  const { language } = useLanguage();
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState(30);
+  const [filters, setFilters] = useState(defaultFilters);
+
+  // Calculate days from filter
+  const getFilterDays = () => {
+    if (filters.startDate && filters.endDate) {
+      return differenceInDays(filters.endDate, filters.startDate) + 1;
+    }
+    // Default period based on preset
+    switch (filters.datePreset) {
+      case "today": return 1;
+      case "week": return 7;
+      case "month": return 30;
+      default: return 30;
+    }
+  };
 
   useEffect(() => {
     fetchAIInsights();
-  }, [selectedPeriod]);
+  }, [filters]);
 
   const fetchAIInsights = async () => {
     setLoading(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
+      const days = getFilterDays();
       const response = await axios.get(
-        `${BACKEND_URL}/api/insights/ai?days=${selectedPeriod}`,
+        `${BACKEND_URL}/api/insights/ai?days=${days}`,
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
       setInsights(response.data);
