@@ -1083,12 +1083,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   incomeAmount: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: "bold",
     color: "#10B981",
   },
   expenseAmount: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: "bold",
     color: "#EF4444",
   },
