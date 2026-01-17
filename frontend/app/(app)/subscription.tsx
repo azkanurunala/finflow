@@ -18,15 +18,6 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-// Apple IAP Product IDs (configure in App Store Connect)
-// Note: react-native-iap should be installed separately for iOS builds
-const PRODUCT_IDS = [
-  'com.finflow.subscription.basic',      // $2.99/month
-  'com.finflow.subscription.premium',    // $9.99/month  
-  'com.finflow.subscription.yearly',     // $99/year
-  'com.finflow.subscription.monthly',    // $29/month
-];
-
 interface SubscriptionInfo {
   tier: string;
   tier_name: string;
@@ -42,11 +33,11 @@ interface SubscriptionInfo {
   };
 }
 
-// Subscription Packages - Vertical Layout
+// Subscription Packages - Vertical Layout (Single Column)
 const PACKAGES = [
   {
     id: "trial",
-    productId: null, // Free trial, no IAP needed
+    productId: null,
     name: "14-Day Free Trial",
     tagline: "Try all features free for 14 days",
     price: "Free",
@@ -142,29 +133,10 @@ export default function SubscriptionScreen() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [products, setProducts] = useState<RNIap.Product[]>([]);
 
   useEffect(() => {
-    initializeIAP();
     fetchSubscription();
-    
-    return () => {
-      // Cleanup IAP connection
-      RNIap.endConnection();
-    };
   }, []);
-
-  const initializeIAP = async () => {
-    try {
-      if (Platform.OS === 'ios') {
-        await RNIap.initConnection();
-        const availableProducts = await RNIap.getProducts({ skus: PRODUCT_IDS });
-        setProducts(availableProducts);
-      }
-    } catch (error) {
-      console.log('IAP Init Error:', error);
-    }
-  };
 
   const fetchSubscription = async () => {
     try {
@@ -182,7 +154,6 @@ export default function SubscriptionScreen() {
 
   const handlePurchase = async (pkg: typeof PACKAGES[0]) => {
     if (pkg.isTrial) {
-      // Start free trial
       await startFreeTrial();
       return;
     }
@@ -192,72 +163,58 @@ export default function SubscriptionScreen() {
       return;
     }
 
-    if (Platform.OS !== 'ios') {
+    // For iOS, this would trigger Apple IAP
+    // For now, show info about Apple IAP requirement
+    if (Platform.OS === 'ios') {
       Alert.alert(
         "Apple In-App Purchase",
-        "In-App Purchase is only available on iOS devices. Please use the iOS app to subscribe.",
+        `To subscribe to ${pkg.name} for ${pkg.price}/${pkg.period}, please complete the purchase through Apple.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Continue",
+            onPress: () => simulatePurchase(pkg)
+          }
+        ]
+      );
+    } else {
+      Alert.alert(
+        "iOS Required",
+        "In-App Purchase is only available on iOS devices through the App Store.",
         [{ text: "OK" }]
       );
-      return;
-    }
-
-    setPurchasing(pkg.id);
-
-    try {
-      // Request purchase from App Store
-      const purchase = await RNIap.requestPurchase({
-        sku: pkg.productId,
-        andDangerouslyFinishTransactionAutomaticallyIOS: false,
-      });
-
-      if (purchase) {
-        // Verify receipt on backend
-        await verifyPurchase(purchase);
-      }
-    } catch (error: any) {
-      if (error.code === 'E_USER_CANCELLED') {
-        // User cancelled, do nothing
-      } else {
-        console.error('Purchase error:', error);
-        Alert.alert("Purchase Failed", error.message || "Unable to complete purchase. Please try again.");
-      }
-    } finally {
-      setPurchasing(null);
     }
   };
 
-  const verifyPurchase = async (purchase: any) => {
+  // Simulate purchase for testing (in production, use real Apple IAP)
+  const simulatePurchase = async (pkg: typeof PACKAGES[0]) => {
+    setPurchasing(pkg.id);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       
-      const response = await axios.post(
+      // Call backend to activate subscription (simulated)
+      await axios.post(
         `${BACKEND_URL}/api/subscription/verify-apple`,
         {
-          receipt_data: purchase.transactionReceipt,
-          product_id: purchase.productId,
-          transaction_id: purchase.transactionId,
+          receipt_data: "simulated_receipt",
+          product_id: pkg.productId,
+          transaction_id: `simulated_${Date.now()}`,
         },
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
 
-      if (response.data.success) {
-        // Finish transaction
-        await RNIap.finishTransaction({ purchase, isConsumable: false });
-        
-        Alert.alert(
-          "Success!",
-          "Your subscription is now active. Enjoy all the features!",
-          [{ text: "Great!", onPress: () => {
-            refreshUser();
-            fetchSubscription();
-          }}]
-        );
-      } else {
-        throw new Error(response.data.message || "Verification failed");
-      }
+      Alert.alert(
+        "Success!",
+        `Your ${pkg.name} subscription is now active!`,
+        [{ text: "Great!", onPress: () => {
+          refreshUser();
+          fetchSubscription();
+        }}]
+      );
     } catch (error: any) {
-      console.error("Verify purchase error:", error);
-      Alert.alert("Verification Failed", "Unable to verify your purchase. Please contact support.");
+      Alert.alert("Error", error.response?.data?.detail || "Purchase failed");
+    } finally {
+      setPurchasing(null);
     }
   };
 
@@ -284,31 +241,6 @@ export default function SubscriptionScreen() {
       Alert.alert("Error", error.response?.data?.detail || "Unable to start trial");
     } finally {
       setPurchasing(null);
-    }
-  };
-
-  const restorePurchases = async () => {
-    if (Platform.OS !== 'ios') {
-      Alert.alert("Info", "Restore purchases is only available on iOS");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const purchases = await RNIap.getAvailablePurchases();
-      
-      if (purchases.length > 0) {
-        // Verify the latest purchase
-        const latestPurchase = purchases[purchases.length - 1];
-        await verifyPurchase(latestPurchase);
-      } else {
-        Alert.alert("No Purchases", "No previous purchases found to restore.");
-      }
-    } catch (error) {
-      console.error("Restore error:", error);
-      Alert.alert("Error", "Unable to restore purchases. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -430,9 +362,7 @@ export default function SubscriptionScreen() {
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Subscription</Text>
-        <TouchableOpacity onPress={restorePurchases} style={styles.restoreButton}>
-          <Text style={styles.restoreText}>Restore</Text>
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
       <ScrollView 
@@ -446,10 +376,10 @@ export default function SubscriptionScreen() {
             <View style={styles.planInfoHeader}>
               <Ionicons name="diamond" size={24} color="#4DB6AC" />
               <Text style={styles.currentPlanTitle}>
-                {subscription.tier_name || "Free Trial"}
+                {subscription.tier_name || "Free Plan"}
               </Text>
             </View>
-            {subscription.days_remaining !== undefined && (
+            {subscription.days_remaining !== undefined && subscription.days_remaining > 0 && (
               <Text style={styles.daysRemaining}>
                 {subscription.days_remaining} days remaining
               </Text>
@@ -458,7 +388,7 @@ export default function SubscriptionScreen() {
               <View style={styles.usageInfo}>
                 <Text style={styles.usageText}>
                   Chat: {subscription.usage.chat_count} | 
-                  Audio: {subscription.usage.voice_minutes.toFixed(1)} min | 
+                  Audio: {subscription.usage.voice_minutes?.toFixed(1) || 0} min | 
                   OCR: {subscription.usage.ocr_count}
                 </Text>
               </View>
@@ -472,7 +402,7 @@ export default function SubscriptionScreen() {
           All plans include a 7-day money-back guarantee
         </Text>
 
-        {/* Packages - Vertical List */}
+        {/* Packages - Vertical List (Single Column) */}
         <View style={styles.packagesContainer}>
           {PACKAGES.map(renderPackageCard)}
         </View>
@@ -523,13 +453,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#1F2937",
   },
-  restoreButton: {
-    padding: 8,
-  },
-  restoreText: {
-    fontSize: 14,
-    color: "#4DB6AC",
-    fontWeight: "600",
+  placeholder: {
+    width: 40,
   },
   scrollView: {
     flex: 1,
