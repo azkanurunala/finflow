@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,8 +16,20 @@ import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import * as RNIap from "react-native-iap";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+// Apple IAP Product IDs (configure in App Store Connect)
+const PRODUCT_IDS = Platform.select({
+  ios: [
+    'com.finflow.subscription.basic',      // $2.99/month
+    'com.finflow.subscription.premium',    // $9.99/month  
+    'com.finflow.subscription.yearly',     // $99/year
+    'com.finflow.subscription.monthly',    // $29/month
+  ],
+  default: [],
+}) as string[];
 
 interface SubscriptionInfo {
   tier: string;
@@ -33,69 +46,129 @@ interface SubscriptionInfo {
   };
 }
 
-const TIERS = [
+// Subscription Packages - Vertical Layout
+const PACKAGES = [
+  {
+    id: "trial",
+    productId: null, // Free trial, no IAP needed
+    name: "14-Day Free Trial",
+    tagline: "Try all features free for 14 days",
+    price: "Free",
+    priceValue: 0,
+    period: "14 days",
+    features: [
+      { icon: "infinite", text: "Full Feature Access", highlight: true },
+      { icon: "chatbubble", text: "Unlimited Chat" },
+      { icon: "mic", text: "30x Audio Log" },
+      { icon: "camera", text: "30x OCR Scan" },
+    ],
+    color: "#10B981",
+    isTrial: true,
+  },
   {
     id: "basic",
-    name: "Basic",
-    tagline: "Essential for beginners",
-    monthlyPrice: 1.99,
-    yearlyPrice: 19.99,
+    productId: "com.finflow.subscription.basic",
+    name: "Basic Package",
+    tagline: "Essential features for everyday use",
+    price: "$2.99",
+    priceValue: 2.99,
+    period: "month",
     features: [
-      { icon: "chatbubble", text: "30 AI Chat Messages" },
-      { icon: "document-text", text: "20 Uploads/Recordings" },
-      { icon: "stats-chart", text: "Full Analytics" },
-      { icon: "headset", text: "Priority Support" },
+      { icon: "chatbubble", text: "Unlimited Chat", highlight: true },
+      { icon: "mic", text: "30x Audio Log / month" },
+      { icon: "camera", text: "30x OCR Scan / month" },
     ],
     color: "#4DB6AC",
-    isFree: false,
   },
   {
-    id: "pro",
-    name: "Pro",
-    tagline: "For active budgeters",
-    monthlyPrice: 4.99,
-    yearlyPrice: 49.99,
+    id: "premium",
+    productId: "com.finflow.subscription.premium",
+    name: "Premium Package",
+    tagline: "Everything unlimited, no restrictions",
+    price: "$9.99",
+    priceValue: 9.99,
+    period: "month",
     features: [
-      { icon: "chatbubble", text: "100 AI Chat Messages" },
-      { icon: "document-text", text: "100 Uploads/Recordings" },
-      { icon: "stats-chart", text: "Advanced Analytics" },
-      { icon: "headset", text: "Priority Support" },
+      { icon: "chatbubble", text: "Unlimited Chat", highlight: true },
+      { icon: "mic", text: "Unlimited Audio Log", highlight: true },
+      { icon: "camera", text: "Unlimited OCR Scan", highlight: true },
+      { icon: "stats-chart", text: "Premium Analytics" },
+      { icon: "download", text: "Export & Import Data" },
     ],
-    color: "#4DB6AC",
-    mostPopular: true,
+    color: "#8B5CF6",
+    recommended: true,
   },
   {
-    id: "power",
-    name: "Power",
-    tagline: "The ultimate experience",
-    monthlyPrice: 9.99,
-    yearlyPrice: 99.99,
+    id: "yearly",
+    productId: "com.finflow.subscription.yearly",
+    name: "Annual Plan",
+    tagline: "Best value! Get 2 months FREE",
+    price: "$99",
+    priceValue: 99,
+    period: "year",
+    originalPrice: "$119.88",
+    savings: "Save $20.88",
     features: [
-      { icon: "infinite", text: "Unlimited Chat" },
-      { icon: "infinite", text: "Unlimited Uploads" },
-      { icon: "stats-chart", text: "All Features" },
-      { icon: "headset", text: "VIP Support" },
+      { icon: "infinite", text: "All Features Unlimited", highlight: true },
+      { icon: "chatbubble", text: "Unlimited Chat" },
+      { icon: "mic", text: "Unlimited Audio Log" },
+      { icon: "camera", text: "Unlimited OCR Scan" },
+      { icon: "stats-chart", text: "Premium Analytics" },
+      { icon: "download", text: "Export & Import Data" },
+      { icon: "gift", text: "2 Months FREE", highlight: true },
     ],
-    color: "#1E3A8A",
-    isDark: true,
-    isUnlimited: true,
+    color: "#F59E0B",
+    bestValue: true,
+  },
+  {
+    id: "monthly_full",
+    productId: "com.finflow.subscription.monthly",
+    name: "Monthly Full Access",
+    tagline: "Full flexibility, cancel anytime",
+    price: "$29",
+    priceValue: 29,
+    period: "month",
+    features: [
+      { icon: "infinite", text: "All Features Unlimited", highlight: true },
+      { icon: "chatbubble", text: "Unlimited Chat" },
+      { icon: "mic", text: "Unlimited Audio Log" },
+      { icon: "camera", text: "Unlimited OCR Scan" },
+      { icon: "stats-chart", text: "Premium Analytics" },
+      { icon: "download", text: "Export & Import Data" },
+    ],
+    color: "#3B82F6",
   },
 ];
 
 export default function SubscriptionScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(
-    null
-  );
+  const { user, refreshUser } = useAuth();
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">(
-    "monthly"
-  );
+  const [purchasing, setPurchasing] = useState<string | null>(null);
+  const [products, setProducts] = useState<RNIap.Product[]>([]);
 
   useEffect(() => {
+    initializeIAP();
     fetchSubscription();
+    
+    return () => {
+      // Cleanup IAP connection
+      RNIap.endConnection();
+    };
   }, []);
+
+  const initializeIAP = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        await RNIap.initConnection();
+        const availableProducts = await RNIap.getProducts({ skus: PRODUCT_IDS });
+        setProducts(availableProducts);
+      }
+    } catch (error) {
+      console.log('IAP Init Error:', error);
+    }
+  };
 
   const fetchSubscription = async () => {
     try {
@@ -105,42 +178,245 @@ export default function SubscriptionScreen() {
       });
       setSubscription(response.data);
     } catch (error) {
-      console.error("Error fetching subscription:", error);
+      console.error("Fetch subscription error:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpgrade = (tierId: string, tierName: string) => {
-    const period = billingPeriod === "monthly" ? "month" : "year";
-    Alert.alert(
-      "Upgrade Subscription",
-      `In-app purchases will be available soon. You'll be upgraded to ${tierName} (${period}ly billing) via Google Play/App Store.`,
-      [{ text: "OK" }]
+  const handlePurchase = async (pkg: typeof PACKAGES[0]) => {
+    if (pkg.isTrial) {
+      // Start free trial
+      await startFreeTrial();
+      return;
+    }
+
+    if (!pkg.productId) {
+      Alert.alert("Error", "Product not available");
+      return;
+    }
+
+    if (Platform.OS !== 'ios') {
+      Alert.alert(
+        "Apple In-App Purchase",
+        "In-App Purchase is only available on iOS devices. Please use the iOS app to subscribe.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    setPurchasing(pkg.id);
+
+    try {
+      // Request purchase from App Store
+      const purchase = await RNIap.requestPurchase({
+        sku: pkg.productId,
+        andDangerouslyFinishTransactionAutomaticallyIOS: false,
+      });
+
+      if (purchase) {
+        // Verify receipt on backend
+        await verifyPurchase(purchase);
+      }
+    } catch (error: any) {
+      if (error.code === 'E_USER_CANCELLED') {
+        // User cancelled, do nothing
+      } else {
+        console.error('Purchase error:', error);
+        Alert.alert("Purchase Failed", error.message || "Unable to complete purchase. Please try again.");
+      }
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  const verifyPurchase = async (purchase: any) => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      
+      const response = await axios.post(
+        `${BACKEND_URL}/api/subscription/verify-apple`,
+        {
+          receipt_data: purchase.transactionReceipt,
+          product_id: purchase.productId,
+          transaction_id: purchase.transactionId,
+        },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+
+      if (response.data.success) {
+        // Finish transaction
+        await RNIap.finishTransaction({ purchase, isConsumable: false });
+        
+        Alert.alert(
+          "Success!",
+          "Your subscription is now active. Enjoy all the features!",
+          [{ text: "Great!", onPress: () => {
+            refreshUser();
+            fetchSubscription();
+          }}]
+        );
+      } else {
+        throw new Error(response.data.message || "Verification failed");
+      }
+    } catch (error: any) {
+      console.error("Verify purchase error:", error);
+      Alert.alert("Verification Failed", "Unable to verify your purchase. Please contact support.");
+    }
+  };
+
+  const startFreeTrial = async () => {
+    setPurchasing("trial");
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      
+      await axios.post(
+        `${BACKEND_URL}/api/subscription/start-trial`,
+        { trial_days: 14 },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+
+      Alert.alert(
+        "Trial Started!",
+        "Your 14-day free trial is now active. Enjoy all features!",
+        [{ text: "Let's Go!", onPress: () => {
+          refreshUser();
+          fetchSubscription();
+        }}]
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error.response?.data?.detail || "Unable to start trial");
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  const restorePurchases = async () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert("Info", "Restore purchases is only available on iOS");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const purchases = await RNIap.getAvailablePurchases();
+      
+      if (purchases.length > 0) {
+        // Verify the latest purchase
+        const latestPurchase = purchases[purchases.length - 1];
+        await verifyPurchase(latestPurchase);
+      } else {
+        Alert.alert("No Purchases", "No previous purchases found to restore.");
+      }
+    } catch (error) {
+      console.error("Restore error:", error);
+      Alert.alert("Error", "Unable to restore purchases. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderPackageCard = (pkg: typeof PACKAGES[0]) => {
+    const isCurrentPlan = subscription?.tier === pkg.id;
+    const isDisabled = isCurrentPlan || purchasing !== null;
+
+    return (
+      <View 
+        key={pkg.id} 
+        style={[
+          styles.packageCard,
+          pkg.recommended && styles.recommendedCard,
+          pkg.bestValue && styles.bestValueCard,
+          isCurrentPlan && styles.currentPlanCard,
+        ]}
+      >
+        {/* Badges */}
+        {pkg.recommended && (
+          <View style={styles.recommendedBadge}>
+            <Text style={styles.badgeText}>RECOMMENDED</Text>
+          </View>
+        )}
+        {pkg.bestValue && (
+          <View style={styles.bestValueBadge}>
+            <Text style={styles.badgeText}>BEST VALUE</Text>
+          </View>
+        )}
+        {isCurrentPlan && (
+          <View style={styles.currentBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#fff" />
+            <Text style={styles.badgeText}>CURRENT PLAN</Text>
+          </View>
+        )}
+
+        {/* Package Header */}
+        <View style={styles.packageHeader}>
+          <Text style={[styles.packageName, { color: pkg.color }]}>{pkg.name}</Text>
+          <Text style={styles.packageTagline}>{pkg.tagline}</Text>
+        </View>
+
+        {/* Price */}
+        <View style={styles.priceContainer}>
+          <Text style={[styles.priceText, { color: pkg.color }]}>{pkg.price}</Text>
+          {pkg.period !== "14 days" && (
+            <Text style={styles.periodText}>/ {pkg.period}</Text>
+          )}
+        </View>
+
+        {/* Savings */}
+        {pkg.savings && (
+          <View style={styles.savingsContainer}>
+            <Text style={styles.originalPrice}>{pkg.originalPrice}</Text>
+            <View style={styles.savingsBadge}>
+              <Text style={styles.savingsText}>{pkg.savings}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Features */}
+        <View style={styles.featuresContainer}>
+          {pkg.features.map((feature, index) => (
+            <View key={index} style={styles.featureRow}>
+              <Ionicons 
+                name={feature.icon as any} 
+                size={18} 
+                color={feature.highlight ? pkg.color : "#6B7280"} 
+              />
+              <Text style={[
+                styles.featureText,
+                feature.highlight && { color: pkg.color, fontWeight: "600" }
+              ]}>
+                {feature.text}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Action Button */}
+        <TouchableOpacity
+          style={[
+            styles.subscribeButton,
+            { backgroundColor: pkg.color },
+            isDisabled && styles.disabledButton,
+          ]}
+          onPress={() => handlePurchase(pkg)}
+          disabled={isDisabled}
+        >
+          {purchasing === pkg.id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.subscribeButtonText}>
+              {isCurrentPlan 
+                ? "Current Plan" 
+                : pkg.isTrial 
+                  ? "Start Free Trial" 
+                  : `Subscribe for ${pkg.price}`
+              }
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
-
-  const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Logout",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/login");
-        },
-      },
-    ]);
-  };
-
-  const getPrice = (tier: any) => {
-    return billingPeriod === "monthly"
-      ? `$${tier.monthlyPrice.toFixed(2)}`
-      : `$${tier.yearlyPrice.toFixed(2)}`;
-  };
-
-  const getPeriod = () => (billingPeriod === "monthly" ? "/mo" : "/yr");
 
   if (loading) {
     return (
@@ -152,259 +428,72 @@ export default function SubscriptionScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Subscription</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+        <TouchableOpacity onPress={restorePurchases} style={styles.restoreButton}>
+          <Text style={styles.restoreText}>Restore</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Title Section */}
-        <View style={styles.titleSection}>
-          <Text style={styles.mainTitle}>Choose Your Plan</Text>
-          <Text style={styles.subtitle}>
-            Select the perfect plan for your financial tracking needs
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Current Plan Info */}
+        {subscription && (
+          <View style={styles.currentPlanInfo}>
+            <View style={styles.planInfoHeader}>
+              <Ionicons name="diamond" size={24} color="#4DB6AC" />
+              <Text style={styles.currentPlanTitle}>
+                {subscription.tier_name || "Free Trial"}
+              </Text>
+            </View>
+            {subscription.days_remaining !== undefined && (
+              <Text style={styles.daysRemaining}>
+                {subscription.days_remaining} days remaining
+              </Text>
+            )}
+            {subscription.usage && (
+              <View style={styles.usageInfo}>
+                <Text style={styles.usageText}>
+                  Chat: {subscription.usage.chat_count} | 
+                  Audio: {subscription.usage.voice_minutes.toFixed(1)} min | 
+                  OCR: {subscription.usage.ocr_count}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Section Title */}
+        <Text style={styles.sectionTitle}>Choose Your Plan</Text>
+        <Text style={styles.sectionSubtitle}>
+          All plans include a 7-day money-back guarantee
+        </Text>
+
+        {/* Packages - Vertical List */}
+        <View style={styles.packagesContainer}>
+          {PACKAGES.map(renderPackageCard)}
+        </View>
+
+        {/* Footer Info */}
+        <View style={styles.footerInfo}>
+          <Text style={styles.footerText}>
+            • Subscriptions are managed through Apple App Store
+          </Text>
+          <Text style={styles.footerText}>
+            • Cancel anytime from your device settings
+          </Text>
+          <Text style={styles.footerText}>
+            • Payment will be charged to your Apple ID
           </Text>
         </View>
-
-        {/* Billing Period Toggle */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              billingPeriod === "monthly" && styles.toggleButtonActive,
-            ]}
-            onPress={() => setBillingPeriod("monthly")}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                billingPeriod === "monthly" && styles.toggleTextActive,
-              ]}
-            >
-              Monthly
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toggleButton,
-              billingPeriod === "yearly" && styles.toggleButtonActive,
-            ]}
-            onPress={() => setBillingPeriod("yearly")}
-            activeOpacity={0.7}
-          >
-            <Text
-              style={[
-                styles.toggleText,
-                billingPeriod === "yearly" && styles.toggleTextActive,
-              ]}
-            >
-              Yearly
-            </Text>
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>-20%</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Pricing Cards */}
-        <View style={styles.tiersContainer}>
-          {TIERS.map((tier, index) => {
-            const isCurrentPlan =
-              subscription?.tier === tier.id ||
-              (subscription?.tier === "free_trial" && tier.id === "basic");
-
-            return (
-              <View
-                key={tier.id}
-                style={[
-                  styles.tierCard,
-                  tier.isDark && styles.tierCardDark,
-                  tier.mostPopular && styles.tierCardPopular,
-                ]}
-              >
-                {/* Badges */}
-                {tier.mostPopular && (
-                  <View style={styles.mostPopularBadge}>
-                    <Text style={styles.mostPopularText}>MOST POPULAR</Text>
-                  </View>
-                )}
-                {tier.isUnlimited && (
-                  <View style={styles.unlimitedBadge}>
-                    <Text style={styles.unlimitedText}>UNLIMITED</Text>
-                  </View>
-                )}
-                {isCurrentPlan && (
-                  <View style={styles.currentPlanBadge}>
-                    <Text style={styles.currentPlanText}>Current Plan</Text>
-                  </View>
-                )}
-
-                <View style={styles.tierHeader}>
-                  <View style={styles.tierInfo}>
-                    <Text
-                      style={[
-                        styles.tierName,
-                        tier.isDark && styles.tierNameDark,
-                      ]}
-                    >
-                      {tier.name}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.tierTagline,
-                        tier.isDark && styles.tierTaglineDark,
-                      ]}
-                    >
-                      {tier.tagline}
-                    </Text>
-                  </View>
-                  <View style={styles.tierPricing}>
-                    <Text
-                      style={[
-                        styles.tierPrice,
-                        tier.isDark && styles.tierPriceDark,
-                      ]}
-                    >
-                      {getPrice(tier)}
-                    </Text>
-                    {!tier.isFree && (
-                      <Text
-                        style={[
-                          styles.tierPeriod,
-                          tier.isDark && styles.tierPeriodDark,
-                        ]}
-                      >
-                        {getPeriod()}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-
-                {/* Features */}
-                <View style={styles.featuresContainer}>
-                  {tier.features.map((feature, idx) => (
-                    <View key={idx} style={styles.featureRow}>
-                      <Ionicons
-                        name={feature.icon}
-                        size={18}
-                        color={tier.isDark ? "#FCD34D" : "#4DB6AC"}
-                      />
-                      <Text
-                        style={[
-                          styles.featureText,
-                          tier.isDark && styles.featureTextDark,
-                        ]}
-                      >
-                        {feature.text}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* CTA Button */}
-                {isCurrentPlan ? (
-                  <View style={styles.currentPlanButton}>
-                    <Text style={styles.currentPlanButtonText}>
-                      Current Plan
-                    </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => handleUpgrade(tier.id, tier.name)}
-                    activeOpacity={0.8}
-                  >
-                    {tier.isDark ? (
-                      <View style={styles.powerButton}>
-                        <Text style={styles.powerButtonText}>
-                          Get {tier.name} Plan
-                        </Text>
-                      </View>
-                    ) : (
-                      <LinearGradient
-                        colors={["#4DB6AC", "#45A599"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.upgradeButton}
-                      >
-                        <Text style={styles.upgradeButtonText}>
-                          Upgrade to {tier.name}
-                        </Text>
-                      </LinearGradient>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Account Info */}
-        <View style={styles.accountCard}>
-          <Text style={styles.accountTitle}>Account Information</Text>
-          <View style={styles.accountRow}>
-            <Text style={styles.accountLabel}>Name</Text>
-            <Text style={styles.accountValue}>{user?.name}</Text>
-          </View>
-          <View style={styles.accountRow}>
-            <Text style={styles.accountLabel}>Email</Text>
-            <Text style={styles.accountValue}>{user?.email}</Text>
-          </View>
-        </View>
-
-        {/* Disclaimer */}
-        <Text style={styles.disclaimer}>
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-          Subscriptions auto-renew unless cancelled.
-        </Text>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)")}
-        >
-          <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)/history")}
-        >
-          <Ionicons name="list-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItemCenter}>
-          <View style={styles.navCenterButton}>
-            <Ionicons name="add" size={28} color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)/insights")}
-        >
-          <Ionicons name="analytics-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person" size={24} color="#4DB6AC" />
-          <Text style={[styles.navText, styles.navTextActive]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -416,207 +505,200 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F9FAFB",
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F9FAFB",
-    justifyContent: "center",
-    alignItems: "center",
+    padding: 8,
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#1F2937",
   },
-  logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FEE2E2",
-    justifyContent: "center",
-    alignItems: "center",
+  restoreButton: {
+    padding: 8,
   },
-  content: {
+  restoreText: {
+    fontSize: 14,
+    color: "#4DB6AC",
+    fontWeight: "600",
+  },
+  scrollView: {
     flex: 1,
   },
-  titleSection: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 16,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    paddingBottom: 40,
   },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1F2937",
+  currentPlanInfo: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  planInfoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#6B7280",
-    lineHeight: 20,
-  },
-  toggleContainer: {
-    flexDirection: "row",
-    marginHorizontal: 24,
-    marginBottom: 24,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 12,
-    padding: 4,
-  },
-  toggleButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
-    gap: 8,
-  },
-  toggleButtonActive: {
-    backgroundColor: "#fff",
-  },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  toggleTextActive: {
+  currentPlanTitle: {
+    fontSize: 18,
+    fontWeight: "700",
     color: "#1F2937",
   },
-  discountBadge: {
-    backgroundColor: "#10B981",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+  daysRemaining: {
+    fontSize: 14,
+    color: "#6B7280",
+    marginBottom: 8,
   },
-  discountText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#fff",
+  usageInfo: {
+    backgroundColor: "#F3F4F6",
+    borderRadius: 8,
+    padding: 10,
   },
-  tiersContainer: {
-    paddingHorizontal: 24,
-    gap: 16,
+  usageText: {
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1F2937",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
     marginBottom: 24,
   },
-  tierCard: {
+  packagesContainer: {
+    gap: 16,
+  },
+  packageCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#E5E7EB",
     position: "relative",
+    overflow: "hidden",
   },
-  tierCardPopular: {
-    borderColor: "#4DB6AC",
-    borderWidth: 2,
+  recommendedCard: {
+    borderColor: "#8B5CF6",
   },
-  tierCardDark: {
-    backgroundColor: "#1E3A8A",
+  bestValueCard: {
+    borderColor: "#F59E0B",
   },
-  mostPopularBadge: {
+  currentPlanCard: {
+    borderColor: "#10B981",
+    backgroundColor: "#F0FDF4",
+  },
+  recommendedBadge: {
     position: "absolute",
-    top: -10,
-    right: 20,
-    backgroundColor: "#4DB6AC",
+    top: 0,
+    right: 0,
+    backgroundColor: "#8B5CF6",
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderBottomLeftRadius: 12,
   },
-  mostPopularText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  unlimitedBadge: {
+  bestValueBadge: {
     position: "absolute",
-    top: 16,
-    right: 16,
-    backgroundColor: "#FCD34D",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    top: 0,
+    right: 0,
+    backgroundColor: "#F59E0B",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderBottomLeftRadius: 12,
   },
-  unlimitedText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#1E3A8A",
-  },
-  currentPlanBadge: {
+  currentBadge: {
     position: "absolute",
-    top: 16,
-    left: 16,
-    backgroundColor: "#E5E7EB",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  currentPlanText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  tierHeader: {
+    top: 0,
+    right: 0,
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderBottomLeftRadius: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 20,
+    alignItems: "center",
+    gap: 4,
   },
-  tierInfo: {
-    flex: 1,
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 0.5,
   },
-  tierName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1F2937",
+  packageHeader: {
+    marginBottom: 12,
+  },
+  packageName: {
+    fontSize: 20,
+    fontWeight: "700",
     marginBottom: 4,
   },
-  tierNameDark: {
-    color: "#fff",
-  },
-  tierTagline: {
-    fontSize: 13,
-    color: "#6B7280",
-  },
-  tierTaglineDark: {
-    color: "#93C5FD",
-  },
-  tierPricing: {
-    alignItems: "flex-end",
-  },
-  tierPrice: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#1F2937",
-  },
-  tierPriceDark: {
-    color: "#FCD34D",
-  },
-  tierPeriod: {
+  packageTagline: {
     fontSize: 14,
     color: "#6B7280",
   },
-  tierPeriodDark: {
-    color: "#93C5FD",
+  priceContainer: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginBottom: 8,
+  },
+  priceText: {
+    fontSize: 36,
+    fontWeight: "800",
+  },
+  periodText: {
+    fontSize: 16,
+    color: "#6B7280",
+    marginLeft: 4,
+  },
+  savingsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+  originalPrice: {
+    fontSize: 14,
+    color: "#9CA3AF",
+    textDecorationLine: "line-through",
+  },
+  savingsBadge: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  savingsText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#D97706",
   },
   featuresContainer: {
-    gap: 12,
-    marginBottom: 20,
+    marginBottom: 16,
+    gap: 10,
   },
   featureRow: {
     flexDirection: "row",
@@ -625,121 +707,33 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontSize: 14,
-    color: "#374151",
+    color: "#4B5563",
+    flex: 1,
   },
-  featureTextDark: {
-    color: "#E5E7EB",
-  },
-  upgradeButton: {
-    paddingVertical: 14,
-    borderRadius: 10,
+  subscribeButton: {
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
   },
-  upgradeButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+  disabledButton: {
+    opacity: 0.6,
+  },
+  subscribeButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
     color: "#fff",
   },
-  powerButton: {
-    backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
+  footerInfo: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    gap: 8,
   },
-  powerButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1E3A8A",
-  },
-  currentPlanButton: {
-    backgroundColor: "#E5E7EB",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  currentPlanButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
+  footerText: {
+    fontSize: 12,
     color: "#6B7280",
-  },
-  accountCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 24,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  accountTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginBottom: 16,
-  },
-  accountRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  accountLabel: {
-    fontSize: 14,
-    color: "#6B7280",
-  },
-  accountValue: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#1F2937",
-  },
-  disclaimer: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    textAlign: "center",
-    lineHeight: 16,
-    paddingHorizontal: 32,
-    marginBottom: 24,
-  },
-  bottomNav: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    paddingBottom: 8,
-    paddingTop: 8,
-  },
-  navItem: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  navItemCenter: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  navCenterButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#4DB6AC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: -20,
-    elevation: 4,
-    shadowColor: "#4DB6AC",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
-  navText: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    marginTop: 4,
-  },
-  navTextActive: {
-    color: "#4DB6AC",
-    fontWeight: "600",
+    lineHeight: 18,
   },
 });
