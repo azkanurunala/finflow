@@ -278,7 +278,10 @@ export default function HomeScreen() {
       
       const response = await axios.post(
         `${BACKEND_URL}/api/transactions/receipt`,
-        { image_base64: selectedImage },
+        { 
+          image_base64: selectedImage,
+          currency: currency  // Send user's global currency setting
+        },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
