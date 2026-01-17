@@ -284,50 +284,6 @@ export default function RecordingModal({
   };
 
   // ==================== SCAN HANDLERS ====================
-  const handleTakePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          language === "id" ? "Izin Diperlukan" : "Permission Required",
-          language === "id"
-            ? "Akses kamera diperlukan untuk scan struk"
-            : "Camera access is needed to scan receipts"
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to open camera");
-    }
-  };
-
-  const handlePickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to open gallery");
-    }
-  };
 
   const handleProcessReceipt = async () => {
     if (!selectedImage) return;
