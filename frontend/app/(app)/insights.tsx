@@ -264,20 +264,12 @@ export default function AdvancedAnalyticsScreen() {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* Period Selector */}
-        <View style={styles.periodSelector}>
-          {[7, 30, 90].map((days) => (
-            <TouchableOpacity
-              key={days}
-              style={[styles.periodButton, selectedPeriod === days && styles.periodButtonActive]}
-              onPress={() => setSelectedPeriod(days)}
-            >
-              <Text style={[styles.periodButtonText, selectedPeriod === days && styles.periodButtonTextActive]}>
-                {days} Days
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Filter & Sort (using shared component) */}
+        <TransactionFilter 
+          filters={filters} 
+          onFiltersChange={setFilters}
+          showSortOnly={false}
+        />
 
         {loading ? (
           <View style={styles.loadingContainer}>
