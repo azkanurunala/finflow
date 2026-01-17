@@ -38,12 +38,11 @@ const DEFAULT_CATEGORIES = [
 export default function EditTransactionScreen() {
   const router = useRouter();
   const { id, source, transcription } = useLocalSearchParams();
-  const { currency, currencySymbol } = useCurrency();
+  const { currency, currencySymbol, formatInputValue, parseInputValue, getDecimalSeparator } = useCurrency();
   const { language, t } = useLanguage();
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [amount, setAmount] = useState("");
   const [displayAmount, setDisplayAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [category, setCategory] = useState("Other");
@@ -61,20 +60,12 @@ export default function EditTransactionScreen() {
   const isFromReceipt = source === "receipt";
   const decodedTranscription = transcription ? decodeURIComponent(transcription as string) : null;
 
-  // Format number with thousand separators
-  const formatWithThousandSeparator = (value: string) => {
-    const numericValue = value.replace(/[^0-9.]/g, "");
-    const parts = numericValue.split(".");
-    let integerPart = parts[0] || "";
-    const decimalPart = parts.length > 1 ? parts[1] : "";
-    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    return decimalPart ? `${integerPart}.${decimalPart}` : integerPart;
-  };
-
+  // Handle amount input change with proper currency formatting
+  // IDR: 1.250.000,50 (. for thousands, , for decimals)
+  // USD/etc: 1,250.00 (, for thousands, . for decimals)
   const handleAmountChange = (value: string) => {
-    const rawValue = value.replace(/,/g, "");
-    setAmount(rawValue);
-    setDisplayAmount(formatWithThousandSeparator(rawValue));
+    const formatted = formatInputValue(value);
+    setDisplayAmount(formatted);
   };
 
   // Add custom category
