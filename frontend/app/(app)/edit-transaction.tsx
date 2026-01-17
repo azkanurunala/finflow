@@ -136,7 +136,8 @@ export default function EditTransactionScreen() {
   };
 
   const handleSave = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
+    const numericAmount = parseFloat(amount);
+    if (!amount || numericAmount <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
       return;
     }
@@ -148,8 +149,8 @@ export default function EditTransactionScreen() {
       await axios.put(
         `${BACKEND_URL}/api/transactions/${id}`,
         {
-          amount: parseFloat(amount),
-          currency: transactionCurrency,
+          amount: numericAmount,
+          currency: transactionCurrency, // Use selected currency
           merchant: merchant || null,
           category: transactionType === "income" ? "Income" : category,
           date: date.toISOString().split("T")[0],
