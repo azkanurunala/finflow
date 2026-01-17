@@ -121,6 +121,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Set user data
       setUser(userData as User);
+      
+      // Check if user just completed onboarding preferences but hasn't started trial
+      const onboardingPrefsSaved = await AsyncStorage.getItem("onboarding_preferences_saved");
+      if (onboardingPrefsSaved === "true" && !userData.onboarding_completed) {
+        // Auto-start trial for new users
+        try {
+          const trialResponse = await axios.post(
+            `${BACKEND_URL}/api/auth/start-trial`,
+            {},
+            { headers: { Authorization: `Bearer ${session_token}` } }
+          );
+          // Update user state with trial info
+          setUser(prev => prev ? { 
+            ...prev, 
+            subscription_tier: "free_trial",
+            is_subscription_active: true,
+            onboarding_completed: true
+          } : null);
+          // Clear the flag
+          await AsyncStorage.removeItem("onboarding_preferences_saved");
+        } catch (trialError) {
+          console.error("Error auto-starting trial:", trialError);
+        }
+      }
 
       // Clean up URL (web only)
       if (Platform.OS === "web") {
