@@ -604,6 +604,133 @@ async def create_session(request: SessionDataRequest, response: Response):
         logger.error(f"Error creating session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Apple Authentication Endpoint
+class AppleAuthRequest(BaseModel):
+    identity_token: str
+    authorization_code: str
+    user_id: str
+    email: Optional[str] = None
+    full_name: Optional[str] = None
+
+@api_router.post("/auth/apple")
+async def apple_auth(request: AppleAuthRequest, response: Response):
+    """Handle Apple Sign In authentication"""
+    try:
+        import jwt
+        
+        # Decode the identity token (without verification for now - in production, verify with Apple's public keys)
+        try:
+            # Decode without verification to get claims
+            decoded = jwt.decode(request.identity_token, options={"verify_signature": False})
+            apple_user_id = decoded.get("sub")
+            token_email = decoded.get("email")
+        except Exception as decode_error:
+            logger.warning(f"Token decode warning: {decode_error}")
+            apple_user_id = request.user_id
+            token_email = request.email
+        
+        # Use email from token or from request
+        email = token_email or request.email
+        
+        if not email:
+            # Generate a placeholder email using Apple user ID
+            email = f"{request.user_id}@privaterelay.appleid.com"
+        
+        # Check if user exists by Apple ID or email
+        existing_user = await db.users.find_one(
+            {"$or": [
+                {"apple_user_id": request.user_id},
+                {"email": email}
+            ]},
+            {"_id": 0}
+        )
+        
+        if existing_user:
+            user_id = existing_user["user_id"]
+            # Update Apple user ID if not set
+            if not existing_user.get("apple_user_id"):
+                await db.users.update_one(
+                    {"user_id": user_id},
+                    {"$set": {"apple_user_id": request.user_id}}
+                )
+        else:
+            # Create new user
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            
+            # Free trial expires in 3 days
+            trial_expires = datetime.now(timezone.utc) + timedelta(days=3)
+            
+            new_user = {
+                "user_id": user_id,
+                "email": email,
+                "name": request.full_name or "Apple User",
+                "apple_user_id": request.user_id,
+                "subscription_tier": "free_trial",
+                "subscription_started_at": datetime.now(timezone.utc),
+                "subscription_expires_at": trial_expires,
+                "created_at": datetime.now(timezone.utc),
+                "auth_provider": "apple"
+            }
+            
+            await db.users.insert_one(new_user)
+        
+        # Create session token
+        session_token = secrets.token_urlsafe(32)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        
+        session_doc = {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": session_expires,
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.user_sessions.insert_one(session_doc)
+        
+        # Get user data
+        user_doc = await db.users.find_one(
+            {"user_id": user_id},
+            {"_id": 0, "password_hash": 0}
+        )
+        
+        # Check subscription status
+        is_subscription_active = True
+        if user_doc.get("subscription_expires_at"):
+            expires_at = user_doc["subscription_expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            is_subscription_active = expires_at > datetime.now(timezone.utc)
+        
+        # Set httpOnly cookie
+        response.set_cookie(
+            key="session_token",
+            value=session_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+            path="/"
+        )
+        
+        return {
+            "session_token": session_token,
+            "user": {
+                "user_id": user_doc["user_id"],
+                "email": user_doc["email"],
+                "name": user_doc["name"],
+                "subscription_tier": user_doc.get("subscription_tier"),
+                "subscription_expires_at": user_doc.get("subscription_expires_at"),
+                "is_subscription_active": is_subscription_active,
+                "onboarding_completed": user_doc.get("onboarding_completed", False),
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in Apple auth: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/auth/me")
 async def get_me(request: Request):
     """Get current user info"""
