@@ -448,7 +448,7 @@ export default function HomeScreen() {
               </View>
               <Text style={styles.statLabel}>Income</Text>
             </View>
-            <Text style={styles.incomeAmount}>
+            <Text style={styles.incomeAmount} numberOfLines={1} adjustsFontSizeToFit>
               +{formatAmount(insights?.total_income || 0)}
             </Text>
           </View>
