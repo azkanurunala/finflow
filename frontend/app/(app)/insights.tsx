@@ -142,7 +142,7 @@ export default function AdvancedAnalyticsScreen() {
       } else {
         // CSV export
         const response = await axios.get(
-          `${BACKEND_URL}/api/export/transactions?format=csv&days=${selectedPeriod}`,
+          `${BACKEND_URL}/api/export/transactions?format=csv&days=${days}`,
           { 
             headers: { Authorization: `Bearer ${sessionToken}` },
             responseType: "text",
