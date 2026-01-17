@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import axios from "axios";
 import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -64,9 +64,12 @@ export default function HistoryScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+  // Reload data when screen is focused (after edit/delete)
+  useFocusEffect(
+    useCallback(() => {
+      fetchTransactions();
+    }, [fetchTransactions])
+  );
 
   const onRefresh = () => {
     setRefreshing(true);
