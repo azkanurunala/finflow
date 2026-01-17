@@ -65,24 +65,19 @@ export default function HomeScreen() {
         if (openVoice === 'true') {
           setRecordingMode("voice");
           setShowRecordingModal(true);
+          // Clean up URL
+          url.searchParams.delete('openVoice');
+          window.history.replaceState({}, '', url.toString());
         } else if (openScan === 'true') {
           setRecordingMode("scan");
           setShowRecordingModal(true);
+          // Clean up URL
+          url.searchParams.delete('openScan');
+          window.history.replaceState({}, '', url.toString());
         }
       }
     } catch (e) {
       // Ignore - not in browser
-    }
-  }, []);
-      // Clean up URL
-      url.searchParams.delete('openVoice');
-      window.history.replaceState({}, '', url.toString());
-    }
-    if (openScan === 'true') {
-      setShowReceiptModal(true);
-      // Clean up URL
-      url.searchParams.delete('openScan');
-      window.history.replaceState({}, '', url.toString());
     }
   }, []);
 
