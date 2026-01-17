@@ -748,7 +748,7 @@ async def apple_auth(request: AppleAuthRequest, response: Response):
                 "subscription_tier": user_doc.get("subscription_tier"),
                 "subscription_expires_at": user_doc.get("subscription_expires_at"),
                 "is_subscription_active": is_subscription_active,
-                "onboarding_completed": user_doc.get("onboarding_completed", False),
+                "onboarding_completed": user_doc.get("onboarding_completed", True),
             }
         }
         
