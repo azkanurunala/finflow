@@ -298,8 +298,8 @@ export default function EditTransactionScreen() {
               placeholder="0"
               placeholderTextColor="#D1D5DB"
               keyboardType="decimal-pad"
-              value={amount}
-              onChangeText={setAmount}
+              value={displayAmount}
+              onChangeText={handleAmountChange}
             />
           </View>
 
