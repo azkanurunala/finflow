@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,8 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
+import RecordingModal from "../../components/RecordingModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
