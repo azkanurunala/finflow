@@ -15,10 +15,14 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
-import * as RNIap from "react-native-iap";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+// Conditionally import react-native-iap only on native platforms
+let RNIap: any = null;
+if (Platform.OS !== 'web') {
+  RNIap = require('react-native-iap');
+}
 
 // Apple IAP Product IDs (configure in App Store Connect)
 const PRODUCT_IDS = Platform.select({
