@@ -62,18 +62,21 @@ export default function RecordingModal({
       setProcessingVoice(false);
       setSelectedImage(null);
       setProcessingReceipt(false);
-    } else {
-      // AUTO-START when modal opens
-      const autoStart = async () => {
+    }
+  }, [visible]);
+
+  // Separate effect for auto-start to avoid dependency issues
+  useEffect(() => {
+    if (visible) {
+      const timer = setTimeout(async () => {
         if (mode === "voice") {
-          // Small delay to ensure modal is visible
-          setTimeout(() => startRecording(), 300);
+          await startRecordingAuto();
         } else if (mode === "scan") {
-          // Auto-open camera for scan
-          setTimeout(() => autoOpenCamera(), 300);
+          await autoOpenCamera();
         }
-      };
-      autoStart();
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
   }, [visible, mode]);
 
@@ -88,6 +91,7 @@ export default function RecordingModal({
             ? "Akses kamera diperlukan untuk scan struk"
             : "Camera access is needed to scan receipts"
         );
+        onClose();
         return;
       }
 
@@ -107,6 +111,50 @@ export default function RecordingModal({
     } catch (error) {
       console.error("Camera error:", error);
       Alert.alert("Error", "Failed to open camera");
+      onClose();
+    }
+  };
+
+  // Auto-start recording function with better error handling
+  const startRecordingAuto = async () => {
+    try {
+      console.log("Starting auto recording...");
+      
+      const { status } = await Audio.requestPermissionsAsync();
+      console.log("Permission status:", status);
+      
+      if (status !== "granted") {
+        Alert.alert(
+          language === "id" ? "Izin Diperlukan" : "Permission Required",
+          language === "id"
+            ? "Akses mikrofon diperlukan untuk merekam suara"
+            : "Microphone access is needed to record voice"
+        );
+        onClose();
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      console.log("Creating recording...");
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      console.log("Recording created successfully");
+      setRecording(newRecording);
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Auto recording start error:", error);
+      Alert.alert(
+        language === "id" ? "Error" : "Error",
+        language === "id"
+          ? "Gagal memulai rekaman. Pastikan mikrofon tersedia."
+          : "Failed to start recording. Please ensure microphone is available."
+      );
       onClose();
     }
   };
