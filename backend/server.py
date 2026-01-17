@@ -149,6 +149,7 @@ class ChatTransactionRequest(BaseModel):
 
 class ReceiptTransactionRequest(BaseModel):
     image_base64: str
+    currency: str = "USD"  # User's preferred currency
 
 class ManualTransactionRequest(BaseModel):
     amount: float
