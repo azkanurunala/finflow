@@ -36,9 +36,19 @@ export default function LoginScreen() {
   useEffect(() => {
     // Check if Apple Authentication is available
     const checkAppleAuth = async () => {
+      // Apple Auth only works on iOS, not web
       if (Platform.OS === "ios") {
-        const isAvailable = await AppleAuthentication.isAvailableAsync();
-        setAppleAuthAvailable(isAvailable);
+        try {
+          const isAvailable = await AppleAuthentication.isAvailableAsync();
+          setAppleAuthAvailable(isAvailable);
+        } catch (e) {
+          console.log("Apple Auth not available:", e);
+          setAppleAuthAvailable(false);
+        }
+      } else {
+        // On web/Android, Apple Sign In requires different implementation
+        // For now, hide the button on non-iOS platforms
+        setAppleAuthAvailable(false);
       }
     };
     checkAppleAuth();
