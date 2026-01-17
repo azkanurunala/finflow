@@ -237,46 +237,8 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)")}
-        >
-          <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)/history")}
-        >
-          <Ionicons name="swap-horizontal-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItemCenter}
-          onPress={() => router.push("/(app)/manual")}
-        >
-          <View style={styles.navCenterButton}>
-            <Ionicons name="add" size={28} color="#fff" />
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.push("/(app)/insights")}
-        >
-          <Ionicons name="bar-chart-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person" size={24} color="#10B981" />
-          <Text style={[styles.navText, styles.navTextActive]}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Bottom Navigation with Add Modal */}
+      <BottomNavWithAddModal />
     </SafeAreaView>
   );
 }
