@@ -127,8 +127,9 @@ export default function EditTransactionScreen() {
   };
 
   const handleSave = async () => {
-    const numericAmount = parseFloat(amount);
-    if (!amount || numericAmount <= 0) {
+    // Parse the formatted display amount back to numeric value
+    const numericAmount = parseInputValue(displayAmount);
+    if (!displayAmount || numericAmount <= 0) {
       Alert.alert("Error", "Please enter a valid amount");
       return;
     }
