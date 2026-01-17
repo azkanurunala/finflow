@@ -13,8 +13,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Scan receipts to track expenses",
         "NSMicrophoneUsageDescription": "Record voice notes for expenses",
-        "NSPhotoLibraryUsageDescription": "Select receipt photos from gallery"
-      }
+        "NSPhotoLibraryUsageDescription": "Select receipt photos from gallery",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.azkanura.finflow"
     },
     "android": {
       "adaptiveIcon": {
@@ -42,15 +44,22 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-image.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#000000"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a4d43050-4bae-46c0-8da2-d4e6c0ae7ece"
+      }
     }
   }
 }
