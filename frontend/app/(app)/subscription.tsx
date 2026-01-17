@@ -26,8 +26,6 @@ const PRODUCT_IDS = [
   'com.finflow.subscription.yearly',     // $99/year
   'com.finflow.subscription.monthly',    // $29/month
 ];
-  default: [],
-}) as string[];
 
 interface SubscriptionInfo {
   tier: string;
