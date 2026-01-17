@@ -44,6 +44,17 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  
+  // Scan Receipt Modal State
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [processingReceipt, setProcessingReceipt] = useState(false);
+  
+  // Voice Log Modal State
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [processingVoice, setProcessingVoice] = useState(false);
 
   useEffect(() => {
     // Add welcome message based on language
