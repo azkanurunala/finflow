@@ -105,7 +105,10 @@ export default function AddScreen() {
       
       const response = await axios.post(
         `${BACKEND_URL}/api/transactions/receipt`,
-        { image_base64: selectedImage },
+        { 
+          image_base64: selectedImage,
+          currency: currency  // Use user's global currency setting
+        },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -114,16 +117,9 @@ export default function AddScreen() {
         }
       );
 
-      Alert.alert("Success", "Receipt processed successfully!", [
-        {
-          text: "View Transaction",
-          onPress: () => router.replace("/(app)/history"),
-        },
-        {
-          text: "Add Another",
-          onPress: () => setSelectedImage(null),
-        },
-      ]);
+      // Redirect to edit screen for verification
+      const transaction = response.data.transaction;
+      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=receipt`);
     } catch (error: any) {
       Alert.alert(
         "Error",
