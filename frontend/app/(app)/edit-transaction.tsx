@@ -111,13 +111,22 @@ export default function EditTransactionScreen() {
       );
       
       const t = response.data;
-      setAmount(t.amount.toString());
+      const amountStr = t.amount.toString();
+      setAmount(amountStr);
+      setDisplayAmount(formatWithThousandSeparator(amountStr));
       setMerchant(t.merchant || "");
       setCategory(t.category);
       setTransactionType(t.transaction_type);
       setDate(new Date(t.date));
       setNotes(t.notes || "");
-      setTransactionCurrency(t.currency || "USD");
+      // Use transaction's currency if exists, otherwise use user's global currency
+      setTransactionCurrency(t.currency || currency);
+      
+      // If category is not in default list, add to custom categories
+      const isDefaultCategory = DEFAULT_CATEGORIES.some(cat => cat.id === t.category);
+      if (!isDefaultCategory && t.category !== "Income") {
+        setCustomCategories([t.category]);
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to load transaction");
       router.back();
