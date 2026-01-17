@@ -17,20 +17,36 @@ import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as AppleAuthentication from "expo-apple-authentication";
+import axios from "axios";
+
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { user, loading, login, loginWithEmail } = useAuth();
+  const { user, loading, login, loginWithEmail, setUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isAppleLoggingIn, setIsAppleLoggingIn] = useState(false);
   const [error, setError] = useState("");
+  const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
+
+  useEffect(() => {
+    // Check if Apple Authentication is available
+    const checkAppleAuth = async () => {
+      if (Platform.OS === "ios") {
+        const isAvailable = await AppleAuthentication.isAvailableAsync();
+        setAppleAuthAvailable(isAvailable);
+      }
+    };
+    checkAppleAuth();
+  }, []);
 
   useEffect(() => {
     const handleUserRedirect = async () => {
       if (user && !loading) {
-        // Always go to app or trial after login - onboarding is already done if we're here
         if (!user.is_subscription_active && !user.subscription_tier) {
           router.replace("/onboarding-trial");
         } else {
@@ -41,6 +57,47 @@ export default function LoginScreen() {
     
     handleUserRedirect();
   }, [user, loading]);
+
+  const handleAppleLogin = async () => {
+    try {
+      setIsAppleLoggingIn(true);
+      setError("");
+
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      // Send credential to backend for verification and user creation/login
+      const response = await axios.post(`${BACKEND_URL}/api/auth/apple`, {
+        identity_token: credential.identityToken,
+        authorization_code: credential.authorizationCode,
+        user_id: credential.user,
+        email: credential.email,
+        full_name: credential.fullName
+          ? `${credential.fullName.givenName || ""} ${credential.fullName.familyName || ""}`.trim()
+          : null,
+      });
+
+      if (response.data.session_token) {
+        await AsyncStorage.setItem("session_token", response.data.session_token);
+        setUser(response.data.user);
+      } else {
+        throw new Error("No session token received");
+      }
+    } catch (error: any) {
+      if (error.code === "ERR_REQUEST_CANCELED") {
+        // User canceled the sign-in
+        return;
+      }
+      console.error("Apple login error:", error);
+      setError(error.response?.data?.detail || "Apple login failed. Please try again.");
+    } finally {
+      setIsAppleLoggingIn(false);
+    }
+  };
 
   const handleEmailLogin = async () => {
     if (!email.trim()) {
@@ -99,7 +156,7 @@ export default function LoginScreen() {
           <View style={styles.welcomeSection}>
             <Text style={styles.title}>Welcome Back!</Text>
             <Text style={styles.subtitle}>
-              Enter your details to access your account
+              Sign in to continue managing your finances
             </Text>
           </View>
 
@@ -110,6 +167,61 @@ export default function LoginScreen() {
               <Text style={styles.errorText}>{error}</Text>
             </View>
           ) : null}
+
+          {/* Social Login Buttons - Now at TOP, Full Width */}
+          <View style={styles.socialButtonsContainer}>
+            {/* Apple Login Button - Full Width */}
+            {Platform.OS === "ios" && appleAuthAvailable ? (
+              <TouchableOpacity
+                style={styles.socialButtonFull}
+                onPress={handleAppleLogin}
+                activeOpacity={0.7}
+                disabled={isAppleLoggingIn}
+              >
+                {isAppleLoggingIn ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={22} color="#fff" />
+                    <Text style={styles.socialButtonTextApple}>Continue with Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.socialButtonFullApple}
+                onPress={handleAppleLogin}
+                activeOpacity={0.7}
+                disabled={isAppleLoggingIn}
+              >
+                {isAppleLoggingIn ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={22} color="#fff" />
+                    <Text style={styles.socialButtonTextApple}>Continue with Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Google Login Button - Full Width */}
+            <TouchableOpacity
+              style={styles.socialButtonFullGoogle}
+              onPress={login}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="logo-google" size={20} color="#1F2937" />
+              <Text style={styles.socialButtonTextGoogle}>Continue with Google</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
@@ -188,42 +300,12 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.loginButtonText}>Log In</Text>
+                  <Text style={styles.loginButtonText}>Log In with Email</Text>
                   <Ionicons name="arrow-forward" size={20} color="#fff" />
                 </>
               )}
             </LinearGradient>
           </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Social Login Buttons */}
-          <View style={styles.socialButtons}>
-            <TouchableOpacity
-              style={styles.socialButton}
-              onPress={login}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="logo-google" size={20} color="#1F2937" />
-              <Text style={styles.socialButtonText}>Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.socialButton, styles.socialButtonDisabled]}
-              disabled
-              activeOpacity={0.7}
-            >
-              <Ionicons name="logo-apple" size={20} color="#9CA3AF" />
-              <Text style={[styles.socialButtonText, styles.socialButtonTextDisabled]}>
-                Apple
-              </Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Sign Up Link */}
           <View style={styles.signupLink}>
@@ -262,7 +344,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 24,
   },
   logoCircle: {
     width: 64,
@@ -307,6 +389,68 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: "#EF4444",
+  },
+  socialButtonsContainer: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  socialButtonFull: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#000",
+    borderRadius: 12,
+    paddingVertical: 16,
+    width: "100%",
+  },
+  socialButtonFullApple: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#000",
+    borderRadius: 12,
+    paddingVertical: 16,
+    width: "100%",
+  },
+  socialButtonFullGoogle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingVertical: 16,
+    width: "100%",
+  },
+  socialButtonTextApple: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  socialButtonTextGoogle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E5E7EB",
+  },
+  dividerText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    paddingHorizontal: 16,
+    fontWeight: "500",
   },
   inputContainer: {
     marginBottom: 20,
@@ -371,50 +515,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E5E7EB",
-  },
-  dividerText: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    paddingHorizontal: 16,
-    fontWeight: "500",
-  },
-  socialButtons: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 32,
-  },
-  socialButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 14,
-  },
-  socialButtonDisabled: {
-    opacity: 0.5,
-  },
-  socialButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
-  socialButtonTextDisabled: {
-    color: "#9CA3AF",
   },
   signupLink: {
     flexDirection: "row",
