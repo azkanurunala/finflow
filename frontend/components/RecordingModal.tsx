@@ -385,31 +385,19 @@ export default function RecordingModal({
             {language === "id" ? "Memproses rekaman..." : "Processing recording..."}
           </Text>
         </View>
-      ) : (
+      ) : isRecording ? (
         <>
-          <View
-            style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-          >
+          <View style={[styles.recordButton, styles.recordButtonActive]}>
             <TouchableOpacity
-              onPress={isRecording ? stopRecording : startRecording}
+              onPress={stopRecording}
               style={styles.recordButtonInner}
             >
-              <Ionicons
-                name={isRecording ? "stop" : "mic"}
-                size={40}
-                color={isRecording ? "#EF4444" : "#4DB6AC"}
-              />
+              <Ionicons name="stop" size={40} color="#EF4444" />
             </TouchableOpacity>
           </View>
 
           <Text style={styles.recordingStatus}>
-            {isRecording
-              ? language === "id"
-                ? "Merekam... Tekan untuk berhenti"
-                : "Recording... Tap to stop"
-              : language === "id"
-              ? "Tekan untuk mulai merekam"
-              : "Tap to start recording"}
+            {language === "id" ? "Merekam... Tekan untuk berhenti" : "Recording... Tap to stop"}
           </Text>
 
           <Text style={styles.recordingHint}>
@@ -418,6 +406,13 @@ export default function RecordingModal({
               : 'Example: "Spent $15 on lunch"'}
           </Text>
         </>
+      ) : (
+        <View style={styles.processingContainer}>
+          <ActivityIndicator size="large" color="#4DB6AC" />
+          <Text style={styles.processingText}>
+            {language === "id" ? "Memulai rekaman..." : "Starting recording..."}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -434,7 +429,7 @@ export default function RecordingModal({
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.retakeButton}
-              onPress={() => setSelectedImage(null)}
+              onPress={autoOpenCamera}
             >
               <Text style={styles.retakeButtonText}>
                 {language === "id" ? "Foto Ulang" : "Retake"}
@@ -456,24 +451,11 @@ export default function RecordingModal({
           </View>
         </View>
       ) : (
-        <View style={styles.scanOptions}>
-          <TouchableOpacity style={styles.scanOption} onPress={handleTakePhoto}>
-            <View style={[styles.scanOptionIcon, { backgroundColor: "#DBEAFE" }]}>
-              <Ionicons name="camera" size={32} color="#3B82F6" />
-            </View>
-            <Text style={styles.scanOptionTitle}>
-              {language === "id" ? "Ambil Foto" : "Take Photo"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.scanOption} onPress={handlePickImage}>
-            <View style={[styles.scanOptionIcon, { backgroundColor: "#FEF3C7" }]}>
-              <Ionicons name="images" size={32} color="#F59E0B" />
-            </View>
-            <Text style={styles.scanOptionTitle}>
-              {language === "id" ? "Dari Galeri" : "From Gallery"}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.processingContainer}>
+          <ActivityIndicator size="large" color="#F59E0B" />
+          <Text style={styles.processingText}>
+            {language === "id" ? "Membuka kamera..." : "Opening camera..."}
+          </Text>
         </View>
       )}
     </>
