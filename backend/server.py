@@ -232,6 +232,75 @@ class UpdateOnboardingRequest(BaseModel):
     currency: Optional[str] = None
     onboarding_completed: Optional[bool] = None
 
+# New Pydantic Models for Requirements
+class UpdateUserSettingsRequest(BaseModel):
+    currency: Optional[str] = None
+    language: Optional[str] = None
+    notification_push: Optional[bool] = None
+    notification_email: Optional[bool] = None
+
+class OnboardingBalanceRequest(BaseModel):
+    amount: float
+    currency: Optional[str] = "USD"
+
+# ==================== HELPER FUNCTIONS ====================
+
+def format_currency(amount: float, currency: str) -> str:
+    """Locale-aware currency formatting"""
+    if currency == "IDR":
+        # Indonesian Rupiah format: Rp 1.234.567
+        formatted = f"{amount:,.0f}".replace(",", ".")
+        return f"Rp {formatted}"
+    elif currency == "EUR":
+        # Euro format: €1.234,56
+        formatted = f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"€{formatted}"
+    elif currency == "GBP":
+        return f"£{amount:,.2f}"
+    elif currency == "JPY":
+        return f"¥{amount:,.0f}"
+    elif currency == "SGD":
+        return f"S${amount:,.2f}"
+    else:
+        # Default USD format: $1,234.56
+        return f"${amount:,.2f}"
+
+async def save_to_chat_history(user_id: str, message_type: str, text: str, data: dict = None):
+    """Save Voice/OCR results to chat history for WhatsApp-like persistence"""
+    try:
+        message = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": message_type,  # 'voice', 'ocr', 'user', 'assistant'
+            "text": text,
+            "parsed_data": data,
+            "timestamp": datetime.now(timezone.utc)
+        }
+        await db.chat_messages.insert_one(message)
+        logger.info(f"Saved {message_type} message to chat history for user {user_id}")
+        return message
+    except Exception as e:
+        logger.error(f"Error saving to chat history: {str(e)}")
+        return None
+
+async def send_system_notification(user_id: str, title: str, body: str, notification_type: str = "system"):
+    """Create a system notification for a user"""
+    try:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": notification_type,
+            "title": title,
+            "body": body,
+            "read": False,
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.notifications.insert_one(notification)
+        return notification
+    except Exception as e:
+        logger.error(f"Error creating system notification: {str(e)}")
+        return None
+
 # Helper function to hash password
 def hash_password(password: str) -> str:
     """Hash password with salt using SHA256"""
