@@ -936,7 +936,7 @@ async def register(request: RegisterRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
@@ -992,7 +992,7 @@ async def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
