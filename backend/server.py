@@ -682,7 +682,7 @@ async def create_session(request: SessionDataRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,  # 7 days
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
@@ -804,7 +804,7 @@ async def apple_auth(request: AppleAuthRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,  # 7 days
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
