@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.finflow.app",
       "usesAppleSignIn": true,
+      "jsEngine": "jsc",
       "infoPlist": {
         "NSCameraUsageDescription": "Scan receipts to track expenses",
         "NSMicrophoneUsageDescription": "Record voice notes for expenses",
