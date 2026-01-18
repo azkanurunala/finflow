@@ -1074,6 +1074,127 @@ async def start_trial(current_user: User = Depends(require_auth)):
         logger.error(f"Error starting trial: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== USER SETTINGS ENDPOINTS ====================
+
+@api_router.put("/user/settings")
+async def update_user_settings(
+    request: UpdateUserSettingsRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Update user settings (currency, language, notification preferences)"""
+    try:
+        update_fields = {}
+        
+        if request.currency is not None:
+            update_fields["currency"] = request.currency
+        if request.language is not None:
+            update_fields["language"] = request.language
+        if request.notification_push is not None:
+            update_fields["notification_push"] = request.notification_push
+        if request.notification_email is not None:
+            update_fields["notification_email"] = request.notification_email
+        
+        if update_fields:
+            await db.users.update_one(
+                {"user_id": current_user.user_id},
+                {"$set": update_fields}
+            )
+        
+        # Return updated user info
+        user_doc = await db.users.find_one(
+            {"user_id": current_user.user_id},
+            {"_id": 0, "password_hash": 0}
+        )
+        
+        return {
+            "success": True,
+            "currency": user_doc.get("currency"),
+            "language": user_doc.get("language"),
+            "notification_push": user_doc.get("notification_push", True),
+            "notification_email": user_doc.get("notification_email", True)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating user settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/user/settings")
+async def get_user_settings(current_user: User = Depends(require_auth)):
+    """Get user settings"""
+    try:
+        user_doc = await db.users.find_one(
+            {"user_id": current_user.user_id},
+            {"_id": 0, "password_hash": 0}
+        )
+        
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "currency": user_doc.get("currency", "USD"),
+            "language": user_doc.get("language", "en"),
+            "notification_push": user_doc.get("notification_push", True),
+            "notification_email": user_doc.get("notification_email", True)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== ONBOARDING BALANCE ENDPOINT ====================
+
+@api_router.post("/auth/onboarding-balance")
+async def set_onboarding_balance(
+    request: OnboardingBalanceRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Set initial balance during onboarding as a specialized income transaction"""
+    try:
+        # Create initial balance transaction
+        transaction = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "amount": abs(request.amount),
+            "category": "Income",
+            "merchant": "Initial Balance",
+            "notes": "Initial Balance set during onboarding",
+            "transaction_type": "income",
+            "source": "onboarding",
+            "currency": request.currency,
+            "date": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.transactions.insert_one(transaction)
+        
+        # Update user's onboarding status
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {"$set": {"initial_balance_set": True}}
+        )
+        
+        # Save to chat history
+        await save_to_chat_history(
+            current_user.user_id,
+            "system",
+            f"Initial balance set: {format_currency(request.amount, request.currency)}",
+            {"transaction_id": transaction["id"], "amount": request.amount}
+        )
+        
+        return {
+            "success": True,
+            "transaction_id": transaction["id"],
+            "amount": request.amount,
+            "currency": request.currency,
+            "message": f"Initial balance of {format_currency(request.amount, request.currency)} has been set"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error setting onboarding balance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Subscription Routes
 @api_router.get("/subscription")
 async def get_subscription(current_user: User = Depends(require_auth)):
