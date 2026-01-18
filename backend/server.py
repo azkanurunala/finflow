@@ -1680,7 +1680,7 @@ async def notify_budget_alert(user_id: str, category: str, percentage: float):
 
 async def notify_subscription_expiring(user_id: str, email: str, days_remaining: int):
     """Send notification when subscription is about to expire"""
-    title = f"Subscription Expiring Soon"
+    title = "Subscription Expiring Soon"
     message = f"Your subscription expires in {days_remaining} days. Renew now to continue enjoying all features!"
     
     # In-app notification
@@ -2034,7 +2034,7 @@ async def create_manual_transaction(
         
         return {
             "transaction": created_transaction,
-            "message": f"Transaction logged successfully"
+            "message": "Transaction logged successfully"
         }
     except Exception as e:
         logger.error(f"Error creating manual transaction: {str(e)}")
