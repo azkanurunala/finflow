@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 import axios from "axios";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
-const AUTH_URL = "https://auth.emergentagent.com";
+const AUTH_URL = process.env.EXPO_PUBLIC_AUTH_URL || "https://auth.emergentagent.com";
 
 interface User {
   user_id: string;
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Extract session_id from URL (support both # and ? formats)
       let sessionId = null;
-      
+
       if (url.includes("#session_id=")) {
         sessionId = url.split("#session_id=")[1].split("&")[0];
       } else if (url.includes("?session_id=")) {
@@ -118,10 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data
       setUser(userData as User);
-      
+
       // Check if user just completed onboarding preferences but hasn't started trial
       const onboardingPrefsSaved = await AsyncStorage.getItem("onboarding_preferences_saved");
       if (onboardingPrefsSaved === "true" && !userData.onboarding_completed) {
@@ -133,8 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             { headers: { Authorization: `Bearer ${session_token}` } }
           );
           // Update user state with trial info
-          setUser(prev => prev ? { 
-            ...prev, 
+          setUser(prev => prev ? {
+            ...prev,
             subscription_tier: "free_trial",
             is_subscription_active: true,
             onboarding_completed: true
@@ -173,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // For mobile, open auth session
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-        
+
         if (result.type === "success" && result.url) {
           await processAuthCallback(result.url);
         }
@@ -194,7 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data
       setUser(userData as User);
 
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data (new user, onboarding not completed)
       setUser(userData as User);
 
@@ -231,7 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
+
       if (sessionToken) {
         // Call logout endpoint
         await axios.post(
@@ -240,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           { headers: { Authorization: `Bearer ${sessionToken}` } }
         );
       }
-      
+
       // Clear local storage
       await AsyncStorage.removeItem("session_token");
       setUser(null);
@@ -275,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data,
           { headers: { Authorization: `Bearer ${sessionToken}` } }
         );
-        
+
         // Update local user state
         setUser(prev => prev ? { ...prev, ...data } : null);
       }
@@ -293,10 +293,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           {},
           { headers: { Authorization: `Bearer ${sessionToken}` } }
         );
-        
+
         // Update local user state
-        setUser(prev => prev ? { 
-          ...prev, 
+        setUser(prev => prev ? {
+          ...prev,
           subscription_tier: "free_trial",
           is_subscription_active: true,
           onboarding_completed: true
@@ -308,13 +308,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
       loginWithEmail,
       register,
-      logout, 
+      logout,
       refreshUser,
       updateOnboarding,
       startTrial,

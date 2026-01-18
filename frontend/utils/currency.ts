@@ -29,7 +29,7 @@ const CACHE_DURATION = 3600000; // 1 hour
 
 export const fetchExchangeRates = async (baseCurrency: string = 'USD'): Promise<{ [key: string]: number }> => {
   const now = Date.now();
-  
+
   // Return cache if still valid
   if (exchangeRatesCache && now - lastFetchTime < CACHE_DURATION) {
     return exchangeRatesCache;
@@ -37,16 +37,17 @@ export const fetchExchangeRates = async (baseCurrency: string = 'USD'): Promise<
 
   try {
     // Using exchangerate-api.com (free tier)
-    const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${baseCurrency}`);
+    const apiUrl = process.env.EXPO_PUBLIC_EXCHANGE_RATE_API_URL || "https://api.exchangerate-api.com/v4/latest/";
+    const response = await fetch(`${apiUrl}${baseCurrency}`);
     const data = await response.json();
-    
+
     exchangeRatesCache = data.rates;
     lastFetchTime = now;
-    
+
     return data.rates;
   } catch (error) {
     console.error('Error fetching exchange rates:', error);
-    
+
     // Return fallback rates if API fails
     return {
       USD: 1,
@@ -73,12 +74,12 @@ export const convertCurrency = async (
   try {
     const rates = await fetchExchangeRates(fromCurrency);
     const rate = rates[toCurrency];
-    
+
     if (!rate) {
       console.warn(`Exchange rate not found for ${toCurrency}`);
       return amount;
     }
-    
+
     return amount * rate;
   } catch (error) {
     console.error('Error converting currency:', error);
@@ -90,9 +91,9 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
   const currency = [...POPULAR_CURRENCIES, ...OTHER_CURRENCIES].find(
     (c) => c.code === currencyCode
   );
-  
+
   if (!currency) return `${amount.toFixed(2)}`;
-  
+
   // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
   if (currencyCode === 'IDR') {
     const formatted = amount.toLocaleString('id-ID', {
@@ -101,18 +102,18 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
     });
     return `${currency.symbol}${formatted}`;
   }
-  
+
   // Japanese Yen - no decimals
   if (currencyCode === 'JPY') {
     const formatted = Math.round(amount).toLocaleString('ja-JP');
     return `${currency.symbol}${formatted}`;
   }
-  
+
   // Bitcoin - 8 decimal places
   if (currencyCode === 'BTC') {
     return `${currency.symbol}${amount.toFixed(8)}`;
   }
-  
+
   // USD, EUR, GBP, etc. - uses , for thousands and . for decimals ($1,300.06)
   const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
