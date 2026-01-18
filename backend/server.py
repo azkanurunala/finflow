@@ -1903,10 +1903,20 @@ async def create_voice_transaction(
         currency_symbols = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "IDR": "Rp", "SGD": "S$"}
         symbol = currency_symbols.get(request.currency, request.currency)
         
+        message_text = f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+        
+        # Save to chat history for WhatsApp-like persistence
+        await save_to_chat_history(
+            current_user.user_id,
+            "voice",
+            message_text,
+            {"transaction_id": transaction.id, "transcription": transcribed_text, "amount": transaction.amount, "category": transaction.category}
+        )
+        
         return {
             "transaction": transaction,
             "transcription": transcribed_text,
-            "message": f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+            "message": message_text
         }
     except HTTPException:
         raise
