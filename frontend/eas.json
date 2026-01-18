@@ -16,6 +16,8 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "serviceAccountKeyPath": "./google-services.json"
+    }
   }
 }

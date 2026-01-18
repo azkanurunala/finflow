@@ -45,7 +45,31 @@ npm run android
 - Akun Google Play Console harus sudah aktif dan terbayar.
 - Cek nomor versi di `app.json` (`version` dan `android.versionCode`).
 
-### 2. Build untuk Produksi (AAB)
+### 2. Setup Google Service Account (PENTING untuk --auto-submit)
+Agar EAS bisa otomatis mengunggah aplikasi ke Google Play, Anda perlu membuat Service Account:
+1. Buka [Google Cloud Console](https://console.cloud.google.com/).
+2. Buat Project baru atau pilih yang sudah ada.
+3. Pergi ke **IAM & Admin > Service Accounts**.
+4. Klik **Create Service Account**, beri nama (misal: `eas-submit`), dan klik **Create and Continue**.
+5. Pilih role: **Service Account User** dan klik **Done**.
+6. Klik pada email service account yang baru dibuat, buka tab **Keys**, klik **Add Key > Create New Key**, pilih **JSON**.
+7. File JSON akan terdownload. Simpan di folder project (misal: `google-services.json`).
+8. **PENTING**: Buka [Google Play Console](https://play.google.com/console/), pergi ke **Users and permissions**, klik **Invite new users**, masukkan email service account tadi, dan beri izin **Admin** atau minimal akses rilis.
+
+### 3. Konfigurasi `eas.json`
+Tambahkan path file JSON tersebut ke `eas.json` agar tidak ditanya terus-menerus:
+
+```json
+{
+  "submit": {
+    "production": {
+      "serviceAccountKeyPath": "./google-services.json"
+    }
+  }
+}
+```
+
+### 4. Build untuk Produksi (AAB)
 Android App Bundle (.aab) adalah format standar untuk Google Play. Jalankan perintah ini:
 
 ```bash

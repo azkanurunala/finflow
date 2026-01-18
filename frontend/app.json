@@ -32,7 +32,8 @@
         "RECORD_AUDIO",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "package": "com.azkanurunala.finflow"
     },
     "androidStatusBar": {
       "backgroundColor": "#000000"
