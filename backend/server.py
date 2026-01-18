@@ -1784,9 +1784,19 @@ async def create_receipt_transaction(
         currency_symbols = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "IDR": "Rp", "SGD": "S$"}
         symbol = currency_symbols.get(request.currency, request.currency)
         
+        message_text = f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+        
+        # Save to chat history for WhatsApp-like persistence
+        await save_to_chat_history(
+            current_user.user_id,
+            "ocr",
+            message_text,
+            {"transaction_id": transaction.id, "amount": transaction.amount, "category": transaction.category}
+        )
+        
         return {
             "transaction": transaction,
-            "message": f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+            "message": message_text
         }
     except HTTPException:
         raise
