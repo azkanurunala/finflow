@@ -437,7 +437,7 @@ DATE PARSING:
 - If no date mentioned, use today: {today}"""
 
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=OPENAI_API_KEY,
             session_id=f"transaction_{uuid.uuid4()}",
             system_message=system_prompt
         ).with_model("openai", "gpt-5.2")
@@ -500,7 +500,7 @@ Rules:
 - If receipt shows multiple items, mention key items in notes"""
 
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=OPENAI_API_KEY,
             session_id=f"receipt_{uuid.uuid4()}",
             system_message=system_prompt
         ).with_model("openai", "gpt-5.2")
@@ -2128,7 +2128,7 @@ Respond in JSON format:
 }"""
 
         chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
+            api_key=OPENAI_API_KEY,
             session_id=f"insights_{uuid.uuid4()}",
             system_message=system_prompt
         ).with_model("openai", "gpt-5.2")
