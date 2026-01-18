@@ -16,7 +16,7 @@ import io
 import httpx
 import hashlib
 import secrets
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+from openai import AsyncOpenAI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -29,6 +29,9 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 # Emergent LLM Key
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# Initialize OpenAI client
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # Create the main app
 app = FastAPI()
@@ -436,14 +439,16 @@ DATE PARSING:
 - "minggu lalu" / "last week" = 7 days ago
 - If no date mentioned, use today: {today}"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"transaction_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        user_message = UserMessage(text=f"Parse this transaction: {text}")
-        response = await chat.send_message(user_message)
+        # Call OpenAI API
+        completion = await openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Parse this transaction: {text}"}
+            ],
+            temperature=0.3
+        )
+        response = completion.choices[0].message.content
         
         # Parse GPT response
         import json
@@ -499,19 +504,25 @@ Rules:
 - Note any tip or tax separately
 - If receipt shows multiple items, mention key items in notes"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"receipt_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        image_content = ImageContent(image_base64=image_base64)
-        user_message = UserMessage(
-            text="Extract transaction details from this receipt.",
-            file_contents=[image_content]
+        # Call OpenAI Vision API
+        completion = await openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Extract transaction details from this receipt."},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}
+                        }
+                    ]
+                }
+            ],
+            temperature=0.3
         )
-        
-        response = await chat.send_message(user_message)
+        response = completion.choices[0].message.content
         
         # Parse response
         import json
@@ -2127,14 +2138,16 @@ Respond in JSON format:
     "spending_trend": "good|needs_attention|concerning"
 }"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"insights_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        user_message = UserMessage(text=f"Analyze this financial data and provide insights:\n{context}")
-        response = await chat.send_message(user_message)
+        # Call OpenAI API
+        completion = await openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Analyze this financial data and provide insights:\n{context}"}
+            ],
+            temperature=0.5
+        )
+        response = completion.choices[0].message.content
         
         # Parse response
         import json
