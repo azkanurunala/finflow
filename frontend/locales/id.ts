@@ -17,6 +17,8 @@ export default {
     success: "Berhasil",
     search: "Cari",
     apply: "Terapkan",
+    comingSoon: "Segera Hadir",
+    comingSoonDesc: "Fitur ini akan segera hadir!",
   },
   auth: {
     login: "Masuk",
@@ -82,6 +84,7 @@ export default {
     privacyPolicy: "Kebijakan Privasi",
     version: "VERSI",
     plan: "Paket",
+    about: "Tentang FinFlow",
   },
   subscription: {
     subscription: "Langganan",
@@ -95,6 +98,68 @@ export default {
     freeTrial: "Uji Coba Gratis",
     startTrial: "Mulai Uji Coba 3 Hari Gratis",
     viewPlans: "Atau lihat semua paket langganan",
+    plans: {
+      trial: { name: "Uji Coba Gratis 14 Hari", tagline: "Coba semua fitur gratis selama 14 hari" },
+      basic: { name: "Paket Dasar", tagline: "Fitur esensial untuk penggunaan sehari-hari" },
+      premium: { name: "Paket Premium", tagline: "Semua tanpa batas, tanpa batasan" },
+      yearly: { name: "Paket Tahunan", tagline: "Nilai terbaik! Dapat 2 bulan GRATIS" },
+    },
+    features: {
+      fullAccess: "Akses Fitur Lengkap",
+      unlimitedChat: "Chat Tanpa Batas",
+      audioLimit: "30x Catatan Suara / bulan",
+      ocrLimit: "30x Pindai Struk / bulan",
+      audioUnlimited: "Catatan Suara Tanpa Batas",
+      ocrUnlimited: "Pindai Struk Tanpa Batas",
+      premiumAnalytics: "Analitik Premium",
+      exportImport: "Ekspor & Impor Data",
+      freeMonths: "GRATIS 2 Bulan",
+      allUnlimited: "Semua Fitur Tanpa Batas",
+      audioTrial: "30x Catatan Suara",
+      ocrTrial: "30x Pindai Struk",
+    },
+    badges: {
+      recommended: "DIREKOMENDASIKAN",
+      bestValue: "NILAI TERBAIK",
+      current: "PAKET SAAT INI",
+    },
+    alerts: {
+      iapRequired: "Pembelian Dalam Aplikasi Apple",
+      iapDesc: "Untuk berlangganan {plan} seharga {price}/{period}, silakan selesaikan pembelian melalui Apple.",
+      iosRequired: "Diperlukan iOS",
+      iosRequiredDesc: "Pembelian Dalam Aplikasi hanya tersedia di perangkat iOS melalui App Store.",
+      success: "Berhasil!",
+      successDesc: "Langganan {plan} Anda sekarang aktif!",
+      trialStarted: "Uji Coba Dimulai!",
+      trialDesc: "Uji coba gratis 14 hari Anda sekarang aktif. Nikmati semua fitur!",
+      error: "Kesalahan",
+      productUnavailable: "Produk tidak tersedia",
+    },
+    footer: {
+      appleManaged: "Langganan dikelola melalui Apple App Store",
+      cancelAnytime: "Batalkan kapan saja dari pengaturan perangkat Anda",
+      chargedToApple: "Pembayaran akan dibebankan ke ID Apple Anda",
+    },
+    periods: {
+      days14: "14 hari",
+      month: "bulan",
+      year: "tahun",
+    },
+    savings: "Hemat {amount}",
+  },
+  notifications: {
+    title: "Notifikasi",
+    readAll: "Baca Semua",
+    emptyTitle: "Tidak Ada Notifikasi",
+    emptyDesc: "Anda sudah update! Kami akan memberitahu Anda jika ada sesuatu yang penting.",
+    settings: {
+      title: "Pengaturan Notifikasi",
+      push: "Notifikasi Push",
+      email: "Notifikasi Email",
+      system: "Notifikasi Sistem",
+      save: "Simpan Preferensi",
+    },
+    justNow: "Baru saja",
   },
   analytics: {
     analytics: "Analitik",
@@ -122,4 +187,60 @@ export default {
     income: "Pemasukan",
     other: "Lainnya",
   },
+  add: {
+    title: "Tambah Transaksi",
+    chooseMethod: "Pilih Metode Input",
+    manual: {
+      title: "Input Manual",
+      desc: "Masukkan detail transaksi secara manual"
+    },
+    camera: {
+      title: "Pindai Struk",
+      desc: "Ambil foto atau pilih dari galeri untuk ekstrak detail otomatis",
+      takePhoto: "Ambil Foto",
+      gallery: "Galeri",
+      retake: "Foto Ulang",
+      process: "Proses Struk"
+    },
+    voice: {
+      title: "Rekam Suara",
+      subtitle: "Ketuk tombol di bawah dan ucapkan pengeluaran Anda",
+      recording: "Merekam...",
+      start: "Mulai Rekam",
+      stop: "Stop Rekam",
+      trySaying: "Coba ucapkan:",
+      audioTooShort: "Audio Terlalu Pendek",
+      audioTooShortDesc: "Rekaman terlalu pendek untuk ditranskripsi. Silakan rekam lebih lama.",
+      noAudio: "Tidak Ada Audio",
+      noAudioDesc: "Tidak ada audio yang bisa ditranskripsi. Silakan coba rekam lagi."
+    }
+  },
+  manual: {
+    amount: "Jumlah",
+    category: "Pilih Kategori",
+    date: "Tanggal",
+    desc: "Deskripsi",
+    placeholderDesc: "Contoh: Makan siang dengan teman",
+    save: "Simpan Transaksi",
+    addCustom: "Tambah Kategori Custom",
+    customPlaceholder: "Nama Kategori Baru",
+    add: "Tambah"
+  },
+  edit: {
+    title: "Edit Transaksi",
+    reviewTitle: "Periksa & Simpan",
+    saveChanges: "Simpan Perubahan",
+    deleteTitle: "Hapus Transaksi",
+    deleteDesc: "Apakah Anda yakin ingin menghapus transaksi ini?",
+    deleteConfirm: "Hapus",
+    transactionUpdated: "Transaksi diperbarui!",
+    enterValidAmount: "Mohon masukkan jumlah valid",
+    failedUpdate: "Gagal meperbarui transaksi",
+    failedDelete: "Gagal menghapus transaksi",
+    failedLoad: "Gagal memuat transaksi",
+    fromVoice: "Dari Suara",
+    fromReceipt: "Dari Pindai Struk",
+    reviewNote: "Periksa data di bawah dan koreksi jika perlu",
+    transcription: "Transkripsi"
+  }
 };

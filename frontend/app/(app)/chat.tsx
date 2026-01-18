@@ -8,14 +8,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
@@ -25,7 +25,7 @@ import RecordingModal from "../../components/RecordingModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-const CATEGORY_CHIPS = [
+const CATEGORY_CHIPS: { id: string; label: string; icon: any }[] = [
   { id: "groceries", label: "Groceries", icon: "cart" },
   { id: "dining", label: "Dining", icon: "restaurant" },
   { id: "transport", label: "Transport", icon: "car" },
@@ -43,11 +43,11 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<any[]>([]);
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
-  
+
   // Recording Modal State - Single component for both Voice & Scan
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
-  
+
   // Reset confirmation modal
   const [showResetModal, setShowResetModal] = useState(false);
 
@@ -59,10 +59,8 @@ export default function ChatScreen() {
   const loadChatHistory = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.get(`${BACKEND_URL}/api/chat/history`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      
+      const response = await apiClient.get(`/api/chat/history`);
+
       if (response.data.messages && response.data.messages.length > 0) {
         const loadedMessages = response.data.messages.map((msg: any) => ({
           ...msg,
@@ -70,10 +68,10 @@ export default function ChatScreen() {
         }));
         setMessages(loadedMessages);
       } else {
-        const welcomeMessage = language === 'id' 
+        const welcomeMessage = language === 'id'
           ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu.`
           : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses.`;
-        
+
         const welcomeMsg = {
           id: "welcome",
           type: "assistant",
@@ -85,10 +83,10 @@ export default function ChatScreen() {
       }
     } catch (error) {
       console.error("Load chat history error:", error);
-      const welcomeMessage = language === 'id' 
+      const welcomeMessage = language === 'id'
         ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu.`
         : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses.`;
-      
+
       setMessages([{
         id: "welcome",
         type: "assistant",
@@ -104,8 +102,8 @@ export default function ChatScreen() {
   const saveMessageToServer = async (message: any) => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      await axios.post(
-        `${BACKEND_URL}/api/chat/message`,
+      await apiClient.post(
+        `/api/chat/message`,
         {
           type: message.type,
           text: message.text,
@@ -114,8 +112,7 @@ export default function ChatScreen() {
           parsed_data: message.parsed_data,
           transaction_id: message.transaction_id,
           transaction_data: message.transaction_data,
-        },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        }
       );
     } catch (error) {
       console.error("Save message error:", error);
@@ -125,21 +122,19 @@ export default function ChatScreen() {
   const handleResetChat = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      await axios.delete(`${BACKEND_URL}/api/chat/history`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-      
-      const welcomeMessage = language === 'id' 
+      await apiClient.delete(`/api/chat/history`);
+
+      const welcomeMessage = language === 'id'
         ? `Chat direset. Saya siap membantu mencatat pengeluaranmu kembali!`
         : `Chat reset. I'm ready to help you log your expenses again!`;
-      
+
       const welcomeMsg = {
         id: "welcome_reset",
         type: "assistant",
         text: welcomeMessage,
         timestamp: new Date(),
       };
-      
+
       setMessages([welcomeMsg]);
       await saveMessageToServer(welcomeMsg);
       setShowResetModal(false);
@@ -164,7 +159,7 @@ export default function ChatScreen() {
     const chatMessage = {
       id: Date.now().toString(),
       type: messageType,
-      text: recordingMode === "voice" 
+      text: recordingMode === "voice"
         ? result.transcription || "Voice message recorded"
         : "Receipt scanned",
       transcription: result.transcription,
@@ -174,10 +169,10 @@ export default function ChatScreen() {
       transaction_data: result.transaction,
       timestamp: new Date(),
     };
-    
+
     setMessages(prev => [...prev, chatMessage]);
     await saveMessageToServer(chatMessage);
-    
+
     // Add assistant response
     if (result.transaction) {
       const assistantMsg = {
@@ -207,17 +202,16 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, userMessage]);
     // Save user message to server
     saveMessageToServer(userMessage);
-    
+
     const messageText = chatText;
     setChatText("");
     setLoading(true);
 
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.post(
-        `${BACKEND_URL}/api/transactions/chat`,
-        { text: messageText },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      const response = await apiClient.post(
+        `/api/transactions/chat`,
+        { text: messageText }
       );
 
       const assistantMessage = {
@@ -235,7 +229,7 @@ export default function ChatScreen() {
       saveMessageToServer(assistantMessage);
     } catch (error: any) {
       const errorMsg = error.response?.data?.detail || "Failed to process transaction";
-      
+
       if (error.response?.status === 403 && errorMsg.includes("Quota exceeded")) {
         Alert.alert(
           "Quota Exceeded",
@@ -248,7 +242,7 @@ export default function ChatScreen() {
       } else {
         Alert.alert("Error", errorMsg);
       }
-      
+
       const errorMessage = {
         id: Date.now().toString() + "_error",
         type: "assistant",
@@ -265,267 +259,13 @@ export default function ChatScreen() {
     setChatText(`I want to log ${category}`);
   };
 
-  // ==================== SCAN RECEIPT HANDLERS ====================
-  const handleTakePhoto = async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "Camera access is needed to scan receipts");
-        return;
-      }
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to open camera");
-    }
-  };
-
-  const handlePickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to open gallery");
-    }
-  };
-
-  const handleProcessReceipt = async () => {
-    if (!selectedImage) return;
-
-    setProcessingReceipt(true);
-    try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      const response = await axios.post(
-        `${BACKEND_URL}/api/transactions/receipt`,
-        { 
-          image_base64: selectedImage,
-          currency: currency
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      setShowScanModal(false);
-      setSelectedImage(null);
-      
-      const transaction = response.data.transaction;
-      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=receipt`);
-      
-    } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process receipt"
-      );
-    } finally {
-      setProcessingReceipt(false);
-    }
-  };
-
-  // ==================== VOICE LOG HANDLERS (with A-1 & A-2 fixes) ====================
-  const startRecording = async () => {
-    try {
-      // A-2: Proper initialization with permission check
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "Microphone access is needed to record voice");
-        return;
-      }
-
-      // A-2: Reset audio mode before starting
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      // A-2: Create recording with error handling
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
-      setIsRecording(true);
-    } catch (error) {
-      console.error("Recording start error:", error);
-      Alert.alert(
-        language === 'id' ? "Error" : "Error",
-        language === 'id' 
-          ? "Gagal memulai rekaman. Pastikan mikrofon tersedia." 
-          : "Failed to start recording. Please ensure microphone is available."
-      );
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) {
-      // A-1: User-friendly message for no recording
-      Alert.alert(
-        language === 'id' ? "Info" : "Info",
-        language === 'id' 
-          ? "Tidak ada rekaman untuk diproses. Silakan rekam terlebih dahulu." 
-          : "No recording to process. Please record first."
-      );
-      return;
-    }
-
-    setIsRecording(false);
-    setProcessingVoice(true);
-
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-
-      // A-1: Check if URI exists
-      if (!uri) {
-        Alert.alert(
-          language === 'id' ? "Info" : "Info",
-          language === 'id' 
-            ? "Tidak ada audio yang terekam. Silakan coba lagi." 
-            : "No audio was recorded. Please try again."
-        );
-        setRecording(null);
-        setProcessingVoice(false);
-        return;
-      }
-
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      // A-1: Check blob size - if too small, likely empty recording
-      if (blob.size < 1000) {
-        Alert.alert(
-          language === 'id' ? "Audio Terlalu Pendek" : "Audio Too Short",
-          language === 'id' 
-            ? "Rekaman terlalu pendek untuk ditranskripsi. Silakan rekam lebih lama." 
-            : "Recording is too short to transcribe. Please record longer."
-        );
-        setRecording(null);
-        setProcessingVoice(false);
-        return;
-      }
-      
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          if (!base64String) {
-            reject(new Error("Failed to convert audio"));
-            return;
-          }
-          const base64Data = base64String.split(',')[1];
-          if (!base64Data) {
-            reject(new Error("Invalid audio data"));
-            return;
-          }
-          resolve(base64Data);
-        };
-        reader.onerror = () => reject(new Error("Failed to read audio file"));
-        reader.readAsDataURL(blob);
-      });
-
-      const audioBase64 = await base64Promise;
-      
-      // A-1: Additional check for empty base64
-      if (!audioBase64 || audioBase64.length < 100) {
-        Alert.alert(
-          language === 'id' ? "Info" : "Info",
-          language === 'id' 
-            ? "Tidak ada audio yang bisa ditranskripsi. Silakan coba rekam lagi." 
-            : "No audio could be transcribed. Please try recording again."
-        );
-        setRecording(null);
-        setProcessingVoice(false);
-        return;
-      }
-      
-      const sessionToken = await AsyncStorage.getItem("session_token");
-
-      const apiResponse = await axios.post(
-        `${BACKEND_URL}/api/transactions/voice`,
-        { 
-          audio_base64: audioBase64,
-          currency: currency
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 60000,
-        }
-      );
-
-      setShowVoiceModal(false);
-      setRecording(null);
-      
-      const transaction = apiResponse.data.transaction;
-      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=voice&transcription=${encodeURIComponent(apiResponse.data.transcription || '')}`);
-      
-    } catch (error: any) {
-      console.error("Voice transcription error:", error);
-      
-      // A-1: User-friendly error messages
-      let errorMessage = language === 'id' 
-        ? "Gagal memproses rekaman suara" 
-        : "Failed to process voice recording";
-      
-      if (error.message?.includes("float()") || error.message?.includes("NoneType")) {
-        errorMessage = language === 'id' 
-          ? "Tidak ada audio yang bisa ditranskripsi. Silakan rekam ulang dengan suara yang jelas." 
-          : "No audio could be transcribed. Please record again with clear voice.";
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
-      
-      Alert.alert(
-        language === 'id' ? "Gagal" : "Error",
-        errorMessage
-      );
-    } finally {
-      setProcessingVoice(false);
-      setRecording(null);
-    }
-  };
-
-  const cancelRecording = async () => {
-    if (recording) {
-      try {
-        await recording.stopAndUnloadAsync();
-      } catch (e) {
-        // Ignore errors when canceling
-      }
-    }
-    setRecording(null);
-    setIsRecording(false);
-    setShowVoiceModal(false);
-  };
 
   // Loading state for chat history
   if (loadingHistory) {
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
-        <View style={styles.loadingContainer}>
+        <View style={styles.fullScreenLoadingContainer}>
           <ActivityIndicator size="large" color="#4DB6AC" />
           <Text style={styles.loadingText}>
             {language === 'id' ? "Memuat riwayat chat..." : "Loading chat history..."}
@@ -552,7 +292,7 @@ export default function ChatScreen() {
             <Text style={styles.onlineText}>ONLINE</Text>
           </View>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.menuButton}
           onPress={() => setShowResetModal(true)}
         >
@@ -574,7 +314,7 @@ export default function ChatScreen() {
               {language === 'id' ? "Reset Chat?" : "Reset Chat?"}
             </Text>
             <Text style={styles.resetModalText}>
-              {language === 'id' 
+              {language === 'id'
                 ? "Semua riwayat percakapan akan dihapus permanen. Transaksi yang sudah tersimpan tidak akan terpengaruh."
                 : "All conversation history will be permanently deleted. Saved transactions will not be affected."
               }
@@ -634,7 +374,7 @@ export default function ChatScreen() {
                   <Ionicons name="chatbubble-ellipses" size={16} color="#fff" />
                 </View>
               )}
-              
+
               <View
                 style={[
                   styles.messageBubble,
@@ -651,9 +391,9 @@ export default function ChatScreen() {
                 >
                   {message.text}
                 </Text>
-                
+
                 {message.transaction && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.transactionCard}
                     onPress={() => router.push(`/(app)/edit-transaction?id=${message.transaction.id}`)}
                     activeOpacity={0.7}
@@ -663,10 +403,10 @@ export default function ChatScreen() {
                         styles.transactionIcon,
                         message.transaction.transaction_type === "income" && styles.incomeIcon
                       ]}>
-                        <Ionicons 
-                          name={message.transaction.transaction_type === "income" ? "arrow-down" : "fast-food"} 
-                          size={20} 
-                          color={message.transaction.transaction_type === "income" ? "#10B981" : "#F59E0B"} 
+                        <Ionicons
+                          name={message.transaction.transaction_type === "income" ? "arrow-down" : "fast-food"}
+                          size={20}
+                          color={message.transaction.transaction_type === "income" ? "#10B981" : "#F59E0B"}
                         />
                       </View>
                       <View style={styles.transactionInfo}>
@@ -707,7 +447,7 @@ export default function ChatScreen() {
               )}
             </View>
           ))}
-          
+
           {loading && (
             <View style={styles.loadingContainer}>
               <View style={styles.assistantAvatar}>
@@ -743,7 +483,7 @@ export default function ChatScreen() {
 
         {/* Input Container */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.attachButton}
             onPress={() => {
               setRecordingMode("scan");
@@ -752,7 +492,7 @@ export default function ChatScreen() {
           >
             <Ionicons name="scan-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
-          
+
           <TextInput
             ref={inputRef}
             style={styles.input}
@@ -764,8 +504,8 @@ export default function ChatScreen() {
             maxLength={500}
             autoFocus={true}
           />
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.micButton}
             onPress={() => {
               setRecordingMode("voice");
@@ -774,7 +514,7 @@ export default function ChatScreen() {
           >
             <Ionicons name="mic-outline" size={24} color="#6B7280" />
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[
               styles.sendButton,
@@ -1201,7 +941,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
   // Loading state
-  loadingContainer: {
+  fullScreenLoadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",

@@ -3,7 +3,8 @@ import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
-import axios from "axios";
+import { apiClient } from "../api/client";
+import axios, { AxiosError } from "axios";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const AUTH_URL = "https://auth.emergentagent.com";
@@ -83,9 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const sessionToken = await AsyncStorage.getItem("session_token");
       if (sessionToken) {
         // Verify session with backend
-        const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${sessionToken}` },
-        });
+        const response = await apiClient.get(`/api/auth/me`);
         setUser(response.data);
       }
     } catch (error) {
@@ -100,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       // Extract session_id from URL (support both # and ? formats)
       let sessionId = null;
-      
+
       if (url.includes("#session_id=")) {
         sessionId = url.split("#session_id=")[1].split("&")[0];
       } else if (url.includes("?session_id=")) {
@@ -110,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!sessionId) return;
 
       // Exchange session_id for session_token
-      const response = await axios.post(`${BACKEND_URL}/api/auth/session`, {
+      const response = await apiClient.post(`/api/auth/session`, {
         session_id: sessionId,
       });
 
@@ -118,23 +117,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data
       setUser(userData as User);
-      
+
       // Check if user just completed onboarding preferences but hasn't started trial
       const onboardingPrefsSaved = await AsyncStorage.getItem("onboarding_preferences_saved");
       if (onboardingPrefsSaved === "true" && !userData.onboarding_completed) {
         // Auto-start trial for new users
         try {
-          const trialResponse = await axios.post(
-            `${BACKEND_URL}/api/auth/start-trial`,
-            {},
-            { headers: { Authorization: `Bearer ${session_token}` } }
+          const trialResponse = await apiClient.post(
+            `/api/auth/start-trial`,
+            {}
           );
           // Update user state with trial info
-          setUser(prev => prev ? { 
-            ...prev, 
+          setUser(prev => prev ? {
+            ...prev,
             subscription_tier: "free_trial",
             is_subscription_active: true,
             onboarding_completed: true
@@ -143,6 +141,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await AsyncStorage.removeItem("onboarding_preferences_saved");
         } catch (trialError) {
           console.error("Error auto-starting trial:", trialError);
+        }
+      }
+
+      // Check for initial balance to sync
+      const initialBalance = await AsyncStorage.getItem("initial_balance");
+      if (initialBalance && initialBalance !== "0") {
+        try {
+          await axios.post(
+            `${BACKEND_URL}/api/transactions`,
+            {
+              amount: parseFloat(initialBalance),
+              category: "Income",
+              transaction_type: "income",
+              date: new Date().toISOString(),
+              description: "Initial Balance",
+              merchant: "Opening Balance",
+              currency: userData.currency || "USD" // Use user's currency
+            },
+            { headers: { Authorization: `Bearer ${session_token}` } }
+          );
+          // Clear it so we don't sync again
+          await AsyncStorage.removeItem("initial_balance");
+        } catch (balanceError) {
+          console.error("Error syncing initial balance:", balanceError);
         }
       }
 
@@ -173,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // For mobile, open auth session
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-        
+
         if (result.type === "success" && result.url) {
           await processAuthCallback(result.url);
         }
@@ -185,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithEmail = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
+      const response = await apiClient.post(`/api/auth/login`, {
         email,
         password,
       });
@@ -194,9 +216,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data
       setUser(userData as User);
+
+      // Check for initial balance to sync
+      const initialBalance = await AsyncStorage.getItem("initial_balance");
+      if (initialBalance && initialBalance !== "0") {
+        try {
+          await axios.post(
+            `${BACKEND_URL}/api/transactions`,
+            {
+              amount: parseFloat(initialBalance),
+              category: "Income",
+              transaction_type: "income",
+              date: new Date().toISOString(),
+              description: "Initial Balance",
+              merchant: "Opening Balance",
+              currency: userData.currency || "USD" // Use user's currency
+            },
+            { headers: { Authorization: `Bearer ${session_token}` } }
+          );
+          // Clear it so we don't sync again
+          await AsyncStorage.removeItem("initial_balance");
+        } catch (balanceError) {
+          console.error("Error syncing initial balance:", balanceError);
+        }
+      }
 
       return { success: true };
     } catch (error: any) {
@@ -207,7 +253,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const register = async (name: string, email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/auth/register`, {
+      const response = await apiClient.post(`/api/auth/register`, {
         name,
         email,
         password,
@@ -217,9 +263,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Store session token
       await AsyncStorage.setItem("session_token", session_token);
-      
+
       // Set user data (new user, onboarding not completed)
       setUser(userData as User);
+
+      // Check for initial balance to sync
+      const initialBalance = await AsyncStorage.getItem("initial_balance");
+      if (initialBalance && initialBalance !== "0") {
+        try {
+          await axios.post(
+            `${BACKEND_URL}/api/transactions`,
+            {
+              amount: parseFloat(initialBalance),
+              category: "Income",
+              transaction_type: "income",
+              date: new Date().toISOString(),
+              description: "Initial Balance",
+              merchant: "Opening Balance",
+              currency: userData.currency || "USD" // Use user's currency
+            },
+            { headers: { Authorization: `Bearer ${session_token}` } }
+          );
+          // Clear it so we don't sync again
+          await AsyncStorage.removeItem("initial_balance");
+        } catch (balanceError) {
+          console.error("Error syncing initial balance:", balanceError);
+        }
+      }
 
       return { success: true };
     } catch (error: any) {
@@ -231,16 +301,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
+
       if (sessionToken) {
         // Call logout endpoint
-        await axios.post(
-          `${BACKEND_URL}/api/auth/logout`,
-          {},
-          { headers: { Authorization: `Bearer ${sessionToken}` } }
-        );
+        await apiClient.post(`/api/auth/logout`, {});
       }
-      
+
       // Clear local storage
       await AsyncStorage.removeItem("session_token");
       setUser(null);
@@ -256,9 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       if (sessionToken) {
-        const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${sessionToken}` },
-        });
+        const response = await apiClient.get(`/api/auth/me`);
         setUser(response.data);
       }
     } catch (error) {
@@ -270,12 +334,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       if (sessionToken) {
-        await axios.put(
-          `${BACKEND_URL}/api/auth/onboarding`,
-          data,
-          { headers: { Authorization: `Bearer ${sessionToken}` } }
+        await apiClient.put(
+          `/api/auth/onboarding`,
+          data
         );
-        
+
         // Update local user state
         setUser(prev => prev ? { ...prev, ...data } : null);
       }
@@ -288,15 +351,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       if (sessionToken) {
-        const response = await axios.post(
-          `${BACKEND_URL}/api/auth/start-trial`,
-          {},
-          { headers: { Authorization: `Bearer ${sessionToken}` } }
+        const response = await apiClient.post(
+          `/api/auth/start-trial`,
+          {}
         );
-        
+
         // Update local user state
-        setUser(prev => prev ? { 
-          ...prev, 
+        setUser(prev => prev ? {
+          ...prev,
           subscription_tier: "free_trial",
           is_subscription_active: true,
           onboarding_completed: true
@@ -308,13 +370,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      loading, 
-      login, 
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
       loginWithEmail,
       register,
-      logout, 
+      logout,
       refreshUser,
       updateOnboarding,
       startTrial,

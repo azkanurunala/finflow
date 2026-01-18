@@ -7,11 +7,14 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Modal,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
+import { useLanguage } from "../../contexts/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { formatDistanceToNow } from "date-fns";
 
@@ -29,17 +32,52 @@ interface Notification {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Settings Modal State
+  const [showSettings, setShowSettings] = useState(false);
+  const [settings, setSettings] = useState({
+    push: true,
+    email: true,
+    system: true,
+  });
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const saved = await AsyncStorage.getItem("notification_settings");
+      if (saved) {
+        setSettings(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error("Failed to load settings");
+    }
+  };
+
+  const saveSettings = async (newSettings: typeof settings) => {
+    try {
+      setSettings(newSettings);
+      await AsyncStorage.setItem("notification_settings", JSON.stringify(newSettings));
+    } catch (e) {
+      console.error("Failed to save settings");
+    }
+  };
+
+  const toggleSetting = (key: keyof typeof settings) => {
+    saveSettings({ ...settings, [key]: !settings[key] });
+  };
+
   const fetchNotifications = useCallback(async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.get(`${BACKEND_URL}/api/notifications`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await apiClient.get(`/api/notifications`);
       setNotifications(response.data.notifications);
       setUnreadCount(response.data.unread_count);
     } catch (error) {
@@ -64,12 +102,11 @@ export default function NotificationsScreen() {
   const markAsRead = async (notificationId: string) => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      await axios.post(
-        `${BACKEND_URL}/api/notifications/${notificationId}/read`,
-        {},
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      await apiClient.post(
+        `/api/notifications/${notificationId}/read`,
+        {}
       );
-      
+
       setNotifications(prev =>
         prev.map(n =>
           n.id === notificationId ? { ...n, read: true } : n
@@ -84,12 +121,11 @@ export default function NotificationsScreen() {
   const markAllAsRead = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      await axios.post(
-        `${BACKEND_URL}/api/notifications/read-all`,
-        {},
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      await apiClient.post(
+        `/api/notifications/read-all`,
+        {}
       );
-      
+
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -113,7 +149,7 @@ export default function NotificationsScreen() {
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true });
     } catch {
-      return "Just now";
+      return t('notifications.justNow');
     }
   };
 
@@ -121,7 +157,7 @@ export default function NotificationsScreen() {
     if (!notification.read) {
       await markAsRead(notification.id);
     }
-    
+
     // Navigate based on notification type
     switch (notification.type) {
       case "transaction_created":
@@ -143,7 +179,7 @@ export default function NotificationsScreen() {
 
   const renderNotification = ({ item }: { item: Notification }) => {
     const icon = getNotificationIcon(item.type);
-    
+
     return (
       <TouchableOpacity
         style={[styles.notificationItem, !item.read && styles.unreadItem]}
@@ -184,19 +220,75 @@ export default function NotificationsScreen() {
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Notifications</Text>
+          <Text style={styles.headerTitle}>{t('notifications.title')}</Text>
           {unreadCount > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
           )}
         </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
-            <Text style={styles.markAllText}>Read All</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllAsRead} style={styles.markAllButton}>
+              <Text style={styles.markAllText}>{t('notifications.readAll')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={24} color="#1F2937" />
           </TouchableOpacity>
-        )}
+        </View>
       </View>
+
+      {/* Settings Modal */}
+      <Modal
+        visible={showSettings}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t('notifications.settings.title')}</Text>
+              <TouchableOpacity onPress={() => setShowSettings(false)}>
+                <Ionicons name="close" size={24} color="#1F2937" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>{t('notifications.settings.push')}</Text>
+              <Switch
+                value={settings.push}
+                onValueChange={() => toggleSetting('push')}
+                trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
+              />
+            </View>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>{t('notifications.settings.email')}</Text>
+              <Switch
+                value={settings.email}
+                onValueChange={() => toggleSetting('email')}
+                trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
+              />
+            </View>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingLabel}>{t('notifications.settings.system')}</Text>
+              <Switch
+                value={settings.system}
+                onValueChange={() => toggleSetting('system')}
+                trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => setShowSettings(false)}
+            >
+              <Text style={styles.saveButtonText}>{t('common.done')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Notifications List */}
       {notifications.length > 0 ? (
@@ -218,9 +310,9 @@ export default function NotificationsScreen() {
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="notifications-off-outline" size={64} color="#D1D5DB" />
-          <Text style={styles.emptyTitle}>No Notifications</Text>
+          <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
           <Text style={styles.emptyText}>
-            You're all caught up! We'll notify you when something important happens.
+            {t('notifications.emptyDesc')}
           </Text>
         </View>
       )}
@@ -358,5 +450,57 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     textAlign: "center",
     lineHeight: 20,
+  },
+  settingsButton: {
+    padding: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    minHeight: 300,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  settingItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+  },
+  settingLabel: {
+    fontSize: 16,
+    color: "#374151",
+    fontWeight: "500",
+  },
+  saveButton: {
+    backgroundColor: "#4DB6AC",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

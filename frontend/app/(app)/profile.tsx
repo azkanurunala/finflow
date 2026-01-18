@@ -15,6 +15,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUserCurrency } from "../../utils/currency";
+import * as WebBrowser from "expo-web-browser";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
 export default function ProfileScreen() {
@@ -50,6 +51,26 @@ export default function ProfileScreen() {
     ]);
   };
 
+  const handleComingSoon = () => {
+    Alert.alert(t('common.comingSoon'), t('common.comingSoonDesc'));
+  };
+
+  const handleHelp = async () => {
+    await WebBrowser.openBrowserAsync("https://finflow.app/help");
+  };
+
+  const handlePrivacy = async () => {
+    await WebBrowser.openBrowserAsync("https://finflow.app/privacy");
+  };
+
+  const handleAbout = () => {
+    Alert.alert(
+      t('profile.about'),
+      "FinFlow v1.0.0\n\n© 2024 FinFlow Inc.",
+      [{ text: "OK" }]
+    );
+  };
+
   const getLanguageName = (code: string) => {
     const names: { [key: string]: string } = {
       en: "English (US)",
@@ -58,7 +79,15 @@ export default function ProfileScreen() {
     return names[code] || "English (US)";
   };
 
-  const menuItems = [
+  interface MenuItem {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    value?: string;
+    color: string;
+    onPress: () => void;
+  }
+
+  const menuItems: { section: string; items: MenuItem[] }[] = [
     {
       section: t('profile.accountSettings'),
       items: [
@@ -66,25 +95,25 @@ export default function ProfileScreen() {
           icon: "person-outline",
           label: t('profile.personalInfo'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: handleComingSoon,
         },
         {
           icon: "card-outline",
           label: t('profile.paymentMethods'),
           color: "#F59E0B",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/subscription"),
         },
         {
           icon: "shield-checkmark-outline",
           label: t('profile.security'),
           color: "#8B5CF6",
-          onPress: () => {},
+          onPress: handleComingSoon,
         },
         {
           icon: "notifications-outline",
           label: t('profile.notifications'),
           color: "#EF4444",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/notifications"),
         },
       ],
     },
@@ -114,19 +143,19 @@ export default function ProfileScreen() {
           icon: "help-circle-outline",
           label: t('profile.helpCenter'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: handleHelp,
         },
         {
           icon: "document-text-outline",
           label: t('profile.privacyPolicy'),
           color: "#6B7280",
-          onPress: () => {},
+          onPress: handlePrivacy,
         },
         {
           icon: "information-circle-outline",
-          label: "About FinFlow",
+          label: t('profile.about'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: handleAbout,
         },
       ],
     },
@@ -188,7 +217,7 @@ export default function ProfileScreen() {
                   style={[
                     styles.menuItem,
                     itemIndex !== section.items.length - 1 &&
-                      styles.menuItemBorder,
+                    styles.menuItemBorder,
                   ]}
                   onPress={item.onPress}
                   activeOpacity={0.7}

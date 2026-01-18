@@ -7,17 +7,18 @@
     "icon": "./assets/images/icon.png",
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
-    "jsEngine": "jsc",
+    "newArchEnabled": true,
+    "jsEngine": "hermes",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.finflow.app",
+      "bundleIdentifier": "com.azkanurunala.finflow",
       "usesAppleSignIn": true,
-      "jsEngine": "jsc",
+      "jsEngine": "hermes",
       "infoPlist": {
         "NSCameraUsageDescription": "Scan receipts to track expenses",
         "NSMicrophoneUsageDescription": "Record voice notes for expenses",
-        "NSPhotoLibraryUsageDescription": "Select receipt photos from gallery"
+        "NSPhotoLibraryUsageDescription": "Select receipt photos from gallery",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -56,6 +57,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a4d43050-4bae-46c0-8da2-d4e6c0ae7ece"
+      }
     }
   }
 }

@@ -12,17 +12,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
-import TransactionFilter, { 
-  defaultFilters, 
+import TransactionFilter, {
+  defaultFilters,
   applyFiltersAndSort,
   SortOption,
-  DatePreset 
+  DatePreset
 } from "../../components/TransactionFilter";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -47,7 +47,7 @@ export default function HistoryScreen() {
   const params = useLocalSearchParams();
   const { t, language } = useLanguage();
   const { formatAmount } = useCurrency();
-  
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -57,17 +57,15 @@ export default function HistoryScreen() {
   // Handle deep-linking from Home screen
   useEffect(() => {
     const tab = params.tab as string;
-    if (tab === "income" || tab === "expense") {
-      setActiveTab(tab);
+    if (tab === "income" || tab === "expense" || tab === "all") {
+      setActiveTab(tab as TabType);
     }
   }, [params.tab]);
 
   const fetchTransactions = useCallback(async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.get(`${BACKEND_URL}/api/transactions`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await apiClient.get(`/api/transactions`);
       setTransactions(response.data.transactions || []);
     } catch (error) {
       Alert.alert(t('common.error'), "Failed to fetch transactions");
@@ -100,9 +98,7 @@ export default function HistoryScreen() {
           onPress: async () => {
             try {
               const sessionToken = await AsyncStorage.getItem("session_token");
-              await axios.delete(`${BACKEND_URL}/api/transactions/${id}`, {
-                headers: { Authorization: `Bearer ${sessionToken}` },
-              });
+              await apiClient.delete(`/api/transactions/${id}`);
               setTransactions((prev) => prev.filter((t) => t.id !== id));
             } catch (error) {
               Alert.alert(t('common.error'), "Failed to delete transaction");
@@ -177,9 +173,9 @@ export default function HistoryScreen() {
 
   const renderTransaction = ({ item }: { item: Transaction }) => {
     const categoryColor = getCategoryColor(item.category);
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.transactionCard}
         onPress={() => router.push(`/(app)/edit-transaction?id=${item.id}`)}
         activeOpacity={0.7}
@@ -275,11 +271,11 @@ export default function HistoryScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="receipt-outline" size={64} color="#D1D5DB" />
           <Text style={styles.emptyText}>
-            {activeTab === "all" 
+            {activeTab === "all"
               ? (language === 'id' ? "Belum ada transaksi" : "No transactions yet")
               : activeTab === "income"
-              ? (language === 'id' ? "Belum ada pemasukan" : "No income yet")
-              : (language === 'id' ? "Belum ada pengeluaran" : "No expenses yet")}
+                ? (language === 'id' ? "Belum ada pemasukan" : "No income yet")
+                : (language === 'id' ? "Belum ada pengeluaran" : "No expenses yet")}
           </Text>
           <Text style={styles.emptySubtext}>
             {language === 'id' ? "Mulai catat keuangan Anda" : "Start logging your finances"}

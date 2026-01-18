@@ -9,10 +9,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear } from "date-fns";
 
 export type SortOption = "newest" | "oldest" | "highest" | "lowest";
-export type DatePreset = "all" | "today" | "week" | "month" | "custom";
+export type DatePreset = "all" | "today" | "week" | "month" | "year" | "custom";
 
 interface FilterState {
   datePreset: DatePreset;
@@ -49,6 +49,7 @@ export default function TransactionFilter({
     { id: "today", label: "Hari Ini" },
     { id: "week", label: "Minggu Ini" },
     { id: "month", label: "Bulan Ini" },
+    { id: "year", label: "Tahun Ini" },
     { id: "custom", label: "Kustom" },
   ];
 
@@ -77,6 +78,10 @@ export default function TransactionFilter({
         startDate = startOfMonth(today);
         endDate = endOfMonth(today);
         break;
+      case "year":
+        startDate = startOfYear(today);
+        endDate = endOfYear(today);
+        break;
       case "custom":
         // Keep existing dates or set defaults
         startDate = tempFilters.startDate || subDays(today, 30);
@@ -99,7 +104,7 @@ export default function TransactionFilter({
     if (Platform.OS === "android") {
       setShowDatePicker(null);
     }
-    
+
     if (selectedDate && showDatePicker) {
       setTempFilters({
         ...tempFilters,
@@ -236,8 +241,8 @@ export default function TransactionFilter({
 
             {showDatePicker && (
               <DateTimePicker
-                value={showDatePicker === "start" 
-                  ? (tempFilters.startDate || new Date()) 
+                value={showDatePicker === "start"
+                  ? (tempFilters.startDate || new Date())
                   : (tempFilters.endDate || new Date())}
                 mode="date"
                 display="default"

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -39,7 +39,7 @@ export default function ManualInputScreen() {
   const router = useRouter();
   const { currency, currencySymbol, formatInputValue, parseInputValue, getDecimalSeparator } = useCurrency();
   const { t } = useLanguage();
-  
+
   const [displayAmount, setDisplayAmount] = useState("");
   const [merchant, setMerchant] = useState("");
   const [category, setCategory] = useState("Other");
@@ -92,9 +92,9 @@ export default function ManualInputScreen() {
     setLoading(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      await axios.post(
-        `${BACKEND_URL}/api/transactions/manual`,
+
+      await apiClient.post(
+        `/api/transactions/manual`,
         {
           amount: numericAmount,
           currency: currency, // Use user's global currency setting
@@ -103,8 +103,7 @@ export default function ManualInputScreen() {
           date: date.toISOString().split("T")[0],
           transaction_type: transactionType,
           notes: notes || null,
-        },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        }
       );
 
       Alert.alert("Success", "Transaction saved!", [
@@ -137,7 +136,7 @@ export default function ManualInputScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Transaction</Text>
+          <Text style={styles.headerTitle}>{t('add.title')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -150,7 +149,7 @@ export default function ManualInputScreen() {
             >
               <Ionicons name="arrow-up" size={20} color={transactionType === "expense" ? "#fff" : "#EF4444"} />
               <Text style={[styles.typeButtonText, transactionType === "expense" && styles.typeButtonTextActive]}>
-                Expense
+                {t('home.expenses')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -159,7 +158,7 @@ export default function ManualInputScreen() {
             >
               <Ionicons name="arrow-down" size={20} color={transactionType === "income" ? "#fff" : "#10B981"} />
               <Text style={[styles.typeButtonText, transactionType === "income" && styles.typeButtonTextActive]}>
-                Income
+                {t('home.income')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -179,10 +178,10 @@ export default function ManualInputScreen() {
 
           {/* Merchant Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Merchant / Description</Text>
+            <Text style={styles.inputLabel}>{t('manual.desc')}</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g., Starbucks, Salary, etc."
+              placeholder={t('manual.placeholderDesc')}
               placeholderTextColor="#9CA3AF"
               value={merchant}
               onChangeText={setMerchant}
@@ -191,7 +190,7 @@ export default function ManualInputScreen() {
 
           {/* Date Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date</Text>
+            <Text style={styles.inputLabel}>{t('manual.date')}</Text>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowDatePicker(true)}
@@ -223,9 +222,9 @@ export default function ManualInputScreen() {
           {/* Category Selection (only for expenses) */}
           {transactionType === "expense" && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Category</Text>
-              <ScrollView 
-                horizontal 
+              <Text style={styles.inputLabel}>{t('manual.category')}</Text>
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.categoriesScrollView}
                 contentContainerStyle={styles.categoriesScrollContent}
@@ -260,16 +259,16 @@ export default function ManualInputScreen() {
                   onPress={() => setShowAddCategory(true)}
                 >
                   <Ionicons name="add" size={16} color="#4DB6AC" />
-                  <Text style={styles.addCategoryText}>Add</Text>
+                  <Text style={styles.addCategoryText}>{t('manual.add')}</Text>
                 </TouchableOpacity>
               </ScrollView>
-              
+
               {/* Add Category Input */}
               {showAddCategory && (
                 <View style={styles.addCategoryContainer}>
                   <TextInput
                     style={styles.addCategoryInput}
-                    placeholder="Enter new category name"
+                    placeholder={t('manual.customPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     value={newCategoryInput}
                     onChangeText={setNewCategoryInput}
@@ -320,7 +319,7 @@ export default function ManualInputScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Transaction</Text>
+                <Text style={styles.saveButtonText}>{t('manual.save')}</Text>
               </>
             )}
           </TouchableOpacity>

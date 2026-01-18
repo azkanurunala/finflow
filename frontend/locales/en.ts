@@ -17,6 +17,8 @@ export default {
     success: "Success",
     search: "Search",
     apply: "Apply",
+    comingSoon: "Coming Soon",
+    comingSoonDesc: "This feature is coming soon!",
   },
   auth: {
     login: "Log In",
@@ -82,6 +84,7 @@ export default {
     privacyPolicy: "Privacy Policy",
     version: "VERSION",
     plan: "Plan",
+    about: "About FinFlow",
   },
   subscription: {
     subscription: "Subscription",
@@ -95,6 +98,68 @@ export default {
     freeTrial: "Free Trial",
     startTrial: "Start My 3-Day Free Trial",
     viewPlans: "Or view all subscription plans",
+    plans: {
+      trial: { name: "14-Day Free Trial", tagline: "Try all features free for 14 days" },
+      basic: { name: "Basic Package", tagline: "Essential features for everyday use" },
+      premium: { name: "Premium Package", tagline: "Everything unlimited, no restrictions" },
+      yearly: { name: "Annual Plan", tagline: "Best value! Get 2 months FREE" },
+    },
+    features: {
+      fullAccess: "Full Feature Access",
+      unlimitedChat: "Unlimited Chat",
+      audioLimit: "30x Audio Log / month",
+      ocrLimit: "30x OCR Scan / month",
+      audioUnlimited: "Unlimited Audio Log",
+      ocrUnlimited: "Unlimited OCR Scan",
+      premiumAnalytics: "Premium Analytics",
+      exportImport: "Export & Import Data",
+      freeMonths: "2 Months FREE",
+      allUnlimited: "All Features Unlimited",
+      audioTrial: "30x Audio Log",
+      ocrTrial: "30x OCR Scan",
+    },
+    badges: {
+      recommended: "RECOMMENDED",
+      bestValue: "BEST VALUE",
+      current: "CURRENT PLAN",
+    },
+    alerts: {
+      iapRequired: "Apple In-App Purchase",
+      iapDesc: "To subscribe to {plan} for {price}/{period}, please complete the purchase through Apple.",
+      iosRequired: "iOS Required",
+      iosRequiredDesc: "In-App Purchase is only available on iOS devices through the App Store.",
+      success: "Success!",
+      successDesc: "Your {plan} subscription is now active!",
+      trialStarted: "Trial Started!",
+      trialDesc: "Your 14-day free trial is now active. Enjoy all features!",
+      error: "Error",
+      productUnavailable: "Product not available",
+    },
+    footer: {
+      appleManaged: "Subscriptions are managed through Apple App Store",
+      cancelAnytime: "Cancel anytime from your device settings",
+      chargedToApple: "Payment will be charged to your Apple ID",
+    },
+    periods: {
+      days14: "14 days",
+      month: "month",
+      year: "year",
+    },
+    savings: "Save {amount}",
+  },
+  notifications: {
+    title: "Notifications",
+    readAll: "Read All",
+    emptyTitle: "No Notifications",
+    emptyDesc: "You're all caught up! We'll notify you when something important happens.",
+    settings: {
+      title: "Notification Settings",
+      push: "Push Notifications",
+      email: "Email Notifications",
+      system: "System Notifications",
+      save: "Save Preferences",
+    },
+    justNow: "Just now",
   },
   analytics: {
     analytics: "Analytics",
@@ -122,4 +187,60 @@ export default {
     income: "Income",
     other: "Other",
   },
+  add: {
+    title: "Add Transaction",
+    chooseMethod: "Choose Input Method",
+    manual: {
+      title: "Manual Input",
+      desc: "Enter transaction details manually"
+    },
+    camera: {
+      title: "Scan Your Receipt",
+      desc: "Take a photo or select from gallery to automatically extract transaction details",
+      takePhoto: "Take Photo",
+      gallery: "Gallery",
+      retake: "Retake",
+      process: "Process Receipt"
+    },
+    voice: {
+      title: "Voice Recording",
+      subtitle: "Tap the button below and speak your expense naturally",
+      recording: "Recording...",
+      start: "Start Recording",
+      stop: "Stop Recording",
+      trySaying: "Try saying:",
+      audioTooShort: "Audio Too Short",
+      audioTooShortDesc: "Recording is too short to transcribe. Please record longer.",
+      noAudio: "No Audio",
+      noAudioDesc: "No audio could be transcribed. Please try recording again."
+    }
+  },
+  manual: {
+    amount: "Amount",
+    category: "Select Category",
+    date: "Date",
+    desc: "Description",
+    placeholderDesc: "e.g., Lunch with friends",
+    save: "Save Transaction",
+    addCustom: "Add Custom Category",
+    customPlaceholder: "New Category Name",
+    add: "Add"
+  },
+  edit: {
+    title: "Edit Transaction",
+    reviewTitle: "Review & Save",
+    saveChanges: "Save Changes",
+    deleteTitle: "Delete Transaction",
+    deleteDesc: "Are you sure you want to delete this transaction?",
+    deleteConfirm: "Delete",
+    transactionUpdated: "Transaction updated!",
+    enterValidAmount: "Please enter a valid amount",
+    failedUpdate: "Failed to update transaction",
+    failedDelete: "Failed to delete transaction",
+    failedLoad: "Failed to load transaction",
+    fromVoice: "From Voice",
+    fromReceipt: "From Receipt Scan",
+    reviewNote: "Review the data below and correct if needed",
+    transcription: "Transcription"
+  }
 };

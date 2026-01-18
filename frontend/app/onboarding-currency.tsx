@@ -27,9 +27,9 @@ export default function OnboardingCurrencyScreen() {
   const handleContinue = async () => {
     // Save currency preference
     await AsyncStorage.setItem("user_currency", selectedCurrency);
-    
-    // Go to trial page to complete onboarding
-    router.push("/onboarding-trial");
+
+    // Go to balance page
+    router.push("/onboarding-balance");
   };
 
   // Remove back button - once at currency, must complete
@@ -50,7 +50,7 @@ export default function OnboardingCurrencyScreen() {
         <View style={styles.iconContainer}>
           <Ionicons name="cash" size={48} color="#4DB6AC" />
         </View>
-        
+
         <Text style={styles.title}>Choose Your Currency</Text>
         <Text style={styles.subtitle}>
           Select your preferred currency for tracking expenses. All amounts will be displayed in this currency.

@@ -11,13 +11,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
-import axios from "axios";
+
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import RecordingModal from "../../components/RecordingModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -25,206 +25,39 @@ export default function AddScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams();
   const { t } = useLanguage();
-  const { currency } = useCurrency();
-  const [loading, setLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [showRecordingModal, setShowRecordingModal] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
 
   useEffect(() => {
-    requestPermissions();
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording) {
-      interval = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1);
-      }, 1000);
-    } else {
-      setRecordingDuration(0);
+    if (mode === "voice") {
+      setRecordingMode("voice");
+      setShowRecordingModal(true);
+    } else if (mode === "camera") {
+      setRecordingMode("scan");
+      setShowRecordingModal(true);
     }
-    return () => clearInterval(interval);
-  }, [isRecording]);
+  }, [mode]);
 
-  const requestPermissions = async () => {
-    await ImagePicker.requestCameraPermissionsAsync();
-    await ImagePicker.requestMediaLibraryPermissionsAsync();
-    await Audio.requestPermissionsAsync();
+  const handleModalClose = () => {
+    setShowRecordingModal(false);
+    // Clear mode param to avoid reopening on refresh/back
+    router.setParams({ mode: undefined });
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const handleRecordingComplete = (result: any) => {
+    setShowRecordingModal(false);
+    // Navigate to history or stay here? The modal usually handles navigation to edit.
+    // RecordingModal implementation navigates to edit-transaction internally.
+    // so we just need to close the modal and clear params.
+    router.setParams({ mode: undefined });
   };
 
-  const handleTakePhoto = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [3, 4],
-        quality: 0.8,
-        base64: true,
-      });
 
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to take photo");
-    }
-  };
-
-  const handlePickImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [3, 4],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
-    }
-  };
-
-  const handleProcessReceipt = async () => {
-    if (!selectedImage) return;
-
-    setLoading(true);
-    try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      const response = await axios.post(
-        `${BACKEND_URL}/api/transactions/receipt`,
-        { 
-          image_base64: selectedImage,
-          currency: currency  // Use user's global currency setting
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      // Redirect to edit screen for verification
-      const transaction = response.data.transaction;
-      router.push(`/(app)/edit-transaction?id=${transaction.id}&source=receipt`);
-    } catch (error: any) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process receipt"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(recording);
-      setIsRecording(true);
-    } catch (error) {
-      Alert.alert("Error", "Failed to start recording");
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-
-    setIsRecording(false);
-    setLoading(true);
-
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-
-      if (!uri) {
-        throw new Error("No recording URI");
-      }
-
-      // Read the audio file and convert to base64
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          // Remove data URL prefix
-          const base64Data = base64String.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      const audioBase64 = await base64Promise;
-      const sessionToken = await AsyncStorage.getItem("session_token");
-
-      // Send to backend for transcription
-      const apiResponse = await axios.post(
-        `${BACKEND_URL}/api/transactions/voice`,
-        { audio_base64: audioBase64 },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 60000, // 60 seconds timeout for transcription
-        }
-      );
-
-      Alert.alert(
-        "Success",
-        `Transcribed: "${apiResponse.data.transcription}"\n\n${apiResponse.data.message}`,
-        [
-          {
-            text: "View Transactions",
-            onPress: () => router.replace("/(app)/history"),
-          },
-          {
-            text: "Record Another",
-            style: "cancel",
-          },
-        ]
-      );
-
-      setRecording(null);
-    } catch (error: any) {
-      console.error("Voice transcription error:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process voice recording. Please try again."
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const renderModeSelection = () => (
     <View style={styles.modeSelection}>
-      <Text style={styles.sectionTitle}>Choose Input Method</Text>
-      
+      <Text style={styles.sectionTitle}>{t('add.chooseMethod')}</Text>
+
       <TouchableOpacity
         style={styles.modeCard}
         onPress={() => router.push("/(app)/chat")}
@@ -260,9 +93,9 @@ export default function AddScreen() {
             <Ionicons name="create" size={32} color="#3B82F6" />
           </View>
           <View style={styles.modeContent}>
-            <Text style={styles.modeTitle}>Manual Input</Text>
+            <Text style={styles.modeTitle}>{t('add.manual.title')}</Text>
             <Text style={styles.modeDescription}>
-              Enter transaction details manually
+              {t('add.manual.desc')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#3B82F6" />
@@ -315,145 +148,7 @@ export default function AddScreen() {
     </View>
   );
 
-  const renderCameraMode = () => (
-    <View style={styles.cameraMode}>
-      {selectedImage ? (
-        <>
-          <View style={styles.imagePreviewContainer}>
-            <Image
-              source={{ uri: `data:image/jpeg;base64,${selectedImage}` }}
-              style={styles.receiptImage}
-              resizeMode="contain"
-            />
-          </View>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => setSelectedImage(null)}
-            >
-              <Ionicons name="refresh" size={20} color="#6B7280" />
-              <Text style={styles.secondaryButtonText}>Retake</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.buttonDisabled]}
-              onPress={handleProcessReceipt}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark" size={20} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Process Receipt</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </>
-      ) : (
-        <View style={styles.cameraOptions}>
-          <View style={styles.cameraIconContainer}>
-            <Ionicons name="receipt" size={64} color="#F59E0B" />
-          </View>
-          <Text style={styles.cameraTitle}>Scan Your Receipt</Text>
-          <Text style={styles.cameraSubtitle}>
-            Take a photo or select from gallery to automatically extract transaction details
-          </Text>
-          
-          <View style={styles.cameraButtons}>
-            <TouchableOpacity
-              style={styles.cameraButton}
-              onPress={handleTakePhoto}
-            >
-              <View style={styles.cameraButtonIcon}>
-                <Ionicons name="camera" size={28} color="#4DB6AC" />
-              </View>
-              <Text style={styles.cameraButtonText}>Take Photo</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.cameraButton}
-              onPress={handlePickImage}
-            >
-              <View style={styles.cameraButtonIcon}>
-                <Ionicons name="images" size={28} color="#4DB6AC" />
-              </View>
-              <Text style={styles.cameraButtonText}>Gallery</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-    </View>
-  );
-
-  const renderVoiceMode = () => (
-    <View style={styles.voiceMode}>
-      <View style={styles.voiceVisualizer}>
-        <View style={[styles.micCircle, isRecording && styles.micCircleRecording]}>
-          <View style={[styles.micInner, isRecording && styles.micInnerRecording]}>
-            <Ionicons
-              name="mic"
-              size={48}
-              color={isRecording ? "#fff" : "#8B5CF6"}
-            />
-          </View>
-        </View>
-        
-        {isRecording ? (
-          <View style={styles.recordingInfo}>
-            <Text style={styles.recordingDuration}>
-              {formatDuration(recordingDuration)}
-            </Text>
-            <Text style={styles.recordingLabel}>Recording...</Text>
-          </View>
-        ) : (
-          <View style={styles.voiceInstructions}>
-            <Text style={styles.voiceTitle}>Voice Recording</Text>
-            <Text style={styles.voiceSubtitle}>
-              Tap the button below and speak your expense naturally
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.voiceExamples}>
-        <Text style={styles.examplesTitle}>Try saying:</Text>
-        <View style={styles.exampleBubble}>
-          <Text style={styles.exampleText}>"Spent $15 on lunch at Subway"</Text>
-        </View>
-        <View style={styles.exampleBubble}>
-          <Text style={styles.exampleText}>"Paid $50 for gas yesterday"</Text>
-        </View>
-      </View>
-
-      <View style={styles.voiceActions}>
-        {isRecording ? (
-          <TouchableOpacity
-            style={[styles.stopButton, loading && styles.buttonDisabled]}
-            onPress={stopRecording}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="stop" size={24} color="#fff" />
-                <Text style={styles.stopButtonText}>Stop Recording</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.recordButton}
-            onPress={startRecording}
-          >
-            <Ionicons name="mic" size={24} color="#fff" />
-            <Text style={styles.recordButtonText}>Start Recording</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -464,15 +159,20 @@ export default function AddScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {mode === "camera" ? "Scan Receipt" : mode === "voice" ? "Voice Log" : "Add Transaction"}
-        </Text>
+        <Text style={styles.headerTitle}>{t('add.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <View style={styles.content}>
-        {mode === "camera" ? renderCameraMode() : mode === "voice" ? renderVoiceMode() : renderModeSelection()}
+        {renderModeSelection()}
       </View>
+
+      <RecordingModal
+        visible={showRecordingModal}
+        mode={recordingMode}
+        onClose={handleModalClose}
+        onComplete={handleRecordingComplete}
+      />
     </SafeAreaView>
   );
 }

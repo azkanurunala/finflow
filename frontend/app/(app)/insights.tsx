@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -43,7 +43,7 @@ interface AIInsights {
 export default function AdvancedAnalyticsScreen() {
   const router = useRouter();
   const { formatAmount, currency } = useCurrency();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -59,6 +59,8 @@ export default function AdvancedAnalyticsScreen() {
       case "today": return 1;
       case "week": return 7;
       case "month": return 30;
+      case "year": return 365;
+      case "all": return 3650;
       default: return 30;
     }
   };
@@ -72,10 +74,7 @@ export default function AdvancedAnalyticsScreen() {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       const days = getFilterDays();
-      const response = await axios.get(
-        `${BACKEND_URL}/api/insights/ai?days=${days}`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
-      );
+      const response = await apiClient.get(`/api/insights/ai?days=${days}`);
       setInsights(response.data);
     } catch (error) {
       console.error("Failed to fetch AI insights", error);
@@ -88,33 +87,30 @@ export default function AdvancedAnalyticsScreen() {
     setExporting(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
+
       if (!sessionToken) {
         Alert.alert("Error", "Please login again to export data");
         setExporting(false);
         return;
       }
-      
+
       const days = getFilterDays();
-      
+
       if (format === "json") {
-        const response = await axios.get(
-          `${BACKEND_URL}/api/export/transactions?format=json&days=${days}`,
-          { 
-            headers: { Authorization: `Bearer ${sessionToken}` },
-            timeout: 30000
-          }
+        const response = await apiClient.get(
+          `/api/export/transactions?format=json&days=${days}`,
+          { timeout: 30000 }
         );
-        
+
         if (!response.data || !response.data.transactions) {
-          Alert.alert("Info", "No transactions to export");
+          Alert.alert(t('common.info'), t('analytics.export.noData'));
           setExporting(false);
           return;
         }
-        
+
         const jsonString = JSON.stringify(response.data, null, 2);
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.json`;
-        
+
         if (Platform.OS === "web") {
           const blob = new Blob([jsonString], { type: "application/json" });
           const url = URL.createObjectURL(blob);
@@ -124,11 +120,11 @@ export default function AdvancedAnalyticsScreen() {
           a.click();
           URL.revokeObjectURL(url);
         } else {
-          const fileUri = FileSystem.documentDirectory + filename;
+          const fileUri = (FileSystem as any).cacheDirectory + filename;
           await FileSystem.writeAsStringAsync(fileUri, jsonString, {
-            encoding: FileSystem.EncodingType.UTF8
+            encoding: 'utf8'
           });
-          
+
           const isSharingAvailable = await Sharing.isAvailableAsync();
           if (isSharingAvailable) {
             await Sharing.shareAsync(fileUri, {
@@ -136,28 +132,27 @@ export default function AdvancedAnalyticsScreen() {
               dialogTitle: "Export Transactions"
             });
           } else {
-            Alert.alert("Success", `File saved to: ${fileUri}`);
+            Alert.alert(t('common.success'), `${t('analytics.export.savedTo')}: ${fileUri}`);
           }
         }
       } else {
         // CSV export
-        const response = await axios.get(
-          `${BACKEND_URL}/api/export/transactions?format=csv&days=${days}`,
-          { 
-            headers: { Authorization: `Bearer ${sessionToken}` },
+        const response = await apiClient.get(
+          `/api/export/transactions?format=csv&days=${days}`,
+          {
             responseType: "text",
             timeout: 30000
           }
         );
-        
+
         if (!response.data || response.data.trim() === "") {
-          Alert.alert("Info", "No transactions to export");
+          Alert.alert(t('common.info'), t('analytics.export.noData'));
           setExporting(false);
           return;
         }
-        
+
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
-        
+
         if (Platform.OS === "web") {
           const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
           const url = URL.createObjectURL(blob);
@@ -167,11 +162,11 @@ export default function AdvancedAnalyticsScreen() {
           a.click();
           URL.revokeObjectURL(url);
         } else {
-          const fileUri = FileSystem.documentDirectory + filename;
+          const fileUri = (FileSystem as any).cacheDirectory + filename;
           await FileSystem.writeAsStringAsync(fileUri, response.data, {
-            encoding: FileSystem.EncodingType.UTF8
+            encoding: 'utf8'
           });
-          
+
           const isSharingAvailable = await Sharing.isAvailableAsync();
           if (isSharingAvailable) {
             await Sharing.shareAsync(fileUri, {
@@ -179,16 +174,16 @@ export default function AdvancedAnalyticsScreen() {
               dialogTitle: "Export Transactions"
             });
           } else {
-            Alert.alert("Success", `File saved to: ${fileUri}`);
+            Alert.alert(t('common.success'), `${t('analytics.export.savedTo')}: ${fileUri}`);
           }
         }
       }
-      
-      Alert.alert("Success", "Export completed successfully!");
+
+      Alert.alert(t('common.success'), t('analytics.export.success'));
     } catch (error: any) {
       console.error("Export error:", error);
-      const errorMessage = error.response?.data?.detail || error.message || "Failed to export data";
-      Alert.alert("Export Error", errorMessage);
+      const errorMessage = error.response?.data?.detail || error.message || t('analytics.export.failed');
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       setExporting(false);
     }
@@ -241,8 +236,8 @@ export default function AdvancedAnalyticsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Analytics</Text>
-        <TouchableOpacity 
+        <Text style={styles.headerTitle}>{t('analytics.aiTitle')}</Text>
+        <TouchableOpacity
           style={styles.exportButton}
           onPress={() => Alert.alert(
             "Export Data",
@@ -265,8 +260,8 @@ export default function AdvancedAnalyticsScreen() {
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
         {/* Filter & Sort (using shared component) */}
-        <TransactionFilter 
-          filters={filters} 
+        <TransactionFilter
+          filters={filters}
           onFiltersChange={setFilters}
           showSortOnly={false}
         />
@@ -274,7 +269,7 @@ export default function AdvancedAnalyticsScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#10B981" />
-            <Text style={styles.loadingText}>Analyzing your finances...</Text>
+            <Text style={styles.loadingText}>{t('analytics.analyzing')}</Text>
           </View>
         ) : insights ? (
           <>
@@ -282,14 +277,14 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.summaryCard}>
               <View style={styles.summaryHeader}>
                 <View style={[styles.trendBadge, { backgroundColor: getTrendColor(insights?.spending_trend || 'good') + "20" }]}>
-                  <Ionicons 
-                    name={getTrendIcon(insights?.spending_trend || 'good') as any} 
-                    size={20} 
-                    color={getTrendColor(insights?.spending_trend || 'good')} 
+                  <Ionicons
+                    name={getTrendIcon(insights?.spending_trend || 'good') as any}
+                    size={20}
+                    color={getTrendColor(insights?.spending_trend || 'good')}
                   />
                   <Text style={[styles.trendText, { color: getTrendColor(insights?.spending_trend || 'good') }]}>
-                    {(insights?.spending_trend || 'good') === "good" ? "On Track" : 
-                     (insights?.spending_trend || 'good') === "needs_attention" ? "Needs Attention" : "Review Needed"}
+                    {(insights?.spending_trend || 'good') === "good" ? "On Track" :
+                      (insights?.spending_trend || 'good') === "needs_attention" ? "Needs Attention" : "Review Needed"}
                   </Text>
                 </View>
                 <Ionicons name="sparkles" size={24} color="#F59E0B" />
@@ -299,25 +294,26 @@ export default function AdvancedAnalyticsScreen() {
 
             {/* Income vs Expenses */}
             <View style={styles.statsCard}>
-              <Text style={styles.sectionTitle}>Overview</Text>
+              <Text style={styles.sectionTitle}>{t('analytics.overview')}</Text>
               <View style={styles.statsRow}>
                 <View style={[styles.statBox, styles.incomeBox]}>
                   <Ionicons name="arrow-down-circle" size={24} color="#10B981" />
-                  <Text style={styles.statLabel}>Income</Text>
+                  <Text style={styles.statLabel}>{t('common.income')}</Text>
                   <Text style={[styles.statValue, { color: "#10B981" }]}>
                     {formatAmount(insights?.chart_data?.income_vs_expenses?.income || 0)}
                   </Text>
                 </View>
                 <View style={[styles.statBox, styles.expenseBox]}>
                   <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
-                  <Text style={styles.statLabel}>Expenses</Text>
+                  <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
+                  <Text style={styles.statLabel}>{t('common.expenses')}</Text>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
                     {formatAmount(insights?.chart_data?.income_vs_expenses?.expenses || 0)}
                   </Text>
                 </View>
               </View>
               <View style={styles.netRow}>
-                <Text style={styles.netLabel}>Net Balance</Text>
+                <Text style={styles.netLabel}>{t('analytics.netBalance')}</Text>
                 <Text style={[
                   styles.netValue,
                   { color: (insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "#10B981" : "#EF4444" }
@@ -332,7 +328,10 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.insightsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="bulb" size={24} color="#F59E0B" />
-                <Text style={styles.sectionTitle}>AI Insights</Text>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="bulb" size={24} color="#F59E0B" />
+                  <Text style={styles.sectionTitle}>{t('analytics.aiInsights')}</Text>
+                </View>
               </View>
               {(insights?.insights || []).map((insight, index) => (
                 <View key={index} style={styles.insightItem}>
@@ -346,7 +345,10 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.recommendationsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <Text style={styles.sectionTitle}>Recommendations</Text>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+                  <Text style={styles.sectionTitle}>{t('analytics.recommendations')}</Text>
+                </View>
               </View>
               {(insights?.recommendations || []).map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
@@ -361,12 +363,12 @@ export default function AdvancedAnalyticsScreen() {
             {/* Spending by Category */}
             {(insights?.chart_data?.by_category?.length || 0) > 0 && (
               <View style={styles.categoryCard}>
-                <Text style={styles.sectionTitle}>Spending by Category</Text>
+                <Text style={styles.sectionTitle}>{t('analytics.spendingByCategory')}</Text>
                 <View style={styles.categoryList}>
-                  {(insights?.chart_data?.by_category || []).map((item, index) => 
+                  {(insights?.chart_data?.by_category || []).map((item, index) =>
                     renderCategoryBar(
-                      item, 
-                      index, 
+                      item,
+                      index,
                       Math.max(...(insights?.chart_data?.by_category || []).map(c => c.amount || 0), 1)
                     )
                   )}
@@ -376,9 +378,9 @@ export default function AdvancedAnalyticsScreen() {
 
             {/* Export Options */}
             <View style={styles.exportCard}>
-              <Text style={styles.sectionTitle}>Export Data</Text>
+              <Text style={styles.sectionTitle}>{t('analytics.exportData')}</Text>
               <View style={styles.exportButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.exportOption}
                   onPress={() => handleExport("csv")}
                   disabled={exporting}
@@ -386,7 +388,7 @@ export default function AdvancedAnalyticsScreen() {
                   <Ionicons name="document-text" size={24} color="#4DB6AC" />
                   <Text style={styles.exportOptionText}>CSV</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.exportOption}
                   onPress={() => handleExport("json")}
                   disabled={exporting}

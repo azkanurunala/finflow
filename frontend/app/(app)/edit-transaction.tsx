@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import axios from "axios";
+import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -40,7 +40,7 @@ export default function EditTransactionScreen() {
   const { id, source, transcription } = useLocalSearchParams();
   const { currency, currencySymbol, formatInputValue, parseInputValue, getDecimalSeparator } = useCurrency();
   const { language, t } = useLanguage();
-  
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [displayAmount, setDisplayAmount] = useState("");
@@ -54,7 +54,7 @@ export default function EditTransactionScreen() {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [newCategoryInput, setNewCategoryInput] = useState("");
   const [showAddCategory, setShowAddCategory] = useState(false);
-  
+
   // Source info for displaying context
   const isFromVoice = source === "voice";
   const isFromReceipt = source === "receipt";
@@ -96,11 +96,8 @@ export default function EditTransactionScreen() {
   const fetchTransaction = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.get(
-        `${BACKEND_URL}/api/transactions/${id}`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
-      );
-      
+      const response = await apiClient.get(`/api/transactions/${id}`);
+
       const t = response.data;
       const amountStr = t.amount.toString();
       // Format the amount using the currency context
@@ -112,14 +109,14 @@ export default function EditTransactionScreen() {
       setNotes(t.notes || "");
       // Use transaction's currency if exists, otherwise use user's global currency
       setTransactionCurrency(t.currency || currency);
-      
+
       // If category is not in default list, add to custom categories
       const isDefaultCategory = DEFAULT_CATEGORIES.some(cat => cat.id === t.category);
       if (!isDefaultCategory && t.category !== "Income") {
         setCustomCategories([t.category]);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to load transaction");
+      Alert.alert(t('common.error'), t('edit.failedLoad'));
       router.back();
     } finally {
       setLoading(false);
@@ -130,16 +127,16 @@ export default function EditTransactionScreen() {
     // Parse the formatted display amount back to numeric value
     const numericAmount = parseInputValue(displayAmount);
     if (!displayAmount || numericAmount <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert(t('common.error'), t('edit.enterValidAmount'));
       return;
     }
 
     setSaving(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      await axios.put(
-        `${BACKEND_URL}/api/transactions/${id}`,
+
+      await apiClient.put(
+        `/api/transactions/${id}`,
         {
           amount: numericAmount,
           currency: transactionCurrency, // Use selected currency
@@ -148,15 +145,14 @@ export default function EditTransactionScreen() {
           date: date.toISOString().split("T")[0],
           transaction_type: transactionType,
           notes: notes || null,
-        },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        }
       );
 
-      Alert.alert("Success", "Transaction updated!", [
+      Alert.alert(t('common.success'), t('edit.transactionUpdated'), [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Failed to update transaction");
+      Alert.alert(t('common.error'), error.response?.data?.detail || t('edit.failedUpdate'));
     } finally {
       setSaving(false);
     }
@@ -164,23 +160,20 @@ export default function EditTransactionScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete Transaction",
-      "Are you sure you want to delete this transaction?",
+      t('edit.deleteTitle'),
+      t('edit.deleteDesc'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Delete",
+          text: t('edit.deleteConfirm'),
           style: "destructive",
           onPress: async () => {
             try {
               const sessionToken = await AsyncStorage.getItem("session_token");
-              await axios.delete(
-                `${BACKEND_URL}/api/transactions/${id}`,
-                { headers: { Authorization: `Bearer ${sessionToken}` } }
-              );
+              await apiClient.delete(`/api/transactions/${id}`);
               router.back();
             } catch (error) {
-              Alert.alert("Error", "Failed to delete transaction");
+              Alert.alert(t('common.error'), t('edit.failedDelete'));
             }
           },
         },
@@ -188,12 +181,7 @@ export default function EditTransactionScreen() {
     );
   };
 
-  const getCurrencySymbol = (code: string) => {
-    const symbols: { [key: string]: string } = {
-      USD: "$", EUR: "€", GBP: "£", JPY: "¥", IDR: "Rp", SGD: "S$"
-    };
-    return symbols[code] || "$";
-  };
+
 
   if (loading) {
     return (
@@ -214,9 +202,9 @@ export default function EditTransactionScreen() {
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isFromVoice || isFromReceipt 
-              ? (language === 'id' ? 'Periksa & Simpan' : 'Review & Save')
-              : (language === 'id' ? 'Edit Transaksi' : 'Edit Transaction')}
+            {isFromVoice || isFromReceipt
+              ? t('edit.reviewTitle')
+              : t('edit.title')}
           </Text>
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={24} color="#EF4444" />
@@ -228,21 +216,19 @@ export default function EditTransactionScreen() {
           {(isFromVoice || isFromReceipt) && (
             <View style={styles.sourceBadgeContainer}>
               <View style={[styles.sourceBadge, isFromVoice ? styles.voiceBadge : styles.receiptBadge]}>
-                <Ionicons 
-                  name={isFromVoice ? "mic" : "scan"} 
-                  size={16} 
-                  color={isFromVoice ? "#8B5CF6" : "#F59E0B"} 
+                <Ionicons
+                  name={isFromVoice ? "mic" : "scan"}
+                  size={16}
+                  color={isFromVoice ? "#8B5CF6" : "#F59E0B"}
                 />
                 <Text style={[styles.sourceBadgeText, isFromVoice ? styles.voiceBadgeText : styles.receiptBadgeText]}>
-                  {isFromVoice 
-                    ? (language === 'id' ? 'Dari Voice' : 'From Voice')
-                    : (language === 'id' ? 'Dari Scan Receipt' : 'From Receipt Scan')}
+                  {isFromVoice
+                    ? t('edit.fromVoice')
+                    : t('edit.fromReceipt')}
                 </Text>
               </View>
               <Text style={styles.reviewNote}>
-                {language === 'id' 
-                  ? 'Periksa data di bawah dan koreksi jika perlu'
-                  : 'Review the data below and correct if needed'}
+                {t('edit.reviewNote')}
               </Text>
             </View>
           )}
@@ -253,7 +239,7 @@ export default function EditTransactionScreen() {
               <View style={styles.transcriptionHeader}>
                 <Ionicons name="text" size={18} color="#8B5CF6" />
                 <Text style={styles.transcriptionTitle}>
-                  {language === 'id' ? 'Transkripsi' : 'Transcription'}
+                  {t('edit.transcription')}
                 </Text>
               </View>
               <Text style={styles.transcriptionText}>"{decodedTranscription}"</Text>
@@ -268,7 +254,7 @@ export default function EditTransactionScreen() {
             >
               <Ionicons name="arrow-up" size={20} color={transactionType === "expense" ? "#fff" : "#EF4444"} />
               <Text style={[styles.typeButtonText, transactionType === "expense" && styles.typeButtonTextActive]}>
-                Expense
+                {t('home.expenses')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -277,14 +263,13 @@ export default function EditTransactionScreen() {
             >
               <Ionicons name="arrow-down" size={20} color={transactionType === "income" ? "#fff" : "#10B981"} />
               <Text style={[styles.typeButtonText, transactionType === "income" && styles.typeButtonTextActive]}>
-                Income
+                {t('home.income')}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Amount Input */}
           <View style={styles.amountContainer}>
-            <Text style={styles.currencySymbol}>{getCurrencySymbol(transactionCurrency)}</Text>
+            <Text style={styles.currencySymbol}>{currencySymbol}</Text>
             <TextInput
               style={styles.amountInput}
               placeholder="0"
@@ -297,10 +282,10 @@ export default function EditTransactionScreen() {
 
           {/* Merchant Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Merchant / Description</Text>
+            <Text style={styles.inputLabel}>{t('manual.desc')}</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g., Starbucks, Salary, etc."
+              placeholder={t('manual.placeholderDesc')}
               placeholderTextColor="#9CA3AF"
               value={merchant}
               onChangeText={setMerchant}
@@ -309,7 +294,7 @@ export default function EditTransactionScreen() {
 
           {/* Date Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date</Text>
+            <Text style={styles.inputLabel}>{t('manual.date')}</Text>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowDatePicker(true)}
@@ -341,9 +326,9 @@ export default function EditTransactionScreen() {
           {/* Category Selection */}
           {transactionType === "expense" && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Category</Text>
-              <ScrollView 
-                horizontal 
+              <Text style={styles.inputLabel}>{t('manual.category')}</Text>
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.categoriesScrollView}
                 contentContainerStyle={styles.categoriesScrollContent}
@@ -378,16 +363,16 @@ export default function EditTransactionScreen() {
                   onPress={() => setShowAddCategory(true)}
                 >
                   <Ionicons name="add" size={16} color="#4DB6AC" />
-                  <Text style={styles.addCategoryText}>Add</Text>
+                  <Text style={styles.addCategoryText}>{t('manual.add')}</Text>
                 </TouchableOpacity>
               </ScrollView>
-              
+
               {/* Add Category Input */}
               {showAddCategory && (
                 <View style={styles.addCategoryContainer}>
                   <TextInput
                     style={styles.addCategoryInput}
-                    placeholder="Enter new category name"
+                    placeholder={t('manual.customPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     value={newCategoryInput}
                     onChangeText={setNewCategoryInput}
@@ -438,7 +423,7 @@ export default function EditTransactionScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>{t('edit.saveChanges')}</Text>
               </>
             )}
           </TouchableOpacity>

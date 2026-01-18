@@ -18,7 +18,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AppleAuthentication from "expo-apple-authentication";
-import axios from "axios";
+import { apiClient } from "../api/client";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -64,7 +64,7 @@ export default function LoginScreen() {
         }
       }
     };
-    
+
     handleUserRedirect();
   }, [user, loading]);
 
@@ -81,7 +81,7 @@ export default function LoginScreen() {
       });
 
       // Send credential to backend for verification and user creation/login
-      const response = await axios.post(`${BACKEND_URL}/api/auth/apple`, {
+      const response = await apiClient.post(`/api/auth/apple`, {
         identity_token: credential.identityToken,
         authorization_code: credential.authorizationCode,
         user_id: credential.user,

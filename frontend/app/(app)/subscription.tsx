@@ -13,7 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
-import axios from "axios";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -33,103 +34,13 @@ interface SubscriptionInfo {
   };
 }
 
-// Subscription Packages - Vertical Layout (Single Column)
-const PACKAGES = [
-  {
-    id: "trial",
-    productId: null,
-    name: "14-Day Free Trial",
-    tagline: "Try all features free for 14 days",
-    price: "Free",
-    priceValue: 0,
-    period: "14 days",
-    features: [
-      { icon: "infinite", text: "Full Feature Access", highlight: true },
-      { icon: "chatbubble", text: "Unlimited Chat" },
-      { icon: "mic", text: "30x Audio Log" },
-      { icon: "camera", text: "30x OCR Scan" },
-    ],
-    color: "#10B981",
-    isTrial: true,
-  },
-  {
-    id: "basic",
-    productId: "com.finflow.subscription.basic",
-    name: "Basic Package",
-    tagline: "Essential features for everyday use",
-    price: "$2.99",
-    priceValue: 2.99,
-    period: "month",
-    features: [
-      { icon: "chatbubble", text: "Unlimited Chat", highlight: true },
-      { icon: "mic", text: "30x Audio Log / month" },
-      { icon: "camera", text: "30x OCR Scan / month" },
-    ],
-    color: "#4DB6AC",
-  },
-  {
-    id: "premium",
-    productId: "com.finflow.subscription.premium",
-    name: "Premium Package",
-    tagline: "Everything unlimited, no restrictions",
-    price: "$9.99",
-    priceValue: 9.99,
-    period: "month",
-    features: [
-      { icon: "chatbubble", text: "Unlimited Chat", highlight: true },
-      { icon: "mic", text: "Unlimited Audio Log", highlight: true },
-      { icon: "camera", text: "Unlimited OCR Scan", highlight: true },
-      { icon: "stats-chart", text: "Premium Analytics" },
-      { icon: "download", text: "Export & Import Data" },
-    ],
-    color: "#8B5CF6",
-    recommended: true,
-  },
-  {
-    id: "yearly",
-    productId: "com.finflow.subscription.yearly",
-    name: "Annual Plan",
-    tagline: "Best value! Get 2 months FREE",
-    price: "$99",
-    priceValue: 99,
-    period: "year",
-    originalPrice: "$119.88",
-    savings: "Save $20.88",
-    features: [
-      { icon: "infinite", text: "All Features Unlimited", highlight: true },
-      { icon: "chatbubble", text: "Unlimited Chat" },
-      { icon: "mic", text: "Unlimited Audio Log" },
-      { icon: "camera", text: "Unlimited OCR Scan" },
-      { icon: "stats-chart", text: "Premium Analytics" },
-      { icon: "download", text: "Export & Import Data" },
-      { icon: "gift", text: "2 Months FREE", highlight: true },
-    ],
-    color: "#F59E0B",
-    bestValue: true,
-  },
-  {
-    id: "monthly_full",
-    productId: "com.finflow.subscription.monthly",
-    name: "Monthly Full Access",
-    tagline: "Full flexibility, cancel anytime",
-    price: "$29",
-    priceValue: 29,
-    period: "month",
-    features: [
-      { icon: "infinite", text: "All Features Unlimited", highlight: true },
-      { icon: "chatbubble", text: "Unlimited Chat" },
-      { icon: "mic", text: "Unlimited Audio Log" },
-      { icon: "camera", text: "Unlimited OCR Scan" },
-      { icon: "stats-chart", text: "Premium Analytics" },
-      { icon: "download", text: "Export & Import Data" },
-    ],
-    color: "#3B82F6",
-  },
-];
+// Packages moved into component to use translation hook
+
 
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState<string | null>(null);
@@ -138,12 +49,85 @@ export default function SubscriptionScreen() {
     fetchSubscription();
   }, []);
 
+  const PACKAGES = [
+    {
+      id: "trial",
+      productId: null,
+      name: t('subscription.plans.trial.name'),
+      tagline: t('subscription.plans.trial.tagline'),
+      price: "Free",
+      priceValue: 0,
+      period: t('subscription.periods.days14'),
+      features: [
+        { icon: "infinite", text: t('subscription.features.fullAccess'), highlight: true },
+        { icon: "chatbubble", text: t('subscription.features.unlimitedChat') },
+        { icon: "mic", text: t('subscription.features.audioTrial') },
+        { icon: "camera", text: t('subscription.features.ocrTrial') },
+      ],
+      color: "#10B981",
+      isTrial: true,
+    },
+    {
+      id: "basic",
+      productId: "com.finflow.subscription.basic",
+      name: t('subscription.plans.basic.name'),
+      tagline: t('subscription.plans.basic.tagline'),
+      price: "$2.99",
+      priceValue: 2.99,
+      period: t('subscription.periods.month'),
+      features: [
+        { icon: "chatbubble", text: t('subscription.features.unlimitedChat'), highlight: true },
+        { icon: "mic", text: t('subscription.features.audioLimit') },
+        { icon: "camera", text: t('subscription.features.ocrLimit') },
+      ],
+      color: "#4DB6AC",
+    },
+    {
+      id: "premium",
+      productId: "com.finflow.subscription.premium",
+      name: t('subscription.plans.premium.name'),
+      tagline: t('subscription.plans.premium.tagline'),
+      price: "$9.99",
+      priceValue: 9.99,
+      period: t('subscription.periods.month'),
+      features: [
+        { icon: "chatbubble", text: t('subscription.features.unlimitedChat'), highlight: true },
+        { icon: "mic", text: t('subscription.features.audioUnlimited'), highlight: true },
+        { icon: "camera", text: t('subscription.features.ocrUnlimited'), highlight: true },
+        { icon: "stats-chart", text: t('subscription.features.premiumAnalytics') },
+        { icon: "download", text: t('subscription.features.exportImport') },
+      ],
+      color: "#8B5CF6",
+      recommended: true,
+    },
+    {
+      id: "yearly",
+      productId: "com.finflow.subscription.yearly",
+      name: t('subscription.plans.yearly.name'),
+      tagline: t('subscription.plans.yearly.tagline'),
+      price: "$99",
+      priceValue: 99,
+      period: t('subscription.periods.year'),
+      originalPrice: "$119.88",
+      savings: t('subscription.savings').replace('{amount}', "$20.88"),
+      features: [
+        { icon: "infinite", text: t('subscription.features.allUnlimited'), highlight: true },
+        { icon: "chatbubble", text: t('subscription.features.unlimitedChat') },
+        { icon: "mic", text: t('subscription.features.audioUnlimited') },
+        { icon: "camera", text: t('subscription.features.ocrUnlimited') },
+        { icon: "stats-chart", text: t('subscription.features.premiumAnalytics') },
+        { icon: "download", text: t('subscription.features.exportImport') },
+        { icon: "gift", text: t('subscription.features.freeMonths'), highlight: true },
+      ],
+      color: "#F59E0B",
+      bestValue: true,
+    },
+  ];
+
   const fetchSubscription = async () => {
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await axios.get(`${BACKEND_URL}/api/subscription`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
+      const response = await apiClient.get(`/api/subscription`);
       setSubscription(response.data);
     } catch (error) {
       console.error("Fetch subscription error:", error);
@@ -159,7 +143,7 @@ export default function SubscriptionScreen() {
     }
 
     if (!pkg.productId) {
-      Alert.alert("Error", "Product not available");
+      Alert.alert(t('subscription.alerts.error'), t('subscription.alerts.productUnavailable'));
       return;
     }
 
@@ -167,20 +151,23 @@ export default function SubscriptionScreen() {
     // For now, show info about Apple IAP requirement
     if (Platform.OS === 'ios') {
       Alert.alert(
-        "Apple In-App Purchase",
-        `To subscribe to ${pkg.name} for ${pkg.price}/${pkg.period}, please complete the purchase through Apple.`,
+        t('subscription.alerts.iapRequired'),
+        t('subscription.alerts.iapDesc')
+          .replace('{plan}', pkg.name)
+          .replace('{price}', pkg.price)
+          .replace('{period}', pkg.period),
         [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Continue",
+          { text: t('common.cancel'), style: "cancel" },
+          {
+            text: t('common.confirm'),
             onPress: () => simulatePurchase(pkg)
           }
         ]
       );
     } else {
       Alert.alert(
-        "iOS Required",
-        "In-App Purchase is only available on iOS devices through the App Store.",
+        t('subscription.alerts.iosRequired'),
+        t('subscription.alerts.iosRequiredDesc'),
         [{ text: "OK" }]
       );
     }
@@ -191,28 +178,29 @@ export default function SubscriptionScreen() {
     setPurchasing(pkg.id);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
+
       // Call backend to activate subscription (simulated)
-      await axios.post(
-        `${BACKEND_URL}/api/subscription/verify-apple`,
+      await apiClient.post(
+        `/api/subscription/verify-apple`,
         {
           receipt_data: "simulated_receipt",
           product_id: pkg.productId,
           transaction_id: `simulated_${Date.now()}`,
-        },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+        }
       );
 
       Alert.alert(
-        "Success!",
-        `Your ${pkg.name} subscription is now active!`,
-        [{ text: "Great!", onPress: () => {
-          refreshUser();
-          fetchSubscription();
-        }}]
+        t('subscription.alerts.success'),
+        t('subscription.alerts.successDesc').replace('{plan}', pkg.name),
+        [{
+          text: "OK", onPress: () => {
+            refreshUser();
+            fetchSubscription();
+          }
+        }]
       );
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Purchase failed");
+      Alert.alert(t('subscription.alerts.error'), error.response?.data?.detail || "Purchase failed");
     } finally {
       setPurchasing(null);
     }
@@ -222,23 +210,24 @@ export default function SubscriptionScreen() {
     setPurchasing("trial");
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      await axios.post(
-        `${BACKEND_URL}/api/subscription/start-trial`,
-        { trial_days: 14 },
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+
+      await apiClient.post(
+        `/api/subscription/start-trial`,
+        { trial_days: 14 }
       );
 
       Alert.alert(
-        "Trial Started!",
-        "Your 14-day free trial is now active. Enjoy all features!",
-        [{ text: "Let's Go!", onPress: () => {
-          refreshUser();
-          fetchSubscription();
-        }}]
+        t('subscription.alerts.trialStarted'),
+        t('subscription.alerts.trialDesc'),
+        [{
+          text: "OK", onPress: () => {
+            refreshUser();
+            fetchSubscription();
+          }
+        }]
       );
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Unable to start trial");
+      Alert.alert(t('subscription.alerts.error'), error.response?.data?.detail || "Unable to start trial");
     } finally {
       setPurchasing(null);
     }
@@ -249,8 +238,8 @@ export default function SubscriptionScreen() {
     const isDisabled = isCurrentPlan || purchasing !== null;
 
     return (
-      <View 
-        key={pkg.id} 
+      <View
+        key={pkg.id}
         style={[
           styles.packageCard,
           pkg.recommended && styles.recommendedCard,
@@ -261,18 +250,18 @@ export default function SubscriptionScreen() {
         {/* Badges */}
         {pkg.recommended && (
           <View style={styles.recommendedBadge}>
-            <Text style={styles.badgeText}>RECOMMENDED</Text>
+            <Text style={styles.badgeText}>{t('subscription.badges.recommended')}</Text>
           </View>
         )}
         {pkg.bestValue && (
           <View style={styles.bestValueBadge}>
-            <Text style={styles.badgeText}>BEST VALUE</Text>
+            <Text style={styles.badgeText}>{t('subscription.badges.bestValue')}</Text>
           </View>
         )}
         {isCurrentPlan && (
           <View style={styles.currentBadge}>
             <Ionicons name="checkmark-circle" size={16} color="#fff" />
-            <Text style={styles.badgeText}>CURRENT PLAN</Text>
+            <Text style={styles.badgeText}>{t('subscription.badges.current')}</Text>
           </View>
         )}
 
@@ -304,10 +293,10 @@ export default function SubscriptionScreen() {
         <View style={styles.featuresContainer}>
           {pkg.features.map((feature, index) => (
             <View key={index} style={styles.featureRow}>
-              <Ionicons 
-                name={feature.icon as any} 
-                size={18} 
-                color={feature.highlight ? pkg.color : "#6B7280"} 
+              <Ionicons
+                name={feature.icon as any}
+                size={18}
+                color={feature.highlight ? pkg.color : "#6B7280"}
               />
               <Text style={[
                 styles.featureText,
@@ -333,11 +322,11 @@ export default function SubscriptionScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <Text style={styles.subscribeButtonText}>
-              {isCurrentPlan 
-                ? "Current Plan" 
-                : pkg.isTrial 
-                  ? "Start Free Trial" 
-                  : `Subscribe for ${pkg.price}`
+              {isCurrentPlan
+                ? t('subscription.currentPlan')
+                : pkg.isTrial
+                  ? t('subscription.startTrial')
+                  : `${t('subscription.subscription')} ${pkg.price}`
               }
             </Text>
           )}
@@ -361,11 +350,11 @@ export default function SubscriptionScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Subscription</Text>
+        <Text style={styles.headerTitle}>{t('subscription.subscription')}</Text>
         <View style={styles.placeholder} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -381,14 +370,14 @@ export default function SubscriptionScreen() {
             </View>
             {subscription.days_remaining !== undefined && subscription.days_remaining > 0 && (
               <Text style={styles.daysRemaining}>
-                {subscription.days_remaining} days remaining
+                {subscription.days_remaining} {t('analytics.days')} {t('chat.left')}
               </Text>
             )}
             {subscription.usage && (
               <View style={styles.usageInfo}>
                 <Text style={styles.usageText}>
-                  Chat: {subscription.usage.chat_count} | 
-                  Audio: {subscription.usage.voice_minutes?.toFixed(1) || 0} min | 
+                  Chat: {subscription.usage.chat_count} |
+                  Audio: {subscription.usage.voice_minutes?.toFixed(1) || 0} min |
                   OCR: {subscription.usage.ocr_count}
                 </Text>
               </View>
@@ -397,9 +386,9 @@ export default function SubscriptionScreen() {
         )}
 
         {/* Section Title */}
-        <Text style={styles.sectionTitle}>Choose Your Plan</Text>
+        <Text style={styles.sectionTitle}>{t('subscription.choosePlan')}</Text>
         <Text style={styles.sectionSubtitle}>
-          All plans include a 7-day money-back guarantee
+          {t('subscription.tagline') || "Choose the plan that fits your needs"}
         </Text>
 
         {/* Packages - Vertical List (Single Column) */}
@@ -410,13 +399,13 @@ export default function SubscriptionScreen() {
         {/* Footer Info */}
         <View style={styles.footerInfo}>
           <Text style={styles.footerText}>
-            • Subscriptions are managed through Apple App Store
+            • {t('subscription.footer.appleManaged')}
           </Text>
           <Text style={styles.footerText}>
-            • Cancel anytime from your device settings
+            • {t('subscription.footer.cancelAnytime')}
           </Text>
           <Text style={styles.footerText}>
-            • Payment will be charged to your Apple ID
+            • {t('subscription.footer.chargedToApple')}
           </Text>
         </View>
       </ScrollView>

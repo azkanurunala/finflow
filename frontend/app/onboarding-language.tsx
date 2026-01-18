@@ -41,7 +41,7 @@ export default function OnboardingLanguageScreen() {
     // Save language preference
     await AsyncStorage.setItem("user_locale", selectedLanguage);
     i18n.locale = selectedLanguage;
-    
+
     // Go to currency selection - use push to allow proper navigation
     router.push("/onboarding-currency");
   };
@@ -59,7 +59,7 @@ export default function OnboardingLanguageScreen() {
         <View style={styles.iconContainer}>
           <Ionicons name="language" size={48} color="#4DB6AC" />
         </View>
-        
+
         <Text style={styles.title}>Choose Your Language</Text>
         <Text style={styles.subtitle}>
           Select your preferred language. You can change this later in settings.

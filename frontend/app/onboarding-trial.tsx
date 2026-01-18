@@ -80,7 +80,7 @@ export default function OnboardingTrialScreen() {
       // Save onboarding preference locally
       await AsyncStorage.setItem("selected_plan", selectedPlan);
       await AsyncStorage.setItem("onboarding_preferences_saved", "true");
-      
+
       // If user is already logged in, start trial directly
       if (user) {
         await startTrial();
@@ -126,7 +126,7 @@ export default function OnboardingTrialScreen() {
         <View style={styles.iconContainer}>
           <Ionicons name="rocket" size={48} color="#4DB6AC" />
         </View>
-        
+
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>
           Start with a free trial or subscribe to unlock all features.

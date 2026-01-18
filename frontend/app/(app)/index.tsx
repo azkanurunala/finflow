@@ -17,9 +17,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { apiClient } from "../../api/client";
 import { useCurrency } from "../../contexts/CurrencyContext";
-import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
@@ -50,7 +49,7 @@ export default function HomeScreen() {
   const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal states - simplified with RecordingModal
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRecordingModal, setShowRecordingModal] = useState(false);
@@ -65,7 +64,7 @@ export default function HomeScreen() {
         const url = new URL(window.location.href);
         const openVoice = url.searchParams.get('openVoice');
         const openScan = url.searchParams.get('openScan');
-        
+
         if (openVoice === 'true') {
           setRecordingMode("voice");
           setShowRecordingModal(true);
@@ -104,16 +103,12 @@ export default function HomeScreen() {
 
   const fetchData = async () => {
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      
-      const transactionsRes = await axios.get(
-        `${BACKEND_URL}/api/transactions?limit=5`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      const transactionsRes = await apiClient.get(
+        `/api/transactions?limit=5`
       );
-      
-      const insightsRes = await axios.get(
-        `${BACKEND_URL}/api/insights?days=30`,
-        { headers: { Authorization: `Bearer ${sessionToken}` } }
+
+      const insightsRes = await apiClient.get(
+        `/api/insights?days=30`
       );
 
       // Sort transactions by created_at (newest first)
@@ -189,7 +184,7 @@ export default function HomeScreen() {
     const diffMs = now.getTime() - date.getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffHours < 1) return "Just now";
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return "Yesterday";
@@ -203,8 +198,8 @@ export default function HomeScreen() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const totalBalance = insights 
-    ? insights.total_income - insights.total_expenses 
+  const totalBalance = insights
+    ? insights.total_income - insights.total_expenses
     : 0;
 
   if (loading) {
@@ -244,7 +239,7 @@ export default function HomeScreen() {
               <Text style={styles.userName}>{user?.name}</Text>
             </View>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.notificationButton}
             onPress={() => router.push("/(app)/notifications")}
           >
@@ -254,16 +249,20 @@ export default function HomeScreen() {
         </View>
 
         {/* Total Balance */}
-        <View style={styles.balanceSection}>
+        <TouchableOpacity
+          style={styles.balanceSection}
+          onPress={() => router.push("/(app)/history?tab=all")}
+          activeOpacity={0.7}
+        >
           <Text style={styles.balanceLabel}>Total Balance</Text>
           <Text style={styles.balanceAmount}>
             {formatAmount(totalBalance)}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Income & Expenses Cards - New Layout with Deep-linking */}
         <View style={styles.statsRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statCard}
             onPress={() => router.push("/(app)/history?tab=income")}
             activeOpacity={0.7}
@@ -280,7 +279,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statCard}
             onPress={() => router.push("/(app)/history?tab=expense")}
             activeOpacity={0.7}
@@ -358,8 +357,8 @@ export default function HomeScreen() {
             </View>
           ) : (
             transactions.map((transaction) => (
-              <TouchableOpacity 
-                key={transaction.id} 
+              <TouchableOpacity
+                key={transaction.id}
                 style={styles.transactionItem}
                 onPress={() => router.push(`/(app)/edit-transaction?id=${transaction.id}`)}
                 activeOpacity={0.7}
@@ -421,7 +420,7 @@ export default function HomeScreen() {
               <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             </View>
             <Text style={styles.successTitle}>Transaction Saved!</Text>
-            
+
             {successTransaction && (
               <View style={styles.successDetails}>
                 {successTransaction.transcription && (
@@ -611,12 +610,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   incomeAmount: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#10B981",
   },
   expenseAmount: {
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: "bold",
     color: "#EF4444",
   },

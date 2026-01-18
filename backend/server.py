@@ -595,7 +595,7 @@ async def create_session(request: SessionDataRequest, response: Response):
         
         # Create session
         session_token = user_data["session_token"]
-        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=30)
         
         session_doc = {
             "user_id": user_id,
@@ -613,7 +613,7 @@ async def create_session(request: SessionDataRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,  # 7 days
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
@@ -703,7 +703,7 @@ async def apple_auth(request: AppleAuthRequest, response: Response):
         
         # Create session token
         session_token = secrets.token_urlsafe(32)
-        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=30)
         
         session_doc = {
             "user_id": user_id,
@@ -735,7 +735,7 @@ async def apple_auth(request: AppleAuthRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,  # 7 days
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         

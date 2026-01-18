@@ -15,31 +15,22 @@ import {
   POPULAR_CURRENCIES,
   OTHER_CURRENCIES,
   Currency,
-  getUserCurrency,
-  setUserCurrency,
 } from "../../utils/currency";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 export default function CurrencySelectionScreen() {
   const router = useRouter();
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const { currency, setCurrency } = useCurrency();
+  const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    loadSelectedCurrency();
-  }, []);
-
-  const loadSelectedCurrency = async () => {
-    const saved = await getUserCurrency();
-    setSelectedCurrency(saved);
-  };
 
   const handleSelectCurrency = (code: string) => {
     setSelectedCurrency(code);
   };
 
   const handleConfirm = async () => {
-    await setUserCurrency(selectedCurrency);
-    
+    await setCurrency(selectedCurrency);
+
     Alert.alert(
       "Currency Changed",
       "All amounts will be converted to your selected currency using real-time exchange rates.",

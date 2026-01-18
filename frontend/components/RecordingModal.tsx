@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
-import axios from "axios";
+import { apiClient } from "../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
@@ -68,20 +68,19 @@ export default function RecordingModal({
   // Separate effect for auto-start to avoid dependency issues
   useEffect(() => {
     if (visible) {
-      const timer = setTimeout(async () => {
-        if (mode === "voice") {
+      if (mode === "voice") {
+        const timer = setTimeout(async () => {
           await startRecordingAuto();
-        } else if (mode === "scan") {
-          await autoOpenCamera();
-        }
-      }, 500);
-      
-      return () => clearTimeout(timer);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+      // For scan mode, we DO NOT auto-start camera anymore.
+      // We wait for user selection (Camera vs Gallery).
     }
   }, [visible, mode]);
 
   // Auto open camera function
-  const autoOpenCamera = async () => {
+  const handleOpenCamera = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
@@ -91,7 +90,6 @@ export default function RecordingModal({
             ? "Akses kamera diperlukan untuk scan struk"
             : "Camera access is needed to scan receipts"
         );
-        onClose();
         return;
       }
 
@@ -104,14 +102,39 @@ export default function RecordingModal({
 
       if (!result.canceled && result.assets[0].base64) {
         setSelectedImage(result.assets[0].base64);
-      } else {
-        // User cancelled camera, close modal
-        onClose();
       }
     } catch (error) {
       console.error("Camera error:", error);
       Alert.alert("Error", "Failed to open camera");
-      onClose();
+    }
+  };
+
+  const handleOpenGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          language === "id" ? "Izin Diperlukan" : "Permission Required",
+          language === "id"
+            ? "Akses galeri diperlukan untuk memilih foto"
+            : "Gallery access is needed to select photos"
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets[0].base64) {
+        setSelectedImage(result.assets[0].base64);
+      }
+    } catch (error) {
+      console.error("Gallery error:", error);
+      Alert.alert("Error", "Failed to open gallery");
     }
   };
 
@@ -119,10 +142,10 @@ export default function RecordingModal({
   const startRecordingAuto = async () => {
     try {
       console.log("Starting auto recording...");
-      
+
       const { status } = await Audio.requestPermissionsAsync();
       console.log("Permission status:", status);
-      
+
       if (status !== "granted") {
         Alert.alert(
           language === "id" ? "Izin Diperlukan" : "Permission Required",
@@ -225,17 +248,13 @@ export default function RecordingModal({
 
       const sessionToken = await AsyncStorage.getItem("session_token");
 
-      const apiResponse = await axios.post(
-        `${BACKEND_URL}/api/transactions/voice`,
+      const apiResponse = await apiClient.post(
+        `/api/transactions/voice`,
         {
           audio_base64: audioBase64,
           currency: currency,
         },
         {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
           timeout: 60000,
         }
       );
@@ -306,17 +325,11 @@ export default function RecordingModal({
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
 
-      const response = await axios.post(
-        `${BACKEND_URL}/api/transactions/receipt`,
+      const response = await apiClient.post(
+        `/api/transactions/receipt`,
         {
           image_base64: selectedImage,
           currency: currency,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
         }
       );
 
@@ -399,7 +412,7 @@ export default function RecordingModal({
           <View style={styles.previewActions}>
             <TouchableOpacity
               style={styles.retakeButton}
-              onPress={autoOpenCamera}
+              onPress={() => setSelectedImage(null)}
             >
               <Text style={styles.retakeButtonText}>
                 {language === "id" ? "Foto Ulang" : "Retake"}
@@ -421,11 +434,35 @@ export default function RecordingModal({
           </View>
         </View>
       ) : (
-        <View style={styles.processingContainer}>
-          <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.processingText}>
-            {language === "id" ? "Membuka kamera..." : "Opening camera..."}
+        <View style={styles.scanSelectionContainer}>
+          <Text style={styles.scanSelectionTitle}>
+            {language === 'id' ? "Pilih Sumber Gambar" : "Select Image Source"}
           </Text>
+          <View style={styles.scanSelectionButtons}>
+            <TouchableOpacity
+              style={styles.scanSelectionButton}
+              onPress={handleOpenCamera}
+            >
+              <View style={[styles.scanIconCircle, { backgroundColor: '#DBEAFE' }]}>
+                <Ionicons name="camera" size={32} color="#3B82F6" />
+              </View>
+              <Text style={styles.scanButtonText}>
+                {language === 'id' ? "Kamera" : "Camera"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.scanSelectionButton}
+              onPress={handleOpenGallery}
+            >
+              <View style={[styles.scanIconCircle, { backgroundColor: '#FCE7F3' }]}>
+                <Ionicons name="images" size={32} color="#EC4899" />
+              </View>
+              <Text style={styles.scanButtonText}>
+                {language === 'id' ? "Galeri" : "Gallery"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </>
@@ -454,8 +491,8 @@ export default function RecordingModal({
                 ? "Rekam Suara"
                 : "Voice Log"
               : language === "id"
-              ? "Scan Struk"
-              : "Scan Receipt"}
+                ? "Scan Struk"
+                : "Scan Receipt"}
           </Text>
 
           {mode === "voice" ? renderVoiceContent() : renderScanContent()}
@@ -602,5 +639,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+  },
+  scanSelectionContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+    gap: 24,
+  },
+  scanSelectionTitle: {
+    fontSize: 16,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  scanSelectionButtons: {
+    flexDirection: "row",
+    gap: 40,
+  },
+  scanSelectionButton: {
+    alignItems: "center",
+    gap: 8,
+  },
+  scanIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scanButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1F2937",
   },
 });

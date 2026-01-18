@@ -38,7 +38,7 @@ const INDONESIAN_FORMAT_CURRENCIES = ['IDR', 'VND'];
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrencyState] = useState('USD');
+  const [currency, setCurrencyState] = useState('IDR');
   const [loading, setLoading] = useState(true);
   const [, forceUpdate] = useState({});
 
@@ -72,7 +72,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   // Get thousand separator based on currency
   const getThousandSeparator = () => usesIndonesianFormat() ? '.' : ',';
-  
+
   // Get decimal separator based on currency
   const getDecimalSeparator = () => usesIndonesianFormat() ? ',' : '.';
 
@@ -85,7 +85,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     const displayCurrency = sourceCurrency || currency;
     const symbol = CURRENCY_SYMBOLS[displayCurrency] || '$';
     const isIndonesianFormat = INDONESIAN_FORMAT_CURRENCIES.includes(displayCurrency);
-    
+
     // Indonesian format: . for thousands, , for decimals
     if (isIndonesianFormat) {
       const hasDecimals = amount % 1 !== 0;
@@ -95,13 +95,13 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       });
       return `${symbol}${formatted}`;
     }
-    
+
     // Japanese Yen, Korean Won - no decimals
     if (displayCurrency === 'JPY' || displayCurrency === 'KRW') {
       const formatted = Math.round(amount).toLocaleString('ja-JP');
       return `${symbol}${formatted}`;
     }
-    
+
     // Standard format: , for thousands, . for decimals (USD, EUR, GBP, etc.)
     const formatted = amount.toLocaleString('en-US', {
       minimumFractionDigits: 2,
@@ -120,10 +120,10 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     // Remove all non-numeric except decimal indicator
     const thousandSep = getThousandSeparator();
     const decimalSep = getDecimalSeparator();
-    
+
     // Clean the input - keep only numbers and the appropriate decimal separator
     let cleaned = value.replace(new RegExp(`[^0-9${decimalSep === '.' ? '\\.' : ','}]`, 'g'), '');
-    
+
     // If using Indonesian format, convert , to temporary marker
     if (usesIndonesianFormat()) {
       // Input might have , as decimal - that's correct for IDR
@@ -132,7 +132,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       // Standard format - remove commas (thousand separators)
       cleaned = cleaned.replace(/,/g, '');
     }
-    
+
     // Split integer and decimal parts
     let parts: string[];
     if (usesIndonesianFormat()) {
@@ -140,26 +140,26 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     } else {
       parts = cleaned.split('.');
     }
-    
+
     let integerPart = parts[0] || '';
     const decimalPart = parts.length > 1 ? parts[1] : '';
-    
+
     // Remove leading zeros (except single 0)
     integerPart = integerPart.replace(/^0+/, '') || '0';
-    
+
     // Add thousand separators to integer part
     integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
-    
+
     // Combine with decimal part
     if (decimalPart !== '') {
       return `${integerPart}${decimalSep}${decimalPart.slice(0, 2)}`;
     }
-    
+
     // If original had decimal separator at end, keep it
     if (value.endsWith(decimalSep) || (usesIndonesianFormat() && value.endsWith(','))) {
       return `${integerPart}${decimalSep}`;
     }
-    
+
     return integerPart;
   };
 
@@ -170,9 +170,9 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
    */
   const parseInputValue = (formattedValue: string): number => {
     if (!formattedValue) return 0;
-    
+
     let cleaned = formattedValue;
-    
+
     if (usesIndonesianFormat()) {
       // IDR format: remove . (thousands), replace , with . (decimal)
       cleaned = cleaned.replace(/\./g, '').replace(',', '.');
@@ -180,7 +180,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       // Standard format: remove , (thousands)
       cleaned = cleaned.replace(/,/g, '');
     }
-    
+
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;
   };
