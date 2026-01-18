@@ -57,14 +57,19 @@ export default function LoginScreen() {
   useEffect(() => {
     const handleUserRedirect = async () => {
       if (user && !loading) {
-        if (!user.is_subscription_active && !user.subscription_tier) {
+        // Check if user needs to complete onboarding/trial setup
+        // Defensive: treat undefined is_subscription_active as false
+        const hasActiveSubscription = user.is_subscription_active === true;
+        const hasSubscriptionTier = !!user.subscription_tier;
+
+        if (!hasActiveSubscription && !hasSubscriptionTier) {
           router.replace("/onboarding-trial");
         } else {
           router.replace("/(app)");
         }
       }
     };
-    
+
     handleUserRedirect();
   }, [user, loading]);
 
