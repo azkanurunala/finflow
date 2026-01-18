@@ -28,7 +28,7 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 
 # Emergent LLM Key
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = "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"
 
 # Create the main app
 app = FastAPI()
