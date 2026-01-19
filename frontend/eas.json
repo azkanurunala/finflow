@@ -20,7 +20,9 @@
   },
   "submit": {
     "production": {
-      "serviceAccountKeyPath": "./google-services.json"
+      "android": {
+        "serviceAccountKeyPath": "./google-services.json"
+      }
     }
   }
 }
