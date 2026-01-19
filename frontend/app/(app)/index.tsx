@@ -25,7 +25,9 @@ import { Audio } from "expo-av";
 import RecordingModal from "../../components/RecordingModal";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface Transaction {

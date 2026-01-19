@@ -20,7 +20,9 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 const DEFAULT_CATEGORIES = [
   { id: "Groceries", icon: "cart", color: "#10B981" },

@@ -25,7 +25,9 @@ import TransactionFilter, {
   DatePreset
 } from "../../components/TransactionFilter";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 interface Transaction {
   id: string;

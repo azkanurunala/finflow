@@ -18,7 +18,9 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { formatDistanceToNow } from "date-fns";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 interface Notification {
   id: string;

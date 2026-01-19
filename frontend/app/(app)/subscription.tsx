@@ -17,7 +17,9 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 interface SubscriptionInfo {
   tier: string;

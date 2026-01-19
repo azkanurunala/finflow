@@ -19,7 +19,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 interface RecordingModalProps {
   visible: boolean;

@@ -20,7 +20,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { apiClient } from "../api/client";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 export default function LoginScreen() {
   const router = useRouter();

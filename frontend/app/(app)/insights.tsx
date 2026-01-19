@@ -24,7 +24,9 @@ import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 import TransactionFilter, { defaultFilters, DatePreset, SortOption } from "../../components/TransactionFilter";
 import { differenceInDays } from "date-fns";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface AIInsights {

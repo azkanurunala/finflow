@@ -23,7 +23,9 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import RecordingModal from "../../components/RecordingModal";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 const CATEGORY_CHIPS: { id: string; label: string; icon: any }[] = [
   { id: "groceries", label: "Groceries", icon: "cart" },

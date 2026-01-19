@@ -6,7 +6,9 @@ import { Platform } from "react-native";
 import { apiClient } from "../api/client";
 import axios, { AxiosError } from "axios";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 const AUTH_URL = "https://auth.emergentagent.com";
 
 interface User {

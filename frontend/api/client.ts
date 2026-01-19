@@ -3,7 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 import { router } from "expo-router";
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+import { CONFIG } from "../constants/Config";
+
+const BACKEND_URL = CONFIG.BACKEND_URL;
 
 // Create axios instance
 export const apiClient = axios.create({
