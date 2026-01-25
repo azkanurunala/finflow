@@ -2425,6 +2425,7 @@ async def create_manual_transaction(
 ):
     """Create a transaction manually"""
     try:
+        now = datetime.now(timezone.utc)
         transaction_data = {
             "id": str(uuid.uuid4()),
             "user_id": current_user.user_id,
@@ -2436,7 +2437,9 @@ async def create_manual_transaction(
             "transaction_type": request.transaction_type,
             "notes": request.notes,
             "source": "manual",
-            "created_at": datetime.now(timezone.utc)
+            "created_at": now,
+            "updated_at": now,
+            "is_deleted": False
         }
         
         await db.transactions.insert_one(transaction_data)
@@ -2461,7 +2464,11 @@ async def update_transaction(
     request: UpdateTransactionRequest,
     current_user: User = Depends(require_auth)
 ):
-    """Update a transaction"""
+    """
+    Update a transaction.
+    CRITICAL: Always updates updated_at for sync.
+    If record was soft-deleted (is_deleted=true), this undeletes it.
+    """
     try:
         # Build update fields
         update_fields = {}
@@ -2480,8 +2487,11 @@ async def update_transaction(
         if request.notes is not None:
             update_fields["notes"] = request.notes
         
-        if not update_fields:
-            raise HTTPException(status_code=400, detail="No fields to update")
+        # CRITICAL: Always update updated_at for sync
+        update_fields["updated_at"] = datetime.now(timezone.utc)
+        
+        # If updating a deleted record, undelete it
+        update_fields["is_deleted"] = False
         
         result = await db.transactions.update_one(
             {"id": transaction_id, "user_id": current_user.user_id},
