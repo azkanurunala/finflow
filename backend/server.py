@@ -1331,59 +1331,438 @@ async def set_onboarding_balance(
 # Subscription Routes
 @api_router.get("/subscription")
 async def get_subscription(current_user: User = Depends(require_auth)):
-    """Get user's subscription info"""
-    tier = current_user.subscription_tier
-    tier_data = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
-    
-    # Check if subscription is active
-    is_active = True
-    days_remaining = None
-    
-    if current_user.subscription_expires_at:
-        expires_at = current_user.subscription_expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    """Get user's subscription status - Single source of truth"""
+    try:
+        entitlement = await get_user_entitlement(current_user.user_id)
         
-        is_active = expires_at > datetime.now(timezone.utc)
-        if is_active:
-            days_remaining = (expires_at - datetime.now(timezone.utc)).days
-    
-    # Get today's usage
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    usage = await db.usage_stats.find_one(
-        {"user_id": current_user.user_id, "date": today},
-        {"_id": 0}
-    )
-    
-    if not usage:
-        usage = {
-            "chat_count": 0,
-            "ocr_count": 0,
-            "voice_minutes": 0.0,
-            "total_actions": 0
+        # Calculate days remaining
+        days_remaining = None
+        if entitlement.get("expires_at"):
+            expires_at = entitlement["expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                days_remaining = (expires_at - datetime.now(timezone.utc)).days
+        
+        # Get today's usage
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        usage = await db.usage_stats.find_one(
+            {"user_id": current_user.user_id, "date": today},
+            {"_id": 0}
+        )
+        
+        if not usage:
+            usage = {
+                "chat_count": 0,
+                "ocr_count": 0,
+                "voice_minutes": 0.0,
+                "total_actions": 0
+            }
+        
+        return {
+            "tier": entitlement["tier"],
+            "tier_name": entitlement["tier_name"],
+            "is_active": entitlement["is_active"],
+            "expires_at": entitlement.get("expires_at").isoformat() if entitlement.get("expires_at") else None,
+            "days_remaining": days_remaining,
+            "features": entitlement.get("features", []),
+            "limits": entitlement.get("limits", {}),
+            "is_trial": entitlement.get("is_trial", False),
+            "is_coupon": entitlement.get("is_coupon", False),
+            "platform": entitlement.get("platform"),
+            "product_id": entitlement.get("product_id"),
+            "usage": {
+                "chat_count": usage.get("chat_count", 0),
+                "ocr_count": usage.get("ocr_count", 0),
+                "voice_minutes": usage.get("voice_minutes", 0.0),
+                "total_actions": usage.get("total_actions", 0)
+            }
         }
-    
-    return SubscriptionInfo(
-        tier=tier,
-        tier_name=tier_data["name"],
-        is_active=is_active,
-        expires_at=current_user.subscription_expires_at,
-        days_remaining=days_remaining,
-        limits=tier_data,
-        usage={
-            "chat_count": usage.get("chat_count", 0),
-            "ocr_count": usage.get("ocr_count", 0),
-            "voice_minutes": usage.get("voice_minutes", 0.0),
-            "total_actions": usage.get("total_actions", 0)
+    except Exception as e:
+        logger.error(f"Error getting subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/subscription/status")
+async def get_subscription_status(current_user: User = Depends(require_auth)):
+    """Get concise subscription status for quick checks"""
+    try:
+        entitlement = await get_user_entitlement(current_user.user_id)
+        return {
+            "tier": entitlement["tier"],
+            "is_active": entitlement["is_active"],
+            "is_trial": entitlement.get("is_trial", False),
+            "is_coupon": entitlement.get("is_coupon", False),
+            "features": entitlement.get("features", [])
         }
-    )
+    except Exception as e:
+        logger.error(f"Error getting subscription status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/subscription/tiers")
 async def get_subscription_tiers():
-    """Get available subscription tiers"""
-    return SUBSCRIPTION_TIERS
+    """Get available subscription tiers - prices from App Store/Play Store"""
+    # Return tier info without prices (prices come from native stores)
+    return {
+        "tiers": [
+            {
+                "tier_id": "free",
+                "name": "Free",
+                "features": SUBSCRIPTION_TIERS["free"]["features"],
+                "limits": SUBSCRIPTION_TIERS["free"]["limits"]
+            },
+            {
+                "tier_id": "pro_monthly",
+                "name": "Pro Monthly",
+                "product_id_ios": SUBSCRIPTION_TIERS["pro_monthly"]["product_id_ios"],
+                "product_id_android": SUBSCRIPTION_TIERS["pro_monthly"]["product_id_android"],
+                "features": SUBSCRIPTION_TIERS["pro_monthly"]["features"],
+                "limits": SUBSCRIPTION_TIERS["pro_monthly"]["limits"],
+                "duration_days": 30
+            },
+            {
+                "tier_id": "pro_yearly",
+                "name": "Pro Yearly",
+                "product_id_ios": SUBSCRIPTION_TIERS["pro_yearly"]["product_id_ios"],
+                "product_id_android": SUBSCRIPTION_TIERS["pro_yearly"]["product_id_android"],
+                "features": SUBSCRIPTION_TIERS["pro_yearly"]["features"],
+                "limits": SUBSCRIPTION_TIERS["pro_yearly"]["limits"],
+                "duration_days": 365,
+                "badge": "Best Value"
+            }
+        ],
+        "trial": {
+            "available": True,
+            "duration_days": 14,
+            "features": SUBSCRIPTION_TIERS["trial"]["features"]
+        }
+    }
 
-# Apple In-App Purchase Verification
+@api_router.post("/subscription/validate")
+async def validate_subscription(
+    request: SubscriptionValidateRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Validate subscription purchase from App Store or Play Store"""
+    try:
+        # Map product ID to tier
+        tier_id = PRODUCT_TIER_MAP.get(request.product_id)
+        if not tier_id:
+            raise HTTPException(status_code=400, detail="Invalid product ID")
+        
+        tier_data = SUBSCRIPTION_TIERS.get(tier_id)
+        if not tier_data:
+            raise HTTPException(status_code=400, detail="Invalid subscription tier")
+        
+        # TODO: In production, verify receipt/token with Apple/Google servers
+        # iOS: https://developer.apple.com/documentation/appstorereceipts/verifyreceipt
+        # Android: https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions
+        
+        if request.platform == "ios" and not request.receipt_data:
+            raise HTTPException(status_code=400, detail="Receipt data required for iOS")
+        
+        if request.platform == "android" and not request.purchase_token:
+            raise HTTPException(status_code=400, detail="Purchase token required for Android")
+        
+        # Calculate expiration
+        duration_days = tier_data.get("duration_days", 30)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=duration_days)
+        
+        # Check for existing active subscription (idempotent)
+        existing_purchase = await db.purchases.find_one({
+            "user_id": current_user.user_id,
+            "transaction_id": request.transaction_id,
+            "status": "completed"
+        })
+        
+        if existing_purchase:
+            # Return existing subscription info (idempotent)
+            return {
+                "success": True,
+                "message": "Subscription already active",
+                "tier": tier_id,
+                "tier_name": tier_data["name"],
+                "expires_at": existing_purchase.get("expires_at", expires_at).isoformat()
+            }
+        
+        # Update user subscription
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": tier_id,
+                    "subscription_tier_name": tier_data["name"],
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": expires_at,
+                    "subscription_platform": request.platform,
+                    "subscription_product_id": request.product_id,
+                    "is_trial": False,
+                    "is_coupon": False
+                }
+            }
+        )
+        
+        # Record purchase for audit trail
+        purchase_record = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "platform": request.platform,
+            "product_id": request.product_id,
+            "transaction_id": request.transaction_id,
+            "receipt_data": request.receipt_data[:100] if request.receipt_data else None,  # Store partial for reference
+            "purchase_token": request.purchase_token[:100] if request.purchase_token else None,
+            "tier": tier_id,
+            "status": "completed",
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.purchases.insert_one(purchase_record)
+        
+        # Create notification
+        await create_notification(
+            current_user.user_id,
+            "subscription_activated",
+            "Subscription Activated! 🎉",
+            f"Your {tier_data['name']} subscription is now active until {expires_at.strftime('%B %d, %Y')}.",
+            {"tier": tier_id, "expires_at": expires_at.isoformat()}
+        )
+        
+        logger.info(f"Subscription validated for user {current_user.user_id}: {tier_id}")
+        
+        return {
+            "success": True,
+            "message": "Subscription activated successfully",
+            "tier": tier_id,
+            "tier_name": tier_data["name"],
+            "expires_at": expires_at.isoformat(),
+            "features": tier_data.get("features", [])
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error validating subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/subscription/trial")
+async def start_trial(
+    request: StartTrialRequest = None,
+    current_user: User = Depends(require_auth)
+):
+    """Start 14-day free trial - one per user"""
+    try:
+        # Check if user already had a trial
+        user_doc = await db.users.find_one({"user_id": current_user.user_id})
+        if user_doc and user_doc.get("had_trial"):
+            raise HTTPException(status_code=400, detail="You have already used your free trial")
+        
+        # Check if user has active paid subscription
+        if user_doc and user_doc.get("subscription_tier") in ["pro_monthly", "pro_yearly"]:
+            expires_at = user_doc.get("subscription_expires_at")
+            if expires_at:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="You already have an active subscription")
+        
+        trial_expires = datetime.now(timezone.utc) + timedelta(days=14)
+        
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": "trial",
+                    "subscription_tier_name": "14-Day Free Trial",
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": trial_expires,
+                    "had_trial": True,
+                    "is_trial": True,
+                    "is_coupon": False,
+                    "subscription_platform": request.platform if request else None
+                }
+            }
+        )
+        
+        # Record trial start
+        await db.purchases.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "platform": request.platform if request else None,
+            "product_id": "trial",
+            "tier": "trial",
+            "status": "trial_started",
+            "expires_at": trial_expires,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        # Create notification
+        await create_notification(
+            current_user.user_id,
+            "trial_started",
+            "Welcome to Pro! 🎉",
+            f"Your 14-day free trial has started. Enjoy all Pro features until {trial_expires.strftime('%B %d, %Y')}.",
+            {"expires_at": trial_expires.isoformat()}
+        )
+        
+        logger.info(f"Trial started for user {current_user.user_id}")
+        
+        return {
+            "success": True,
+            "message": "14-day free trial activated",
+            "tier": "trial",
+            "tier_name": "14-Day Free Trial",
+            "expires_at": trial_expires.isoformat(),
+            "features": SUBSCRIPTION_TIERS["trial"]["features"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting trial: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/coupon/redeem")
+async def redeem_coupon(
+    request: CouponRedeemRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Redeem a coupon code for 1 month free Pro"""
+    try:
+        coupon_code = request.coupon_code.upper().strip()
+        
+        # Find coupon
+        coupon = await db.coupons.find_one({"code": coupon_code})
+        
+        if not coupon:
+            raise HTTPException(status_code=400, detail="Invalid coupon code")
+        
+        if coupon.get("is_used"):
+            raise HTTPException(status_code=400, detail="This coupon has already been used")
+        
+        if coupon.get("expires_at"):
+            expires_at = coupon["expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                raise HTTPException(status_code=400, detail="This coupon has expired")
+        
+        # Check if user already used a coupon
+        user_doc = await db.users.find_one({"user_id": current_user.user_id})
+        if user_doc and user_doc.get("used_coupon"):
+            raise HTTPException(status_code=400, detail="You have already used a coupon")
+        
+        # Check if user has active paid subscription
+        if user_doc and user_doc.get("subscription_tier") in ["pro_monthly", "pro_yearly"]:
+            expires_at = user_doc.get("subscription_expires_at")
+            if expires_at:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="You already have an active subscription")
+        
+        # Activate coupon benefit
+        benefit_days = coupon.get("benefit_days", 30)
+        coupon_expires = datetime.now(timezone.utc) + timedelta(days=benefit_days)
+        
+        # Mark coupon as used
+        await db.coupons.update_one(
+            {"code": coupon_code},
+            {
+                "$set": {
+                    "is_used": True,
+                    "used_by": current_user.user_id,
+                    "used_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Update user subscription
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": "coupon",
+                    "subscription_tier_name": "Coupon Redemption",
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": coupon_expires,
+                    "is_trial": False,
+                    "is_coupon": True,
+                    "used_coupon": coupon_code
+                }
+            }
+        )
+        
+        # Record coupon redemption
+        await db.purchases.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "product_id": "coupon",
+            "coupon_code": coupon_code,
+            "tier": "coupon",
+            "status": "coupon_redeemed",
+            "expires_at": coupon_expires,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        # Create notification
+        await create_notification(
+            current_user.user_id,
+            "coupon_redeemed",
+            "Coupon Activated! 🎁",
+            f"Your coupon has been redeemed. Enjoy Pro features until {coupon_expires.strftime('%B %d, %Y')}.",
+            {"coupon_code": coupon_code, "expires_at": coupon_expires.isoformat()}
+        )
+        
+        logger.info(f"Coupon {coupon_code} redeemed by user {current_user.user_id}")
+        
+        return {
+            "success": True,
+            "message": f"Coupon redeemed! You now have {benefit_days} days of Pro access.",
+            "tier": "coupon",
+            "tier_name": "Coupon Redemption",
+            "expires_at": coupon_expires.isoformat(),
+            "features": SUBSCRIPTION_TIERS["coupon"]["features"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error redeeming coupon: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/coupon/generate")
+async def generate_coupons(count: int = 100, current_user: User = Depends(require_auth)):
+    """Generate coupon codes (admin only - for testing)"""
+    try:
+        # In production, add admin check here
+        codes = await generate_coupon_codes(count)
+        return {
+            "success": True,
+            "message": f"Generated {len(codes)} coupon codes",
+            "codes": [c["code"] for c in codes]
+        }
+    except Exception as e:
+        logger.error(f"Error generating coupons: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/coupon/list")
+async def list_coupons(current_user: User = Depends(require_auth)):
+    """List available coupons (admin only - for testing)"""
+    try:
+        # In production, add admin check here
+        coupons = await db.coupons.find(
+            {"is_used": False},
+            {"_id": 0, "code": 1, "expires_at": 1}
+        ).to_list(100)
+        
+        return {
+            "available_count": len(coupons),
+            "coupons": coupons
+        }
+    except Exception as e:
+        logger.error(f"Error listing coupons: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Legacy Apple IAP endpoint (for backward compatibility)
 class AppleIAPVerifyRequest(BaseModel):
     receipt_data: str
     product_id: str
@@ -1394,59 +1773,15 @@ async def verify_apple_purchase(
     request: AppleIAPVerifyRequest,
     current_user: User = Depends(require_auth)
 ):
-    """Verify Apple In-App Purchase receipt and activate subscription"""
-    try:
-        # Map product IDs to subscription tiers
-        product_tier_map = {
-            "com.finflow.subscription.basic": {
-                "tier": "basic",
-                "tier_name": "Basic Package",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,  # Unlimited
-                    "voice_minutes": 30,
-                    "ocr_count": 30,
-                }
-            },
-            "com.finflow.subscription.premium": {
-                "tier": "premium",
-                "tier_name": "Premium Package",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-            "com.finflow.subscription.yearly": {
-                "tier": "yearly",
-                "tier_name": "Annual Plan",
-                "duration_days": 365,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-            "com.finflow.subscription.monthly": {
-                "tier": "monthly_full",
-                "tier_name": "Monthly Full Access",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-        }
-        
-        tier_info = product_tier_map.get(request.product_id)
-        if not tier_info:
-            raise HTTPException(status_code=400, detail="Invalid product ID")
-        
-        # In production, verify receipt with Apple's servers
-        # https://developer.apple.com/documentation/appstorereceipts/verifyreceipt
-        # For now, we trust the client (implement server-side verification in production)
+    """Legacy Apple IAP verification - redirects to new validate endpoint"""
+    # Convert to new format
+    validate_request = SubscriptionValidateRequest(
+        platform="ios",
+        product_id=request.product_id,
+        receipt_data=request.receipt_data,
+        transaction_id=request.transaction_id
+    )
+    return await validate_subscription(validate_request, current_user)
         
         # Calculate expiration date
         expires_at = datetime.now(timezone.utc) + timedelta(days=tier_info["duration_days"])
