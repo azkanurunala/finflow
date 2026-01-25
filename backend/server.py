@@ -266,6 +266,24 @@ class SubscriptionInfo(BaseModel):
     days_remaining: Optional[int] = None
     limits: Dict[str, Any]
     usage: Dict[str, Any]
+    platform: Optional[str] = None
+    product_id: Optional[str] = None
+    is_trial: bool = False
+    is_coupon: bool = False
+
+# Subscription Request Models
+class SubscriptionValidateRequest(BaseModel):
+    platform: str  # 'ios' or 'android'
+    product_id: str
+    receipt_data: Optional[str] = None  # iOS receipt
+    purchase_token: Optional[str] = None  # Android token
+    transaction_id: Optional[str] = None
+
+class CouponRedeemRequest(BaseModel):
+    coupon_code: str
+
+class StartTrialRequest(BaseModel):
+    platform: Optional[str] = None  # 'ios' or 'android'
 
 # Email/Password Auth Models
 class RegisterRequest(BaseModel):
@@ -314,6 +332,71 @@ def format_currency(amount: float, currency: str) -> str:
     else:
         # Default USD format: $1,234.56
         return f"${amount:,.2f}"
+
+async def generate_coupon_codes(count: int = 100):
+    """Generate unique coupon codes for testing"""
+    import random
+    import string
+    
+    existing_codes = set()
+    async for coupon in db.coupons.find({}, {"code": 1}):
+        existing_codes.add(coupon["code"])
+    
+    codes_to_create = []
+    while len(codes_to_create) < count:
+        # Generate code like: FINFLOW-XXXX-XXXX
+        code = f"FINFLOW-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}"
+        if code not in existing_codes:
+            existing_codes.add(code)
+            codes_to_create.append({
+                "code": code,
+                "is_used": False,
+                "used_by": None,
+                "used_at": None,
+                "benefit_type": "pro_monthly",
+                "benefit_days": 30,
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=365)  # Valid for 1 year
+            })
+    
+    if codes_to_create:
+        await db.coupons.insert_many(codes_to_create)
+    
+    return codes_to_create
+
+async def get_user_entitlement(user_id: str) -> dict:
+    """Get user's current subscription entitlement"""
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        return {"tier": "free", "is_active": False, "features": SUBSCRIPTION_TIERS["free"]["features"]}
+    
+    tier = user.get("subscription_tier", "free")
+    expires_at = user.get("subscription_expires_at")
+    
+    # Check if subscription is still active
+    is_active = False
+    if expires_at:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        is_active = expires_at > datetime.now(timezone.utc)
+    
+    if not is_active:
+        tier = "free"
+    
+    tier_data = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
+    
+    return {
+        "tier": tier,
+        "tier_name": tier_data.get("name", "Free"),
+        "is_active": is_active,
+        "expires_at": expires_at,
+        "features": tier_data.get("features", []),
+        "limits": tier_data.get("limits", {}),
+        "is_trial": user.get("is_trial", False),
+        "is_coupon": user.get("is_coupon", False),
+        "platform": user.get("subscription_platform"),
+        "product_id": user.get("subscription_product_id")
+    }
 
 async def save_to_chat_history(user_id: str, message_type: str, text: str, data: dict = None):
     """Save Voice/OCR results to chat history for WhatsApp-like persistence"""
