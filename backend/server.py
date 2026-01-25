@@ -2115,9 +2115,12 @@ async def create_receipt_transaction(
         
         # Parse receipt using GPT Vision
         transaction_data = await parse_receipt_image(request.image_base64)
+        now = datetime.now(timezone.utc)
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
-        transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["created_at"] = now
+        transaction_data["updated_at"] = now
+        transaction_data["is_deleted"] = False
         transaction_data["currency"] = request.currency  # Use user's preferred currency
         
         # Save to database
