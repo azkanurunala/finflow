@@ -2319,16 +2319,62 @@ async def create_voice_text_transaction(
 async def get_transactions(
     limit: int = 100,
     skip: int = 0,
+    updated_after: Optional[str] = None,
+    include_deleted: bool = False,
     current_user: User = Depends(require_auth)
 ):
-    """Get all transactions for current user"""
+    """
+    Get transactions for current user with Delta Sync support.
+    
+    - If updated_after is provided: Returns changes since that timestamp (including deleted)
+    - If updated_after is not provided: Returns active (non-deleted) transactions
+    - Results are sorted by updated_at ASCENDING for pagination consistency
+    """
     try:
-        transactions = await db.transactions.find(
-            {"user_id": current_user.user_id},
-            {"_id": 0}
-        ).sort("date", -1).skip(skip).limit(limit).to_list(limit)
+        query = {"user_id": current_user.user_id}
         
-        return {"transactions": transactions, "count": len(transactions)}
+        # Delta Sync mode
+        if updated_after:
+            try:
+                # Parse ISO 8601 timestamp
+                updated_after_dt = datetime.fromisoformat(updated_after.replace('Z', '+00:00'))
+                query["updated_at"] = {"$gt": updated_after_dt}
+                # Include both active and deleted records for delta sync
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid updated_after format. Use ISO 8601.")
+        else:
+            # Initial sync - only return active (non-deleted) records
+            if not include_deleted:
+                query["is_deleted"] = {"$ne": True}
+        
+        # Sort by updated_at ASCENDING for consistent pagination
+        transactions = await db.transactions.find(
+            query,
+            {"_id": 0}
+        ).sort("updated_at", 1).skip(skip).limit(limit).to_list(limit)
+        
+        # Determine next_cursor and has_more
+        next_cursor = None
+        has_more = False
+        
+        if transactions:
+            # Check if there are more records
+            next_query = query.copy()
+            last_updated = transactions[-1].get("updated_at")
+            if last_updated:
+                next_query["updated_at"] = {"$gt": last_updated}
+                more_count = await db.transactions.count_documents(next_query)
+                has_more = more_count > 0
+                next_cursor = last_updated.isoformat() if isinstance(last_updated, datetime) else str(last_updated)
+        
+        return {
+            "data": transactions,
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "count": len(transactions)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching transactions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
