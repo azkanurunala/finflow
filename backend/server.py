@@ -2384,17 +2384,34 @@ async def delete_transaction(
     transaction_id: str,
     current_user: User = Depends(require_auth)
 ):
-    """Delete a transaction"""
+    """
+    Soft delete a transaction (mark as deleted for sync).
+    Does NOT physically delete - sets is_deleted=true and updates updated_at.
+    """
     try:
-        result = await db.transactions.delete_one({
-            "id": transaction_id,
-            "user_id": current_user.user_id
-        })
+        # Soft delete: Update is_deleted and updated_at
+        result = await db.transactions.update_one(
+            {
+                "id": transaction_id,
+                "user_id": current_user.user_id
+            },
+            {
+                "$set": {
+                    "is_deleted": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
         
-        if result.deleted_count == 0:
+        if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Transaction not found")
         
-        return {"message": "Transaction deleted successfully"}
+        return {
+            "message": "Transaction deleted successfully",
+            "id": transaction_id,
+            "is_deleted": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
     except HTTPException:
         raise
     except Exception as e:
