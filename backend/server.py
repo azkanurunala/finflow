@@ -2817,6 +2817,175 @@ Respond in JSON format:
             "currency": "USD"
         }
 
+# ==================== SYNC & MIGRATION ENDPOINTS ====================
+
+@api_router.post("/sync/migrate")
+async def migrate_transactions_for_sync(current_user: User = Depends(require_auth)):
+    """
+    Migrate existing transactions to support delta sync.
+    Adds updated_at and is_deleted fields to records missing them.
+    """
+    try:
+        # Find transactions missing updated_at
+        missing_updated = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "updated_at": {"$exists": False}
+        })
+        
+        # Find transactions missing is_deleted
+        missing_deleted = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "is_deleted": {"$exists": False}
+        })
+        
+        # Update transactions missing updated_at (use created_at or current time)
+        if missing_updated > 0:
+            async for tx in db.transactions.find({
+                "user_id": current_user.user_id,
+                "updated_at": {"$exists": False}
+            }):
+                updated_at = tx.get("created_at", datetime.now(timezone.utc))
+                await db.transactions.update_one(
+                    {"id": tx["id"]},
+                    {"$set": {"updated_at": updated_at}}
+                )
+        
+        # Update transactions missing is_deleted
+        if missing_deleted > 0:
+            await db.transactions.update_many(
+                {
+                    "user_id": current_user.user_id,
+                    "is_deleted": {"$exists": False}
+                },
+                {"$set": {"is_deleted": False}}
+            )
+        
+        return {
+            "success": True,
+            "migrated": {
+                "updated_at_added": missing_updated,
+                "is_deleted_added": missing_deleted
+            },
+            "message": f"Migrated {missing_updated + missing_deleted} records for sync support"
+        }
+    except Exception as e:
+        logger.error(f"Error migrating transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/sync/prune")
+async def prune_deleted_transactions(
+    days_threshold: int = 90,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Hard delete soft-deleted transactions older than threshold.
+    Used for maintenance to prevent database bloat.
+    Records deleted > days_threshold ago are permanently removed.
+    """
+    try:
+        threshold_date = datetime.now(timezone.utc) - timedelta(days=days_threshold)
+        
+        # Count records to be pruned
+        to_prune = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "is_deleted": True,
+            "updated_at": {"$lt": threshold_date}
+        })
+        
+        if to_prune > 0:
+            # Hard delete old soft-deleted records
+            result = await db.transactions.delete_many({
+                "user_id": current_user.user_id,
+                "is_deleted": True,
+                "updated_at": {"$lt": threshold_date}
+            })
+            
+            return {
+                "success": True,
+                "pruned_count": result.deleted_count,
+                "threshold_days": days_threshold,
+                "message": f"Permanently deleted {result.deleted_count} old deleted transactions"
+            }
+        
+        return {
+            "success": True,
+            "pruned_count": 0,
+            "threshold_days": days_threshold,
+            "message": "No transactions to prune"
+        }
+    except Exception as e:
+        logger.error(f"Error pruning transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/sync/restore/{transaction_id}")
+async def restore_transaction(
+    transaction_id: str,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Restore a soft-deleted transaction.
+    Sets is_deleted=false and updates updated_at.
+    """
+    try:
+        result = await db.transactions.update_one(
+            {
+                "id": transaction_id,
+                "user_id": current_user.user_id,
+                "is_deleted": True
+            },
+            {
+                "$set": {
+                    "is_deleted": False,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Deleted transaction not found")
+        
+        # Fetch restored transaction
+        transaction = await db.transactions.find_one(
+            {"id": transaction_id},
+            {"_id": 0}
+        )
+        
+        return {
+            "success": True,
+            "transaction": transaction,
+            "message": "Transaction restored successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error restoring transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/sync/deleted")
+async def get_deleted_transactions(
+    limit: int = 100,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Get soft-deleted transactions (for recovery/review).
+    """
+    try:
+        transactions = await db.transactions.find(
+            {
+                "user_id": current_user.user_id,
+                "is_deleted": True
+            },
+            {"_id": 0}
+        ).sort("updated_at", -1).limit(limit).to_list(limit)
+        
+        return {
+            "deleted_transactions": transactions,
+            "count": len(transactions)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching deleted transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 app.include_router(api_router)
 
 app.add_middleware(
