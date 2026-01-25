@@ -1782,8 +1782,6 @@ async def verify_apple_purchase(
         transaction_id=request.transaction_id
     )
     return await validate_subscription(validate_request, current_user)
-        logger.error(f"Error starting trial: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== NOTIFICATION SYSTEM ====================
 
