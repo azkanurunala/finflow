@@ -73,34 +73,84 @@ US_CATEGORIES = [
 
 # Subscription Tiers (USD pricing)
 SUBSCRIPTION_TIERS = {
-    "free_trial": {
-        "name": "Free Trial",
-        "daily_actions": 10,
-        "duration_days": 3,
-        "price": 0,
-        "price_yearly": 0
+    "free": {
+        "name": "Free",
+        "tier_id": "free",
+        "features": ["Basic income/expense tracking", "Manual categorization"],
+        "limits": {
+            "transactions_per_month": 50,
+            "ai_categorization": False,
+            "analytics": False,
+            "export": False
+        }
     },
-    "basic": {
-        "name": "Basic",
-        "chat_messages": 30,
-        "uploads": 20,  # Combined OCR + voice recordings per month
-        "price": 1.99,
-        "price_yearly": 19.99
+    "pro_monthly": {
+        "name": "Pro Monthly",
+        "tier_id": "pro_monthly",
+        "product_id_ios": "com.finflow.pro.monthly",
+        "product_id_android": "com.finflow.pro.monthly",
+        "duration_days": 30,
+        "features": ["Unlimited transactions", "AI categorization", "Advanced analytics", "Export to CSV/PDF"],
+        "limits": {
+            "transactions_per_month": -1,  # Unlimited
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     },
-    "pro": {
-        "name": "Pro",
-        "chat_messages": 100,
-        "uploads": 100,
-        "price": 4.99,
-        "price_yearly": 49.99
+    "pro_yearly": {
+        "name": "Pro Yearly",
+        "tier_id": "pro_yearly",
+        "product_id_ios": "com.finflow.pro.yearly",
+        "product_id_android": "com.finflow.pro.yearly",
+        "duration_days": 365,
+        "features": ["Unlimited transactions", "AI categorization", "Advanced analytics", "Export to CSV/PDF", "2 months FREE"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     },
-    "power": {
-        "name": "Power",
-        "chat_messages": -1,  # Unlimited
-        "uploads": -1,  # Unlimited
-        "price": 9.99,
-        "price_yearly": 99.99
+    "trial": {
+        "name": "14-Day Trial",
+        "tier_id": "trial",
+        "duration_days": 14,
+        "features": ["Full Pro features for 14 days"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
+    },
+    "coupon": {
+        "name": "Coupon Redemption",
+        "tier_id": "coupon",
+        "duration_days": 30,
+        "features": ["Full Pro features for 1 month"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     }
+}
+
+# Product ID to Tier Mapping (for receipt validation)
+PRODUCT_TIER_MAP = {
+    # iOS Product IDs
+    "com.finflow.pro.monthly": "pro_monthly",
+    "com.finflow.pro.yearly": "pro_yearly",
+    # Android Product IDs
+    "com.finflow.pro.monthly": "pro_monthly",
+    "com.finflow.pro.yearly": "pro_yearly",
+    # Legacy mappings (for backward compatibility)
+    "com.finflow.subscription.basic": "pro_monthly",
+    "com.finflow.subscription.premium": "pro_monthly",
+    "com.finflow.subscription.yearly": "pro_yearly",
+    "com.finflow.subscription.monthly": "pro_monthly",
 }
 
 # Models
