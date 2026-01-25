@@ -2238,9 +2238,12 @@ async def create_voice_transaction(
         
         # Parse transaction using GPT
         transaction_data = await parse_transaction_text(transcribed_text, source="voice")
+        now = datetime.now(timezone.utc)
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
-        transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["created_at"] = now
+        transaction_data["updated_at"] = now
+        transaction_data["is_deleted"] = False
         transaction_data["currency"] = request.currency  # Use user's preferred currency
         
         # Save to database
