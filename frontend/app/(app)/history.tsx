@@ -24,6 +24,11 @@ import TransactionFilter, {
   SortOption,
   DatePreset
 } from "../../components/TransactionFilter";
+import { useRefreshStore } from "../../store/useRefreshStore";
+import { getTransactionsLocally, deleteLocalTransaction } from "../../services/localDb";
+import { syncService } from "../../services/syncService";
+import OfflineBanner from "../../components/OfflineBanner";
+import { useNetwork } from "../../contexts/NetworkContext";
 
 import { CONFIG } from "../../constants/Config";
 
@@ -55,6 +60,8 @@ export default function HistoryScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [filters, setFilters] = useState(defaultFilters);
+  const { lastInteraction } = useRefreshStore();
+  const { isOnline } = useNetwork();
 
   // Handle deep-linking from Home screen
   useEffect(() => {
@@ -66,11 +73,21 @@ export default function HistoryScreen() {
 
   const fetchTransactions = useCallback(async () => {
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await apiClient.get(`/api/transactions`);
-      setTransactions(response.data.transactions || []);
+      // 1. Load from local first
+      const localData = await getTransactionsLocally(100);
+      if (localData.length > 0) {
+        setTransactions(localData as any);
+        setLoading(false);
+      }
+
+      // 2. Sync with remote if online
+      const syncResult = await syncService.syncWithRemote();
+      if (syncResult) {
+        const freshData = await getTransactionsLocally(100);
+        setTransactions(freshData as any);
+      }
     } catch (error) {
-      Alert.alert(t('common.error'), "Failed to fetch transactions");
+      console.error("Failed to fetch transactions:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -80,7 +97,7 @@ export default function HistoryScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTransactions();
-    }, [fetchTransactions])
+    }, [fetchTransactions, lastInteraction])
   );
 
   const onRefresh = () => {
@@ -99,9 +116,14 @@ export default function HistoryScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              const sessionToken = await AsyncStorage.getItem("session_token");
-              await apiClient.delete(`/api/transactions/${id}`);
+              // Mark as deleted locally (will sync later)
+              await deleteLocalTransaction(id);
               setTransactions((prev) => prev.filter((t) => t.id !== id));
+              
+              // Trigger sync if online
+              if (isOnline) {
+                syncService.syncWithRemote();
+              }
             } catch (error) {
               Alert.alert(t('common.error'), "Failed to delete transaction");
             }
@@ -227,6 +249,7 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <OfflineBanner />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity

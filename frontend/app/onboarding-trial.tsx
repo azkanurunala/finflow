@@ -1,100 +1,92 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
-import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-const PLANS = [
-  {
-    id: "free_trial",
-    name: "Free Trial",
-    price: "$0",
-    period: "3 days",
-    features: [
-      "10 actions per day",
-      "Basic AI chat",
-      "Receipt scanning",
-      "Try all features",
-    ],
-    isRecommended: false,
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    price: "$1.99",
-    period: "/month",
-    features: [
-      "30 AI chat messages",
-      "20 uploads/recordings",
-      "Full analytics",
-      "Priority support",
-    ],
-    isRecommended: false,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "$4.99",
-    period: "/month",
-    features: [
-      "100 AI chat messages",
-      "100 uploads/recordings",
-      "Advanced analytics",
-      "Priority support",
-    ],
-    isRecommended: true,
-  },
-  {
-    id: "power",
-    name: "Power",
-    price: "$9.99",
-    period: "/month",
-    features: [
-      "Unlimited chat",
-      "Unlimited uploads",
-      "All features",
-      "VIP support",
-    ],
-    isRecommended: false,
-  },
-];
+import { useSubscription } from "../contexts/SubscriptionContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function OnboardingTrialScreen() {
   const router = useRouter();
-  const { user, startTrial, refreshUser } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState("free_trial");
+  const { refreshUser } = useAuth();
+  const { state, actions } = useSubscription();
+  const { t } = useLanguage();
+  const [selectedPlan, setSelectedPlan] = useState("trial");
   const [loading, setLoading] = useState(false);
+
+  // Load subscription data on mount
+  useEffect(() => {
+    actions.loadSubscriptionStatus();
+  }, []);
+
+  // Build plans from real subscription data
+  const PLANS = [
+    // Add trial if user hasn't used it
+    ...(!state.trialUsed ? [{
+      id: "trial",
+      productId: null,
+      name: "14-Day Free Trial",
+      price: "$0",
+      period: "14 days",
+      features: [
+        "Full Pro access",
+        "Unlimited transactions",
+        "AI categorization",
+        "All premium features",
+      ],
+      isRecommended: true,
+    }] : []),
+    // Add available tiers from context
+    ...state.availableTiers.map(tier => ({
+      id: tier.id,
+      productId: tier.productId,
+      name: tier.name,
+      price: tier.price,
+      period: tier.duration === 'yearly' ? '/year' : '/month',
+      features: tier.features,
+      isRecommended: tier.isPopular || false,
+    }))
+  ];
 
   const handleStartTrial = async () => {
     setLoading(true);
     try {
-      // Save onboarding preference locally
-      await AsyncStorage.setItem("selected_plan", selectedPlan);
-      await AsyncStorage.setItem("onboarding_preferences_saved", "true");
-
-      // If user is already logged in, start trial directly
-      if (user) {
-        await startTrial();
-        await refreshUser();
-        router.replace("/(app)");
-      } else {
-        // Not logged in, go to login page
-        // After login, AuthContext will check and start trial
-        router.replace("/login");
+      const plan = PLANS.find((p) => p.id === selectedPlan);
+      
+      if (selectedPlan === "trial") {
+        // Start free trial via SubscriptionContext
+        const result = await actions.startTrial();
+        if (result.success) {
+          await AsyncStorage.setItem("onboarding_preferences_saved", "true");
+          await refreshUser();
+          router.replace("/(app)");
+        } else {
+          Alert.alert(t('common.error'), result.error || t('onboarding.unableToStartTrial'));
+        }
+      } else if (plan?.productId) {
+        // Purchase subscription via SubscriptionContext
+        const result = await actions.purchaseSubscription(plan.productId);
+        if (result.success) {
+          await AsyncStorage.setItem("onboarding_preferences_saved", "true");
+          await refreshUser();
+          router.replace("/(app)");
+        } else if (!result.cancelled) {
+          Alert.alert(t('common.error'), result.error || t('onboarding.purchaseFailed'));
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in onboarding trial:", error);
-      // Still navigate to login on error
-      router.replace("/login");
+      Alert.alert(t('common.error'), error.message || t('onboarding.somethingWrong'));
     } finally {
       setLoading(false);
     }
@@ -102,16 +94,23 @@ export default function OnboardingTrialScreen() {
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlan(planId);
-    if (planId !== "free_trial") {
-      // TODO: Implement in-app purchase
-      // For now, just show a message
-      alert("In-App Purchase coming soon! Starting free trial instead.");
-    }
   };
 
   const handleBack = () => {
     router.back();
   };
+
+  // Show loading while fetching subscription data
+  if (state.isLoading && !state.lastUpdated) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4DB6AC" />
+          <Text style={styles.loadingText}>{t('onboarding.loadingPlans')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -119,7 +118,7 @@ export default function OnboardingTrialScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "100%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 3 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step3of3')}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -127,9 +126,9 @@ export default function OnboardingTrialScreen() {
           <Ionicons name="rocket" size={48} color="#4DB6AC" />
         </View>
 
-        <Text style={styles.title}>Choose Your Plan</Text>
+        <Text style={styles.title}>{t('onboarding.choosePlan')}</Text>
         <Text style={styles.subtitle}>
-          Start with a free trial or subscribe to unlock all features.
+          {t('onboarding.choosePlanDesc')}
         </Text>
 
         <View style={styles.planList}>
@@ -145,7 +144,7 @@ export default function OnboardingTrialScreen() {
             >
               {plan.isRecommended && (
                 <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedText}>RECOMMENDED</Text>
+                  <Text style={styles.recommendedText}>{t('subscription.badges.recommended')}</Text>
                 </View>
               )}
               <View style={styles.planHeader}>
@@ -191,7 +190,7 @@ export default function OnboardingTrialScreen() {
           disabled={loading}
         >
           <Text style={styles.startButtonText}>
-            {loading ? "Starting..." : selectedPlan === "free_trial" ? "Start Free Trial" : "Subscribe"}
+            {loading ? t('onboarding.starting') : selectedPlan === "trial" ? t('onboarding.startFreeTrial') : t('onboarding.subscribe')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -203,6 +202,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
   },
   header: {
     paddingHorizontal: 24,

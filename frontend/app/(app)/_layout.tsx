@@ -33,7 +33,24 @@ export default function AppLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "#F9FAFB" },
+        gestureEnabled: true,
+        animation: 'default',
       }}
-    />
+    >
+      <Stack.Screen 
+        name="manual" 
+        options={{ 
+          presentation: 'modal',
+          animation: 'slide_from_bottom'
+        }} 
+      />
+      <Stack.Screen 
+        name="edit-transaction" 
+        options={{ 
+          gestureEnabled: true,
+          animation: 'slide_from_right'
+        }} 
+      />
+    </Stack>
   );
 }

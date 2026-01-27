@@ -24,6 +24,10 @@ import * as ImagePicker from "expo-image-picker";
 import { Audio } from "expo-av";
 import RecordingModal from "../../components/RecordingModal";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
+import { useRefreshStore } from "../../store/useRefreshStore";
+import { getTransactionsLocally, getSummaryLocally } from "../../services/localDb";
+import { syncService } from "../../services/syncService";
+import OfflineBanner from "../../components/OfflineBanner";
 
 import { CONFIG } from "../../constants/Config";
 
@@ -51,6 +55,7 @@ export default function HomeScreen() {
   const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { lastInteraction } = useRefreshStore();
 
   // Modal states - simplified with RecordingModal
   const [showAddModal, setShowAddModal] = useState(false);
@@ -86,11 +91,11 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Refresh data when screen is focused
+  // Refresh data when screen is focused or when lastInteraction changes
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [])
+    }, [lastInteraction])
   );
 
   useEffect(() => {
@@ -105,25 +110,38 @@ export default function HomeScreen() {
 
   const fetchData = async () => {
     try {
-      const transactionsRes = await apiClient.get(
-        `/api/transactions?limit=5`
-      );
+      // 1. Load from local first for instant UI
+      const localData = await getTransactionsLocally(5);
+      if (localData.length > 0) {
+        setTransactions(localData as any);
+        setLoading(false);
+      }
 
-      const insightsRes = await apiClient.get(
-        `/api/insights?days=30`
-      );
+      // 2. Calculate local summary
+      const localSummary = await getSummaryLocally();
+      if (localSummary) {
+        setInsights({
+          total_income: localSummary.total_income,
+          total_expenses: localSummary.total_expenses,
+        });
+      }
 
-      // Sort transactions by created_at (newest first)
-      const sortedTransactions = transactionsRes.data.transactions.sort((a: Transaction, b: Transaction) => {
-        const dateA = new Date(a.created_at || a.date);
-        const dateB = new Date(b.created_at || b.date);
-        return dateB.getTime() - dateA.getTime();
-      });
+      // 3. Try to sync with remote if online
+      const syncResult = await syncService.syncWithRemote();
+      
+      if (syncResult) {
+        // Refresh from local after successful sync
+        const freshData = await getTransactionsLocally(5);
+        setTransactions(freshData as any);
 
-      setTransactions(sortedTransactions);
-      setInsights(insightsRes.data);
+        const freshSummary = await getSummaryLocally();
+        setInsights({
+          total_income: freshSummary.total_income,
+          total_expenses: freshSummary.total_expenses,
+        });
+      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -214,6 +232,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
+      <OfflineBanner />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}

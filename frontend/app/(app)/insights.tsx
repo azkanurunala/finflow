@@ -18,6 +18,7 @@ import { apiClient } from "../../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useEntitlements } from "../../hooks/useEntitlements";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
@@ -46,6 +47,7 @@ export default function AdvancedAnalyticsScreen() {
   const router = useRouter();
   const { formatAmount, currency } = useCurrency();
   const { language, t } = useLanguage();
+  const entitlements = useEntitlements();
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -86,6 +88,19 @@ export default function AdvancedAnalyticsScreen() {
   };
 
   const handleExport = async (format: "csv" | "json") => {
+    // Check if user has export entitlement
+    if (!entitlements.hasExport) {
+      Alert.alert(
+        "Premium Feature",
+        "Export functionality is available for Pro subscribers. Upgrade to export your financial data.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Upgrade", onPress: () => router.push("/(app)/subscription") }
+        ]
+      );
+      return;
+    }
+
     setExporting(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
@@ -268,7 +283,25 @@ export default function AdvancedAnalyticsScreen() {
           showSortOnly={false}
         />
 
-        {loading ? (
+        {/* Premium Gate for Analytics */}
+        {!entitlements.hasAnalytics ? (
+          <View style={styles.premiumGate}>
+            <View style={styles.premiumIcon}>
+              <Ionicons name="lock-closed" size={48} color="#4DB6AC" />
+            </View>
+            <Text style={styles.premiumTitle}>{t('subscription.premiumFeature') || 'Premium Feature'}</Text>
+            <Text style={styles.premiumText}>
+              {t('analytics.premiumDesc') || 'Advanced analytics and AI insights are available for Pro subscribers. Upgrade to unlock detailed spending analysis and personalized recommendations.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => router.push("/(app)/subscription")}
+            >
+              <Text style={styles.upgradeButtonText}>{t('subscription.upgradeToPro') || 'Upgrade to Pro'}</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ) : loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#10B981" />
             <Text style={styles.loadingText}>{t('analytics.analyzing')}</Text>
@@ -307,7 +340,6 @@ export default function AdvancedAnalyticsScreen() {
                 </View>
                 <View style={[styles.statBox, styles.expenseBox]}>
                   <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
-                  <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
                   <Text style={styles.statLabel}>{t('common.expenses')}</Text>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
                     {formatAmount(insights?.chart_data?.income_vs_expenses?.expenses || 0)}
@@ -330,10 +362,7 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.insightsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="bulb" size={24} color="#F59E0B" />
-                <View style={styles.cardHeader}>
-                  <Ionicons name="bulb" size={24} color="#F59E0B" />
-                  <Text style={styles.sectionTitle}>{t('analytics.aiInsights')}</Text>
-                </View>
+                <Text style={styles.sectionTitle}>{t('analytics.aiInsights')}</Text>
               </View>
               {(insights?.insights || []).map((insight, index) => (
                 <View key={index} style={styles.insightItem}>
@@ -347,10 +376,7 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.recommendationsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <View style={styles.cardHeader}>
-                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                  <Text style={styles.sectionTitle}>{t('analytics.recommendations')}</Text>
-                </View>
+                <Text style={styles.sectionTitle}>{t('analytics.recommendations')}</Text>
               </View>
               {(insights?.recommendations || []).map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
@@ -425,6 +451,54 @@ const styles = StyleSheet.create({
   exportButton: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
   content: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
+  premiumGate: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 32,
+    marginTop: 20,
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  premiumIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#E0F2F1",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  premiumTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginBottom: 12,
+  },
+  premiumText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  upgradeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4DB6AC",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  upgradeButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+  },
   periodSelector: { flexDirection: "row", gap: 12, marginBottom: 16 },
   periodButton: {
     flex: 1, paddingVertical: 12, backgroundColor: "#fff", borderRadius: 12,

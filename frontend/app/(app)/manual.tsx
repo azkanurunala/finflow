@@ -19,10 +19,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useRefreshStore } from "../../store/useRefreshStore";
 
 import { CONFIG } from "../../constants/Config";
-
-const BACKEND_URL = CONFIG.BACKEND_URL;
+import { addPendingTransaction, saveTransactionsLocally } from "../../services/localDb";
+import { syncService } from "../../services/syncService";
+import { useNetwork } from "../../contexts/NetworkContext";
 
 const DEFAULT_CATEGORIES = [
   { id: "Groceries", icon: "cart", color: "#10B981" },
@@ -40,7 +42,9 @@ const DEFAULT_CATEGORIES = [
 export default function ManualInputScreen() {
   const router = useRouter();
   const { currency, currencySymbol, formatInputValue, parseInputValue, getDecimalSeparator } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { triggerRefresh } = useRefreshStore();
+  const { isOnline, isReachable } = useNetwork();
 
   const [displayAmount, setDisplayAmount] = useState("");
   const [merchant, setMerchant] = useState("");
@@ -87,33 +91,84 @@ export default function ManualInputScreen() {
     // Parse the formatted display amount back to numeric value
     const numericAmount = parseInputValue(displayAmount);
     if (!displayAmount || numericAmount <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert("Error", t('manual.errorAmount') || "Please enter a valid amount");
       return;
     }
 
     setLoading(true);
+    
+    const transactionData = {
+      amount: numericAmount,
+      currency: currency,
+      merchant: merchant || null,
+      category: transactionType === "income" ? "Income" : category,
+      date: date.toISOString().split("T")[0],
+      transaction_type: transactionType,
+      source: "manual",
+    };
+
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
+      if (isOnline && isReachable) {
+        // Online: Save to server first, then to local
+        const response = await apiClient.post(
+          `/api/transactions/manual`,
+          transactionData
+        );
+        
+        // Also save to local DB
+        await saveTransactionsLocally([{
+          ...transactionData,
+          id: response.data.id || response.data._id,
+        }]);
+        
+        triggerRefresh();
 
-      await apiClient.post(
-        `/api/transactions/manual`,
-        {
-          amount: numericAmount,
-          currency: currency, // Use user's global currency setting
-          merchant: merchant || null,
-          category: transactionType === "income" ? "Income" : category,
-          date: date.toISOString().split("T")[0],
-          transaction_type: transactionType,
-          notes: notes || null,
-        }
-      );
+        Alert.alert(
+          language === 'id' ? "Berhasil" : "Success",
+          language === 'id' ? "Transaksi tersimpan!" : "Transaction saved!",
+          [
+            { text: language === 'id' ? "Tambah Lagi" : "Add Another", onPress: () => resetForm() },
+            { text: language === 'id' ? "Ke Beranda" : "Go Home", onPress: () => router.replace("/(app)") },
+          ]
+        );
+      } else {
+        // Offline: Save locally with pending status
+        await addPendingTransaction(transactionData);
+        
+        triggerRefresh();
 
-      Alert.alert("Success", "Transaction saved!", [
-        { text: "Add Another", onPress: () => resetForm() },
-        { text: "Go Home", onPress: () => router.replace("/(app)") },
-      ]);
+        Alert.alert(
+          language === 'id' ? "Tersimpan Offline" : "Saved Offline",
+          language === 'id' 
+            ? "Transaksi disimpan secara lokal. Akan disinkronkan saat koneksi tersedia."
+            : "Transaction saved locally. Will sync when connection is available.",
+          [
+            { text: language === 'id' ? "Tambah Lagi" : "Add Another", onPress: () => resetForm() },
+            { text: language === 'id' ? "Ke Beranda" : "Go Home", onPress: () => router.replace("/(app)") },
+          ]
+        );
+      }
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+      // If online save fails, try offline save
+      if (isOnline) {
+        try {
+          await addPendingTransaction(transactionData);
+          triggerRefresh();
+          Alert.alert(
+            language === 'id' ? "Tersimpan Offline" : "Saved Offline",
+            language === 'id'
+              ? "Gagal menyimpan ke server. Disimpan secara lokal."
+              : "Failed to save to server. Saved locally.",
+            [
+              { text: "OK", onPress: () => resetForm() },
+            ]
+          );
+        } catch (localError) {
+          Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+        }
+      } else {
+        Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+      }
     } finally {
       setLoading(false);
     }

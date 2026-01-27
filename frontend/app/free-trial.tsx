@@ -1,28 +1,104 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSubscription } from "../contexts/SubscriptionContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function FreeTrialScreen() {
   const router = useRouter();
+  const { refreshUser } = useAuth();
+  const { state, actions } = useSubscription();
+  const { t } = useLanguage();
+  const [loading, setLoading] = useState(false);
 
-  const handleStartTrial = () => {
-    // Navigate to main app
-    router.replace("/(app)");
+  // Load subscription status on mount
+  useEffect(() => {
+    actions.loadSubscriptionStatus();
+  }, []);
+
+  const handleStartTrial = async () => {
+    setLoading(true);
+    try {
+      const result = await actions.startTrial();
+      
+      if (result.success) {
+        await AsyncStorage.setItem("onboarding_preferences_saved", "true");
+        await refreshUser();
+        Alert.alert(
+          t('trial.started'),
+          t('trial.startedDesc'),
+          [{ text: t('common.done'), onPress: () => router.replace("/(app)") }]
+        );
+      } else {
+        Alert.alert(t('common.error'), result.error || t('trial.unableToStart'));
+      }
+    } catch (error: any) {
+      console.error("Error starting trial:", error);
+      Alert.alert(t('common.error'), error.message || t('trial.somethingWrong'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewPlans = () => {
     // Navigate to subscription page
     router.push("/(app)/subscription");
   };
+
+  // Show loading while checking trial eligibility
+  if (state.isLoading && !state.lastUpdated) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4DB6AC" />
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If trial already used, redirect to subscription page
+  if (state.trialUsed) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.loadingContainer}>
+          <Ionicons name="information-circle" size={48} color="#F59E0B" />
+          <Text style={styles.infoTitle}>{t('trial.alreadyUsed')}</Text>
+          <Text style={styles.infoText}>
+            {t('trial.alreadyUsedDesc')}
+          </Text>
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={handleViewPlans}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={["#4DB6AC", "#45A599"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ctaGradient}
+            >
+              <Text style={styles.ctaText}>{t('trial.viewPlans')}</Text>
+              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -39,7 +115,7 @@ export default function FreeTrialScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Free Trial</Text>
+          <Text style={styles.headerTitle}>{t('trial.freeTrial')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -52,9 +128,9 @@ export default function FreeTrialScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.mainTitle}>3 Days of Pro</Text>
+          <Text style={styles.mainTitle}>{t('trial.daysOfPro')}</Text>
           <Text style={styles.subtitle}>
-            Experience the full potential of our AI tools with zero commitment.
+            {t('trial.experienceDesc')}
           </Text>
         </View>
 
@@ -66,9 +142,9 @@ export default function FreeTrialScreen() {
               <Ionicons name="calendar" size={24} color="#4DB6AC" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Full Access Period</Text>
+              <Text style={styles.featureTitle}>{t('trial.fullAccessPeriod')}</Text>
               <Text style={styles.featureDescription}>
-                Enjoy 3 days of premium features starting from today.
+                {t('trial.fullAccessDesc')}
               </Text>
             </View>
           </View>
@@ -79,9 +155,9 @@ export default function FreeTrialScreen() {
               <Ionicons name="flash" size={24} color="#4DB6AC" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>10 Daily Actions</Text>
+              <Text style={styles.featureTitle}>{t('trial.dailyActions')}</Text>
               <Text style={styles.featureDescription}>
-                A combined daily limit across all our powerful AI features:
+                {t('trial.dailyActionsDesc')}
               </Text>
               <View style={styles.actionBadges}>
                 <View style={styles.actionBadge}>
@@ -104,7 +180,7 @@ export default function FreeTrialScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="information-circle" size={18} color="#F59E0B" />
             <Text style={styles.infoText}>
-              Limits reset every 24 hours at midnight.
+              {t('trial.limitsReset')}
             </Text>
           </View>
         </View>
@@ -115,8 +191,8 @@ export default function FreeTrialScreen() {
             <Ionicons name="shield-checkmark" size={20} color="#4DB6AC" />
           </View>
           <View style={styles.noCostsContent}>
-            <Text style={styles.noCostsTitle}>NO HIDDEN COSTS</Text>
-            <Text style={styles.noCostsText}>Cancel anytime during the trial.</Text>
+            <Text style={styles.noCostsTitle}>{t('trial.noHiddenCosts')}</Text>
+            <Text style={styles.noCostsText}>{t('trial.cancelAnytime')}</Text>
           </View>
         </View>
 
@@ -125,6 +201,7 @@ export default function FreeTrialScreen() {
           style={styles.ctaButton}
           onPress={handleStartTrial}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <LinearGradient
             colors={["#4DB6AC", "#45A599"]}
@@ -132,23 +209,27 @@ export default function FreeTrialScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.ctaGradient}
           >
-            <Text style={styles.ctaText}>Start My 3-Day Free Trial</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.ctaText}>{t('trial.startMyTrial')}</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 
         {/* View Plans Link */}
         <TouchableOpacity style={styles.viewPlansLink} onPress={handleViewPlans}>
           <Text style={styles.viewPlansText}>
-            Or view all subscription plans
+            {t('trial.orViewPlans')}
           </Text>
         </TouchableOpacity>
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
-          After your 3-day trial ends, you will be automatically enrolled in the
-          Pro Monthly plan at $9.99/mo unless cancelled. Manage your subscription
-          in account settings.
+          {t('trial.disclaimer')}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -159,6 +240,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  infoTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1F2937",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
   },
   scrollView: {
     flex: 1,

@@ -100,22 +100,56 @@ export default function EditTransactionScreen() {
       const sessionToken = await AsyncStorage.getItem("session_token");
       const response = await apiClient.get(`/api/transactions/${id}`);
 
-      const t = response.data;
-      const amountStr = t.amount.toString();
-      // Format the amount using the currency context
-      setDisplayAmount(formatInputValue(amountStr));
-      setMerchant(t.merchant || "");
-      setCategory(t.category);
-      setTransactionType(t.transaction_type);
-      setDate(new Date(t.date));
-      setNotes(t.notes || "");
-      // Use transaction's currency if exists, otherwise use user's global currency
-      setTransactionCurrency(t.currency || currency);
+      const txData = response.data;
+      
+      // Get the transaction's currency (or fallback to user's currency)
+      const txCurrency = txData.currency || currency;
+      setTransactionCurrency(txCurrency);
+      
+      // Format the amount properly based on the transaction's currency
+      // The amount from server is a number like 7878999.56
+      // We need to convert it to display format:
+      // - IDR: 7.878.999,56
+      // - USD: 7,878,999.56
+      const isIDRFormat = ['IDR', 'VND'].includes(txCurrency);
+      let formattedAmount: string;
+      
+      if (isIDRFormat) {
+        // For IDR: convert 7878999.56 to "7.878.999,56"
+        const hasDecimals = txData.amount % 1 !== 0;
+        const [intPart, decPart] = txData.amount.toFixed(2).split('.');
+        
+        // Add thousand separators with dots for IDR
+        const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        if (hasDecimals && decPart !== '00') {
+          formattedAmount = `${formattedInt},${decPart}`;
+        } else {
+          formattedAmount = formattedInt;
+        }
+      } else {
+        // For USD and others: convert 7878999.56 to "7,878,999.56"
+        const [intPart, decPart] = txData.amount.toFixed(2).split('.');
+        const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        
+        if (decPart && decPart !== '00') {
+          formattedAmount = `${formattedInt}.${decPart}`;
+        } else {
+          formattedAmount = formattedInt;
+        }
+      }
+      
+      setDisplayAmount(formattedAmount);
+      setMerchant(txData.merchant || "");
+      setCategory(txData.category);
+      setTransactionType(txData.transaction_type);
+      setDate(new Date(txData.date));
+      setNotes(txData.notes || "");
 
       // If category is not in default list, add to custom categories
-      const isDefaultCategory = DEFAULT_CATEGORIES.some(cat => cat.id === t.category);
-      if (!isDefaultCategory && t.category !== "Income") {
-        setCustomCategories([t.category]);
+      const isDefaultCategory = DEFAULT_CATEGORIES.some(cat => cat.id === txData.category);
+      if (!isDefaultCategory && txData.category !== "Income") {
+        setCustomCategories([txData.category]);
       }
     } catch (error) {
       Alert.alert(t('common.error'), t('edit.failedLoad'));

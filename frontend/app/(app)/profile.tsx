@@ -17,10 +17,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUserCurrency } from "../../utils/currency";
 import * as WebBrowser from "expo-web-browser";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
+import { getDisplayName, getInitials, getContextualDisplayName } from "../../utils/displayName";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const { t, language } = useLanguage();
   const { currency } = useCurrency();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
@@ -179,11 +180,11 @@ export default function ProfileScreen() {
         <View style={styles.profileHeader}>
           <View style={styles.avatarLarge}>
             <Text style={styles.avatarText}>
-              {user?.name?.charAt(0).toUpperCase()}
+              {getInitials(user, profile)}
             </Text>
           </View>
-          <Text style={styles.userName}>{user?.name}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
+          <Text style={styles.userName}>{getContextualDisplayName(user, profile, 'profile')}</Text>
+          <Text style={styles.userEmail}>{user?.email || profile?.email}</Text>
 
           {/* Stats */}
           <View style={styles.statsContainer}>

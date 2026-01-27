@@ -18,6 +18,7 @@ import { apiClient } from "../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useRefreshStore } from "../store/useRefreshStore";
 
 import { CONFIG } from "../constants/Config";
 
@@ -267,6 +268,7 @@ export default function RecordingModal({
           transaction: apiResponse.data.transaction,
           transcription: apiResponse.data.transcription,
         });
+        useRefreshStore.getState().triggerRefresh();
       }
 
       onClose();
@@ -342,6 +344,7 @@ export default function RecordingModal({
           imageBase64: selectedImage.substring(0, 100), // Thumbnail
           parsedData: response.data.transaction,
         });
+        useRefreshStore.getState().triggerRefresh();
       }
 
       onClose();
