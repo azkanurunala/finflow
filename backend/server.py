@@ -16,7 +16,7 @@ import io
 import httpx
 import hashlib
 import secrets
-from openai import AsyncOpenAI
+from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,10 +28,7 @@ db = client[os.environ.get('DB_NAME', 'test_database')]
 
 # Emergent LLM Key
 EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-
-# Initialize OpenAI client
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+OPENAI_API_KEY = "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"
 
 # Create the main app
 app = FastAPI()
@@ -76,34 +73,84 @@ US_CATEGORIES = [
 
 # Subscription Tiers (USD pricing)
 SUBSCRIPTION_TIERS = {
-    "free_trial": {
-        "name": "Free Trial",
-        "daily_actions": 10,
-        "duration_days": 3,
-        "price": 0,
-        "price_yearly": 0
+    "free": {
+        "name": "Free",
+        "tier_id": "free",
+        "features": ["Basic income/expense tracking", "Manual categorization"],
+        "limits": {
+            "transactions_per_month": 50,
+            "ai_categorization": False,
+            "analytics": False,
+            "export": False
+        }
     },
-    "basic": {
-        "name": "Basic",
-        "chat_messages": 30,
-        "uploads": 20,  # Combined OCR + voice recordings per month
-        "price": 1.99,
-        "price_yearly": 19.99
+    "pro_monthly": {
+        "name": "Pro Monthly",
+        "tier_id": "pro_monthly",
+        "product_id_ios": "com.finflow.pro.monthly",
+        "product_id_android": "com.finflow.pro.monthly",
+        "duration_days": 30,
+        "features": ["Unlimited transactions", "AI categorization", "Advanced analytics", "Export to CSV/PDF"],
+        "limits": {
+            "transactions_per_month": -1,  # Unlimited
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     },
-    "pro": {
-        "name": "Pro",
-        "chat_messages": 100,
-        "uploads": 100,
-        "price": 4.99,
-        "price_yearly": 49.99
+    "pro_yearly": {
+        "name": "Pro Yearly",
+        "tier_id": "pro_yearly",
+        "product_id_ios": "com.finflow.pro.yearly",
+        "product_id_android": "com.finflow.pro.yearly",
+        "duration_days": 365,
+        "features": ["Unlimited transactions", "AI categorization", "Advanced analytics", "Export to CSV/PDF", "2 months FREE"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     },
-    "power": {
-        "name": "Power",
-        "chat_messages": -1,  # Unlimited
-        "uploads": -1,  # Unlimited
-        "price": 9.99,
-        "price_yearly": 99.99
+    "trial": {
+        "name": "14-Day Trial",
+        "tier_id": "trial",
+        "duration_days": 14,
+        "features": ["Full Pro features for 14 days"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
+    },
+    "coupon": {
+        "name": "Coupon Redemption",
+        "tier_id": "coupon",
+        "duration_days": 30,
+        "features": ["Full Pro features for 1 month"],
+        "limits": {
+            "transactions_per_month": -1,
+            "ai_categorization": True,
+            "analytics": True,
+            "export": True
+        }
     }
+}
+
+# Product ID to Tier Mapping (for receipt validation)
+PRODUCT_TIER_MAP = {
+    # iOS Product IDs
+    "com.finflow.pro.monthly": "pro_monthly",
+    "com.finflow.pro.yearly": "pro_yearly",
+    # Android Product IDs
+    "com.finflow.pro.monthly": "pro_monthly",
+    "com.finflow.pro.yearly": "pro_yearly",
+    # Legacy mappings (for backward compatibility)
+    "com.finflow.subscription.basic": "pro_monthly",
+    "com.finflow.subscription.premium": "pro_monthly",
+    "com.finflow.subscription.yearly": "pro_yearly",
+    "com.finflow.subscription.monthly": "pro_monthly",
 }
 
 # Models
@@ -146,6 +193,8 @@ class Transaction(BaseModel):
     source: str
     metadata: Optional[Dict[str, Any]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    is_deleted: bool = False
 
 class ChatTransactionRequest(BaseModel):
     text: str
@@ -219,6 +268,24 @@ class SubscriptionInfo(BaseModel):
     days_remaining: Optional[int] = None
     limits: Dict[str, Any]
     usage: Dict[str, Any]
+    platform: Optional[str] = None
+    product_id: Optional[str] = None
+    is_trial: bool = False
+    is_coupon: bool = False
+
+# Subscription Request Models
+class SubscriptionValidateRequest(BaseModel):
+    platform: str  # 'ios' or 'android'
+    product_id: str
+    receipt_data: Optional[str] = None  # iOS receipt
+    purchase_token: Optional[str] = None  # Android token
+    transaction_id: Optional[str] = None
+
+class CouponRedeemRequest(BaseModel):
+    coupon_code: str
+
+class StartTrialRequest(BaseModel):
+    platform: Optional[str] = None  # 'ios' or 'android'
 
 # Email/Password Auth Models
 class RegisterRequest(BaseModel):
@@ -234,6 +301,140 @@ class UpdateOnboardingRequest(BaseModel):
     language: Optional[str] = None
     currency: Optional[str] = None
     onboarding_completed: Optional[bool] = None
+
+# New Pydantic Models for Requirements
+class UpdateUserSettingsRequest(BaseModel):
+    currency: Optional[str] = None
+    language: Optional[str] = None
+    notification_push: Optional[bool] = None
+    notification_email: Optional[bool] = None
+
+class OnboardingBalanceRequest(BaseModel):
+    amount: float
+    currency: Optional[str] = "USD"
+
+# ==================== HELPER FUNCTIONS ====================
+
+def format_currency(amount: float, currency: str) -> str:
+    """Locale-aware currency formatting"""
+    if currency == "IDR":
+        # Indonesian Rupiah format: Rp 1.234.567
+        formatted = f"{amount:,.0f}".replace(",", ".")
+        return f"Rp {formatted}"
+    elif currency == "EUR":
+        # Euro format: €1.234,56
+        formatted = f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"€{formatted}"
+    elif currency == "GBP":
+        return f"£{amount:,.2f}"
+    elif currency == "JPY":
+        return f"¥{amount:,.0f}"
+    elif currency == "SGD":
+        return f"S${amount:,.2f}"
+    else:
+        # Default USD format: $1,234.56
+        return f"${amount:,.2f}"
+
+async def generate_coupon_codes(count: int = 100):
+    """Generate unique coupon codes for testing"""
+    import random
+    import string
+    
+    existing_codes = set()
+    async for coupon in db.coupons.find({}, {"code": 1}):
+        existing_codes.add(coupon["code"])
+    
+    codes_to_create = []
+    while len(codes_to_create) < count:
+        # Generate code like: FINFLOW-XXXX-XXXX
+        code = f"FINFLOW-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}-{''.join(random.choices(string.ascii_uppercase + string.digits, k=4))}"
+        if code not in existing_codes:
+            existing_codes.add(code)
+            codes_to_create.append({
+                "code": code,
+                "is_used": False,
+                "used_by": None,
+                "used_at": None,
+                "benefit_type": "pro_monthly",
+                "benefit_days": 30,
+                "created_at": datetime.now(timezone.utc),
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=365)  # Valid for 1 year
+            })
+    
+    if codes_to_create:
+        await db.coupons.insert_many(codes_to_create)
+    
+    return codes_to_create
+
+async def get_user_entitlement(user_id: str) -> dict:
+    """Get user's current subscription entitlement"""
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        return {"tier": "free", "is_active": False, "features": SUBSCRIPTION_TIERS["free"]["features"]}
+    
+    tier = user.get("subscription_tier", "free")
+    expires_at = user.get("subscription_expires_at")
+    
+    # Check if subscription is still active
+    is_active = False
+    if expires_at:
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        is_active = expires_at > datetime.now(timezone.utc)
+    
+    if not is_active:
+        tier = "free"
+    
+    tier_data = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free"])
+    
+    return {
+        "tier": tier,
+        "tier_name": tier_data.get("name", "Free"),
+        "is_active": is_active,
+        "expires_at": expires_at,
+        "features": tier_data.get("features", []),
+        "limits": tier_data.get("limits", {}),
+        "is_trial": user.get("is_trial", False),
+        "is_coupon": user.get("is_coupon", False),
+        "platform": user.get("subscription_platform"),
+        "product_id": user.get("subscription_product_id")
+    }
+
+async def save_to_chat_history(user_id: str, message_type: str, text: str, data: dict = None):
+    """Save Voice/OCR results to chat history for WhatsApp-like persistence"""
+    try:
+        message = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": message_type,  # 'voice', 'ocr', 'user', 'assistant'
+            "text": text,
+            "parsed_data": data,
+            "timestamp": datetime.now(timezone.utc)
+        }
+        await db.chat_messages.insert_one(message)
+        logger.info(f"Saved {message_type} message to chat history for user {user_id}")
+        return message
+    except Exception as e:
+        logger.error(f"Error saving to chat history: {str(e)}")
+        return None
+
+async def send_system_notification(user_id: str, title: str, body: str, notification_type: str = "system"):
+    """Create a system notification for a user"""
+    try:
+        notification = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "type": notification_type,
+            "title": title,
+            "body": body,
+            "read": False,
+            "created_at": datetime.now(timezone.utc)
+        }
+        await db.notifications.insert_one(notification)
+        return notification
+    except Exception as e:
+        logger.error(f"Error creating system notification: {str(e)}")
+        return None
 
 # Helper function to hash password
 def hash_password(password: str) -> str:
@@ -439,16 +640,14 @@ DATE PARSING:
 - "minggu lalu" / "last week" = 7 days ago
 - If no date mentioned, use today: {today}"""
 
-        # Call OpenAI API
-        completion = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Parse this transaction: {text}"}
-            ],
-            temperature=0.3
-        )
-        response = completion.choices[0].message.content
+        chat = LlmChat(
+            api_key=OPENAI_API_KEY,
+            session_id=f"transaction_{uuid.uuid4()}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        user_message = UserMessage(text=f"Parse this transaction: {text}")
+        response = await chat.send_message(user_message)
         
         # Parse GPT response
         import json
@@ -504,25 +703,19 @@ Rules:
 - Note any tip or tax separately
 - If receipt shows multiple items, mention key items in notes"""
 
-        # Call OpenAI Vision API
-        completion = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Extract transaction details from this receipt."},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}
-                        }
-                    ]
-                }
-            ],
-            temperature=0.3
+        chat = LlmChat(
+            api_key=OPENAI_API_KEY,
+            session_id=f"receipt_{uuid.uuid4()}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        image_content = ImageContent(image_base64=image_base64)
+        user_message = UserMessage(
+            text="Extract transaction details from this receipt.",
+            file_contents=[image_content]
         )
-        response = completion.choices[0].message.content
+        
+        response = await chat.send_message(user_message)
         
         # Parse response
         import json
@@ -860,7 +1053,7 @@ async def register(request: RegisterRequest, response: Response):
         
         # Create session
         session_token = secrets.token_urlsafe(32)
-        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=30)
         
         session_doc = {
             "user_id": user_id,
@@ -878,7 +1071,7 @@ async def register(request: RegisterRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
@@ -916,7 +1109,7 @@ async def login(request: LoginRequest, response: Response):
         
         # Create session
         session_token = secrets.token_urlsafe(32)
-        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
+        session_expires = datetime.now(timezone.utc) + timedelta(days=30)
         
         session_doc = {
             "user_id": user["user_id"],
@@ -934,7 +1127,7 @@ async def login(request: LoginRequest, response: Response):
             httponly=True,
             secure=True,
             samesite="none",
-            max_age=7 * 24 * 60 * 60,
+            max_age=30 * 24 * 60 * 60,  # 30 days
             path="/"
         )
         
@@ -1016,200 +1209,362 @@ async def start_trial(current_user: User = Depends(require_auth)):
         logger.error(f"Error starting trial: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== USER SETTINGS ENDPOINTS ====================
+
+@api_router.put("/user/settings")
+async def update_user_settings(
+    request: UpdateUserSettingsRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Update user settings (currency, language, notification preferences)"""
+    try:
+        update_fields = {}
+        
+        if request.currency is not None:
+            update_fields["currency"] = request.currency
+        if request.language is not None:
+            update_fields["language"] = request.language
+        if request.notification_push is not None:
+            update_fields["notification_push"] = request.notification_push
+        if request.notification_email is not None:
+            update_fields["notification_email"] = request.notification_email
+        
+        if update_fields:
+            await db.users.update_one(
+                {"user_id": current_user.user_id},
+                {"$set": update_fields}
+            )
+        
+        # Return updated user info
+        user_doc = await db.users.find_one(
+            {"user_id": current_user.user_id},
+            {"_id": 0, "password_hash": 0}
+        )
+        
+        return {
+            "success": True,
+            "currency": user_doc.get("currency"),
+            "language": user_doc.get("language"),
+            "notification_push": user_doc.get("notification_push", True),
+            "notification_email": user_doc.get("notification_email", True)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error updating user settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/user/settings")
+async def get_user_settings(current_user: User = Depends(require_auth)):
+    """Get user settings"""
+    try:
+        user_doc = await db.users.find_one(
+            {"user_id": current_user.user_id},
+            {"_id": 0, "password_hash": 0}
+        )
+        
+        if not user_doc:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "currency": user_doc.get("currency", "USD"),
+            "language": user_doc.get("language", "en"),
+            "notification_push": user_doc.get("notification_push", True),
+            "notification_email": user_doc.get("notification_email", True)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== ONBOARDING BALANCE ENDPOINT ====================
+
+@api_router.post("/auth/onboarding-balance")
+async def set_onboarding_balance(
+    request: OnboardingBalanceRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Set initial balance during onboarding as a specialized income transaction"""
+    try:
+        # Create initial balance transaction
+        transaction = {
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "amount": abs(request.amount),
+            "category": "Income",
+            "merchant": "Initial Balance",
+            "notes": "Initial Balance set during onboarding",
+            "transaction_type": "income",
+            "source": "onboarding",
+            "currency": request.currency,
+            "date": datetime.now(timezone.utc),
+            "created_at": datetime.now(timezone.utc)
+        }
+        
+        await db.transactions.insert_one(transaction)
+        
+        # Update user's onboarding status
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {"$set": {"initial_balance_set": True}}
+        )
+        
+        # Save to chat history
+        await save_to_chat_history(
+            current_user.user_id,
+            "system",
+            f"Initial balance set: {format_currency(request.amount, request.currency)}",
+            {"transaction_id": transaction["id"], "amount": request.amount}
+        )
+        
+        return {
+            "success": True,
+            "transaction_id": transaction["id"],
+            "amount": request.amount,
+            "currency": request.currency,
+            "message": f"Initial balance of {format_currency(request.amount, request.currency)} has been set"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error setting onboarding balance: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Subscription Routes
 @api_router.get("/subscription")
 async def get_subscription(current_user: User = Depends(require_auth)):
-    """Get user's subscription info"""
-    tier = current_user.subscription_tier
-    tier_data = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
-    
-    # Check if subscription is active
-    is_active = True
-    days_remaining = None
-    
-    if current_user.subscription_expires_at:
-        expires_at = current_user.subscription_expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    """Get user's subscription status - Single source of truth"""
+    try:
+        entitlement = await get_user_entitlement(current_user.user_id)
         
-        is_active = expires_at > datetime.now(timezone.utc)
-        if is_active:
-            days_remaining = (expires_at - datetime.now(timezone.utc)).days
-    
-    # Get today's usage
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    usage = await db.usage_stats.find_one(
-        {"user_id": current_user.user_id, "date": today},
-        {"_id": 0}
-    )
-    
-    if not usage:
-        usage = {
-            "chat_count": 0,
-            "ocr_count": 0,
-            "voice_minutes": 0.0,
-            "total_actions": 0
+        # Calculate days remaining
+        days_remaining = None
+        if entitlement.get("expires_at"):
+            expires_at = entitlement["expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at > datetime.now(timezone.utc):
+                days_remaining = (expires_at - datetime.now(timezone.utc)).days
+        
+        # Get today's usage
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        usage = await db.usage_stats.find_one(
+            {"user_id": current_user.user_id, "date": today},
+            {"_id": 0}
+        )
+        
+        if not usage:
+            usage = {
+                "chat_count": 0,
+                "ocr_count": 0,
+                "voice_minutes": 0.0,
+                "total_actions": 0
+            }
+        
+        return {
+            "tier": entitlement["tier"],
+            "tier_name": entitlement["tier_name"],
+            "is_active": entitlement["is_active"],
+            "expires_at": entitlement.get("expires_at").isoformat() if entitlement.get("expires_at") else None,
+            "days_remaining": days_remaining,
+            "features": entitlement.get("features", []),
+            "limits": entitlement.get("limits", {}),
+            "is_trial": entitlement.get("is_trial", False),
+            "is_coupon": entitlement.get("is_coupon", False),
+            "platform": entitlement.get("platform"),
+            "product_id": entitlement.get("product_id"),
+            "usage": {
+                "chat_count": usage.get("chat_count", 0),
+                "ocr_count": usage.get("ocr_count", 0),
+                "voice_minutes": usage.get("voice_minutes", 0.0),
+                "total_actions": usage.get("total_actions", 0)
+            }
         }
-    
-    return SubscriptionInfo(
-        tier=tier,
-        tier_name=tier_data["name"],
-        is_active=is_active,
-        expires_at=current_user.subscription_expires_at,
-        days_remaining=days_remaining,
-        limits=tier_data,
-        usage={
-            "chat_count": usage.get("chat_count", 0),
-            "ocr_count": usage.get("ocr_count", 0),
-            "voice_minutes": usage.get("voice_minutes", 0.0),
-            "total_actions": usage.get("total_actions", 0)
+    except Exception as e:
+        logger.error(f"Error getting subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/subscription/status")
+async def get_subscription_status(current_user: User = Depends(require_auth)):
+    """Get concise subscription status for quick checks"""
+    try:
+        entitlement = await get_user_entitlement(current_user.user_id)
+        return {
+            "tier": entitlement["tier"],
+            "is_active": entitlement["is_active"],
+            "is_trial": entitlement.get("is_trial", False),
+            "is_coupon": entitlement.get("is_coupon", False),
+            "features": entitlement.get("features", [])
         }
-    )
+    except Exception as e:
+        logger.error(f"Error getting subscription status: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/subscription/tiers")
 async def get_subscription_tiers():
-    """Get available subscription tiers"""
-    return SUBSCRIPTION_TIERS
+    """Get available subscription tiers - prices from App Store/Play Store"""
+    # Return tier info without prices (prices come from native stores)
+    return {
+        "tiers": [
+            {
+                "tier_id": "free",
+                "name": "Free",
+                "features": SUBSCRIPTION_TIERS["free"]["features"],
+                "limits": SUBSCRIPTION_TIERS["free"]["limits"]
+            },
+            {
+                "tier_id": "pro_monthly",
+                "name": "Pro Monthly",
+                "product_id_ios": SUBSCRIPTION_TIERS["pro_monthly"]["product_id_ios"],
+                "product_id_android": SUBSCRIPTION_TIERS["pro_monthly"]["product_id_android"],
+                "features": SUBSCRIPTION_TIERS["pro_monthly"]["features"],
+                "limits": SUBSCRIPTION_TIERS["pro_monthly"]["limits"],
+                "duration_days": 30
+            },
+            {
+                "tier_id": "pro_yearly",
+                "name": "Pro Yearly",
+                "product_id_ios": SUBSCRIPTION_TIERS["pro_yearly"]["product_id_ios"],
+                "product_id_android": SUBSCRIPTION_TIERS["pro_yearly"]["product_id_android"],
+                "features": SUBSCRIPTION_TIERS["pro_yearly"]["features"],
+                "limits": SUBSCRIPTION_TIERS["pro_yearly"]["limits"],
+                "duration_days": 365,
+                "badge": "Best Value"
+            }
+        ],
+        "trial": {
+            "available": True,
+            "duration_days": 14,
+            "features": SUBSCRIPTION_TIERS["trial"]["features"]
+        }
+    }
 
-# Apple In-App Purchase Verification
-class AppleIAPVerifyRequest(BaseModel):
-    receipt_data: str
-    product_id: str
-    transaction_id: str
-
-@api_router.post("/subscription/verify-apple")
-async def verify_apple_purchase(
-    request: AppleIAPVerifyRequest,
+@api_router.post("/subscription/validate")
+async def validate_subscription(
+    request: SubscriptionValidateRequest,
     current_user: User = Depends(require_auth)
 ):
-    """Verify Apple In-App Purchase receipt and activate subscription"""
+    """Validate subscription purchase from App Store or Play Store"""
     try:
-        # Map product IDs to subscription tiers
-        product_tier_map = {
-            "com.finflow.subscription.basic": {
-                "tier": "basic",
-                "tier_name": "Basic Package",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,  # Unlimited
-                    "voice_minutes": 30,
-                    "ocr_count": 30,
-                }
-            },
-            "com.finflow.subscription.premium": {
-                "tier": "premium",
-                "tier_name": "Premium Package",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-            "com.finflow.subscription.yearly": {
-                "tier": "yearly",
-                "tier_name": "Annual Plan",
-                "duration_days": 365,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-            "com.finflow.subscription.monthly": {
-                "tier": "monthly_full",
-                "tier_name": "Monthly Full Access",
-                "duration_days": 30,
-                "limits": {
-                    "chat_messages": -1,
-                    "voice_minutes": -1,
-                    "ocr_count": -1,
-                }
-            },
-        }
-        
-        tier_info = product_tier_map.get(request.product_id)
-        if not tier_info:
+        # Map product ID to tier
+        tier_id = PRODUCT_TIER_MAP.get(request.product_id)
+        if not tier_id:
             raise HTTPException(status_code=400, detail="Invalid product ID")
         
-        # In production, verify receipt with Apple's servers
-        # https://developer.apple.com/documentation/appstorereceipts/verifyreceipt
-        # For now, we trust the client (implement server-side verification in production)
+        tier_data = SUBSCRIPTION_TIERS.get(tier_id)
+        if not tier_data:
+            raise HTTPException(status_code=400, detail="Invalid subscription tier")
         
-        # Calculate expiration date
-        expires_at = datetime.now(timezone.utc) + timedelta(days=tier_info["duration_days"])
+        # TODO: In production, verify receipt/token with Apple/Google servers
+        # iOS: https://developer.apple.com/documentation/appstorereceipts/verifyreceipt
+        # Android: https://developers.google.com/android-publisher/api-ref/rest/v3/purchases.subscriptions
+        
+        if request.platform == "ios" and not request.receipt_data:
+            raise HTTPException(status_code=400, detail="Receipt data required for iOS")
+        
+        if request.platform == "android" and not request.purchase_token:
+            raise HTTPException(status_code=400, detail="Purchase token required for Android")
+        
+        # Calculate expiration
+        duration_days = tier_data.get("duration_days", 30)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=duration_days)
+        
+        # Check for existing active subscription (idempotent)
+        existing_purchase = await db.purchases.find_one({
+            "user_id": current_user.user_id,
+            "transaction_id": request.transaction_id,
+            "status": "completed"
+        })
+        
+        if existing_purchase:
+            # Return existing subscription info (idempotent)
+            return {
+                "success": True,
+                "message": "Subscription already active",
+                "tier": tier_id,
+                "tier_name": tier_data["name"],
+                "expires_at": existing_purchase.get("expires_at", expires_at).isoformat()
+            }
         
         # Update user subscription
         await db.users.update_one(
             {"user_id": current_user.user_id},
             {
                 "$set": {
-                    "subscription_tier": tier_info["tier"],
-                    "subscription_tier_name": tier_info["tier_name"],
+                    "subscription_tier": tier_id,
+                    "subscription_tier_name": tier_data["name"],
                     "subscription_started_at": datetime.now(timezone.utc),
                     "subscription_expires_at": expires_at,
-                    "subscription_limits": tier_info["limits"],
-                    "apple_transaction_id": request.transaction_id,
-                    "apple_product_id": request.product_id,
+                    "subscription_platform": request.platform,
+                    "subscription_product_id": request.product_id,
+                    "is_trial": False,
+                    "is_coupon": False
                 }
             }
         )
         
-        # Record purchase
+        # Record purchase for audit trail
         purchase_record = {
             "id": str(uuid.uuid4()),
             "user_id": current_user.user_id,
+            "platform": request.platform,
             "product_id": request.product_id,
             "transaction_id": request.transaction_id,
-            "tier": tier_info["tier"],
-            "amount": get_product_price(request.product_id),
-            "currency": "USD",
+            "receipt_data": request.receipt_data[:100] if request.receipt_data else None,  # Store partial for reference
+            "purchase_token": request.purchase_token[:100] if request.purchase_token else None,
+            "tier": tier_id,
             "status": "completed",
-            "created_at": datetime.now(timezone.utc),
+            "expires_at": expires_at,
+            "created_at": datetime.now(timezone.utc)
         }
         await db.purchases.insert_one(purchase_record)
         
-        # Create subscription activated notification
+        # Create notification
         await create_notification(
             current_user.user_id,
             "subscription_activated",
             "Subscription Activated! 🎉",
-            f"Your {tier_info['tier_name']} subscription is now active. Enjoy all the features!",
-            {"tier": tier_info["tier"], "expires_at": expires_at.isoformat()}
+            f"Your {tier_data['name']} subscription is now active until {expires_at.strftime('%B %d, %Y')}.",
+            {"tier": tier_id, "expires_at": expires_at.isoformat()}
         )
+        
+        logger.info(f"Subscription validated for user {current_user.user_id}: {tier_id}")
         
         return {
             "success": True,
             "message": "Subscription activated successfully",
-            "tier": tier_info["tier"],
-            "expires_at": expires_at.isoformat()
+            "tier": tier_id,
+            "tier_name": tier_data["name"],
+            "expires_at": expires_at.isoformat(),
+            "features": tier_data.get("features", [])
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error verifying Apple purchase: {str(e)}")
+        logger.error(f"Error validating subscription: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-def get_product_price(product_id: str) -> float:
-    prices = {
-        "com.finflow.subscription.basic": 2.99,
-        "com.finflow.subscription.premium": 9.99,
-        "com.finflow.subscription.yearly": 99.00,
-        "com.finflow.subscription.monthly": 29.00,
-    }
-    return prices.get(product_id, 0)
-
-@api_router.post("/subscription/start-trial")
-async def start_subscription_trial(
+@api_router.post("/subscription/trial")
+async def start_trial(
+    request: StartTrialRequest = None,
     current_user: User = Depends(require_auth)
 ):
-    """Start a 14-day free trial"""
+    """Start 14-day free trial - one per user"""
     try:
         # Check if user already had a trial
         user_doc = await db.users.find_one({"user_id": current_user.user_id})
         if user_doc and user_doc.get("had_trial"):
             raise HTTPException(status_code=400, detail="You have already used your free trial")
+        
+        # Check if user has active paid subscription
+        if user_doc and user_doc.get("subscription_tier") in ["pro_monthly", "pro_yearly"]:
+            expires_at = user_doc.get("subscription_expires_at")
+            if expires_at:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="You already have an active subscription")
         
         trial_expires = datetime.now(timezone.utc) + timedelta(days=14)
         
@@ -1221,31 +1576,44 @@ async def start_subscription_trial(
                     "subscription_tier_name": "14-Day Free Trial",
                     "subscription_started_at": datetime.now(timezone.utc),
                     "subscription_expires_at": trial_expires,
-                    "subscription_limits": {
-                        "chat_messages": -1,
-                        "voice_minutes": 30,
-                        "ocr_count": 30,
-                    },
                     "had_trial": True,
-                    "is_subscription_active": True,
-                    "onboarding_completed": True,
+                    "is_trial": True,
+                    "is_coupon": False,
+                    "subscription_platform": request.platform if request else None
                 }
             }
         )
         
-        # Create trial started notification
+        # Record trial start
+        await db.purchases.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "platform": request.platform if request else None,
+            "product_id": "trial",
+            "tier": "trial",
+            "status": "trial_started",
+            "expires_at": trial_expires,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        # Create notification
         await create_notification(
             current_user.user_id,
             "trial_started",
-            "Welcome to FinFlow! 🚀",
-            "Your 14-day free trial has started. Explore all features and track your finances with AI!",
-            {"trial_expires": trial_expires.isoformat()}
+            "Welcome to Pro! 🎉",
+            f"Your 14-day free trial has started. Enjoy all Pro features until {trial_expires.strftime('%B %d, %Y')}.",
+            {"expires_at": trial_expires.isoformat()}
         )
+        
+        logger.info(f"Trial started for user {current_user.user_id}")
         
         return {
             "success": True,
-            "message": "14-day trial started",
-            "expires_at": trial_expires.isoformat()
+            "message": "14-day free trial activated",
+            "tier": "trial",
+            "tier_name": "14-Day Free Trial",
+            "expires_at": trial_expires.isoformat(),
+            "features": SUBSCRIPTION_TIERS["trial"]["features"]
         }
         
     except HTTPException:
@@ -1253,6 +1621,169 @@ async def start_subscription_trial(
     except Exception as e:
         logger.error(f"Error starting trial: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/coupon/redeem")
+async def redeem_coupon(
+    request: CouponRedeemRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Redeem a coupon code for 1 month free Pro"""
+    try:
+        coupon_code = request.coupon_code.upper().strip()
+        
+        # Find coupon
+        coupon = await db.coupons.find_one({"code": coupon_code})
+        
+        if not coupon:
+            raise HTTPException(status_code=400, detail="Invalid coupon code")
+        
+        if coupon.get("is_used"):
+            raise HTTPException(status_code=400, detail="This coupon has already been used")
+        
+        if coupon.get("expires_at"):
+            expires_at = coupon["expires_at"]
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                raise HTTPException(status_code=400, detail="This coupon has expired")
+        
+        # Check if user already used a coupon
+        user_doc = await db.users.find_one({"user_id": current_user.user_id})
+        if user_doc and user_doc.get("used_coupon"):
+            raise HTTPException(status_code=400, detail="You have already used a coupon")
+        
+        # Check if user has active paid subscription
+        if user_doc and user_doc.get("subscription_tier") in ["pro_monthly", "pro_yearly"]:
+            expires_at = user_doc.get("subscription_expires_at")
+            if expires_at:
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="You already have an active subscription")
+        
+        # Activate coupon benefit
+        benefit_days = coupon.get("benefit_days", 30)
+        coupon_expires = datetime.now(timezone.utc) + timedelta(days=benefit_days)
+        
+        # Mark coupon as used
+        await db.coupons.update_one(
+            {"code": coupon_code},
+            {
+                "$set": {
+                    "is_used": True,
+                    "used_by": current_user.user_id,
+                    "used_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        # Update user subscription
+        await db.users.update_one(
+            {"user_id": current_user.user_id},
+            {
+                "$set": {
+                    "subscription_tier": "coupon",
+                    "subscription_tier_name": "Coupon Redemption",
+                    "subscription_started_at": datetime.now(timezone.utc),
+                    "subscription_expires_at": coupon_expires,
+                    "is_trial": False,
+                    "is_coupon": True,
+                    "used_coupon": coupon_code
+                }
+            }
+        )
+        
+        # Record coupon redemption
+        await db.purchases.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": current_user.user_id,
+            "product_id": "coupon",
+            "coupon_code": coupon_code,
+            "tier": "coupon",
+            "status": "coupon_redeemed",
+            "expires_at": coupon_expires,
+            "created_at": datetime.now(timezone.utc)
+        })
+        
+        # Create notification
+        await create_notification(
+            current_user.user_id,
+            "coupon_redeemed",
+            "Coupon Activated! 🎁",
+            f"Your coupon has been redeemed. Enjoy Pro features until {coupon_expires.strftime('%B %d, %Y')}.",
+            {"coupon_code": coupon_code, "expires_at": coupon_expires.isoformat()}
+        )
+        
+        logger.info(f"Coupon {coupon_code} redeemed by user {current_user.user_id}")
+        
+        return {
+            "success": True,
+            "message": f"Coupon redeemed! You now have {benefit_days} days of Pro access.",
+            "tier": "coupon",
+            "tier_name": "Coupon Redemption",
+            "expires_at": coupon_expires.isoformat(),
+            "features": SUBSCRIPTION_TIERS["coupon"]["features"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error redeeming coupon: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/coupon/generate")
+async def generate_coupons(count: int = 100, current_user: User = Depends(require_auth)):
+    """Generate coupon codes (admin only - for testing)"""
+    try:
+        # In production, add admin check here
+        codes = await generate_coupon_codes(count)
+        return {
+            "success": True,
+            "message": f"Generated {len(codes)} coupon codes",
+            "codes": [c["code"] for c in codes]
+        }
+    except Exception as e:
+        logger.error(f"Error generating coupons: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/coupon/list")
+async def list_coupons(current_user: User = Depends(require_auth)):
+    """List available coupons (admin only - for testing)"""
+    try:
+        # In production, add admin check here
+        coupons = await db.coupons.find(
+            {"is_used": False},
+            {"_id": 0, "code": 1, "expires_at": 1}
+        ).to_list(100)
+        
+        return {
+            "available_count": len(coupons),
+            "coupons": coupons
+        }
+    except Exception as e:
+        logger.error(f"Error listing coupons: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Legacy Apple IAP endpoint (for backward compatibility)
+class AppleIAPVerifyRequest(BaseModel):
+    receipt_data: str
+    product_id: str
+    transaction_id: str
+
+@api_router.post("/subscription/verify-apple")
+async def verify_apple_purchase(
+    request: AppleIAPVerifyRequest,
+    current_user: User = Depends(require_auth)
+):
+    """Legacy Apple IAP verification - redirects to new validate endpoint"""
+    # Convert to new format
+    validate_request = SubscriptionValidateRequest(
+        platform="ios",
+        product_id=request.product_id,
+        receipt_data=request.receipt_data,
+        transaction_id=request.transaction_id
+    )
+    return await validate_subscription(validate_request, current_user)
 
 # ==================== NOTIFICATION SYSTEM ====================
 
@@ -1501,7 +2032,7 @@ async def notify_budget_alert(user_id: str, category: str, percentage: float):
 
 async def notify_subscription_expiring(user_id: str, email: str, days_remaining: int):
     """Send notification when subscription is about to expire"""
-    title = f"Subscription Expiring Soon"
+    title = "Subscription Expiring Soon"
     message = f"Your subscription expires in {days_remaining} days. Renew now to continue enjoying all features!"
     
     # In-app notification
@@ -1584,9 +2115,12 @@ async def create_receipt_transaction(
         
         # Parse receipt using GPT Vision
         transaction_data = await parse_receipt_image(request.image_base64)
+        now = datetime.now(timezone.utc)
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
-        transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["created_at"] = now
+        transaction_data["updated_at"] = now
+        transaction_data["is_deleted"] = False
         transaction_data["currency"] = request.currency  # Use user's preferred currency
         
         # Save to database
@@ -1605,9 +2139,19 @@ async def create_receipt_transaction(
         currency_symbols = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "IDR": "Rp", "SGD": "S$"}
         symbol = currency_symbols.get(request.currency, request.currency)
         
+        message_text = f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+        
+        # Save to chat history for WhatsApp-like persistence
+        await save_to_chat_history(
+            current_user.user_id,
+            "ocr",
+            message_text,
+            {"transaction_id": transaction.id, "amount": transaction.amount, "category": transaction.category}
+        )
+        
         return {
             "transaction": transaction,
-            "message": f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+            "message": message_text
         }
     except HTTPException:
         raise
@@ -1697,9 +2241,12 @@ async def create_voice_transaction(
         
         # Parse transaction using GPT
         transaction_data = await parse_transaction_text(transcribed_text, source="voice")
+        now = datetime.now(timezone.utc)
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
-        transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["created_at"] = now
+        transaction_data["updated_at"] = now
+        transaction_data["is_deleted"] = False
         transaction_data["currency"] = request.currency  # Use user's preferred currency
         
         # Save to database
@@ -1714,10 +2261,20 @@ async def create_voice_transaction(
         currency_symbols = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "IDR": "Rp", "SGD": "S$"}
         symbol = currency_symbols.get(request.currency, request.currency)
         
+        message_text = f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+        
+        # Save to chat history for WhatsApp-like persistence
+        await save_to_chat_history(
+            current_user.user_id,
+            "voice",
+            message_text,
+            {"transaction_id": transaction.id, "transcription": transcribed_text, "amount": transaction.amount, "category": transaction.category}
+        )
+        
         return {
             "transaction": transaction,
             "transcription": transcribed_text,
-            "message": f"Logged {symbol}{transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+            "message": message_text
         }
     except HTTPException:
         raise
@@ -1741,9 +2298,12 @@ async def create_voice_text_transaction(
         
         # Parse transaction using GPT
         transaction_data = await parse_transaction_text(request.text, source="voice")
+        now = datetime.now(timezone.utc)
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
-        transaction_data["created_at"] = datetime.now(timezone.utc)
+        transaction_data["created_at"] = now
+        transaction_data["updated_at"] = now
+        transaction_data["is_deleted"] = False
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
@@ -1768,16 +2328,62 @@ async def create_voice_text_transaction(
 async def get_transactions(
     limit: int = 100,
     skip: int = 0,
+    updated_after: Optional[str] = None,
+    include_deleted: bool = False,
     current_user: User = Depends(require_auth)
 ):
-    """Get all transactions for current user"""
+    """
+    Get transactions for current user with Delta Sync support.
+    
+    - If updated_after is provided: Returns changes since that timestamp (including deleted)
+    - If updated_after is not provided: Returns active (non-deleted) transactions
+    - Results are sorted by updated_at ASCENDING for pagination consistency
+    """
     try:
-        transactions = await db.transactions.find(
-            {"user_id": current_user.user_id},
-            {"_id": 0}
-        ).sort("date", -1).skip(skip).limit(limit).to_list(limit)
+        query = {"user_id": current_user.user_id}
         
-        return {"transactions": transactions, "count": len(transactions)}
+        # Delta Sync mode
+        if updated_after:
+            try:
+                # Parse ISO 8601 timestamp
+                updated_after_dt = datetime.fromisoformat(updated_after.replace('Z', '+00:00'))
+                query["updated_at"] = {"$gt": updated_after_dt}
+                # Include both active and deleted records for delta sync
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid updated_after format. Use ISO 8601.")
+        else:
+            # Initial sync - only return active (non-deleted) records
+            if not include_deleted:
+                query["is_deleted"] = {"$ne": True}
+        
+        # Sort by updated_at ASCENDING for consistent pagination
+        transactions = await db.transactions.find(
+            query,
+            {"_id": 0}
+        ).sort("updated_at", 1).skip(skip).limit(limit).to_list(limit)
+        
+        # Determine next_cursor and has_more
+        next_cursor = None
+        has_more = False
+        
+        if transactions:
+            # Check if there are more records
+            next_query = query.copy()
+            last_updated = transactions[-1].get("updated_at")
+            if last_updated:
+                next_query["updated_at"] = {"$gt": last_updated}
+                more_count = await db.transactions.count_documents(next_query)
+                has_more = more_count > 0
+                next_cursor = last_updated.isoformat() if isinstance(last_updated, datetime) else str(last_updated)
+        
+        return {
+            "data": transactions,
+            "next_cursor": next_cursor,
+            "has_more": has_more,
+            "count": len(transactions)
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching transactions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1787,17 +2393,34 @@ async def delete_transaction(
     transaction_id: str,
     current_user: User = Depends(require_auth)
 ):
-    """Delete a transaction"""
+    """
+    Soft delete a transaction (mark as deleted for sync).
+    Does NOT physically delete - sets is_deleted=true and updates updated_at.
+    """
     try:
-        result = await db.transactions.delete_one({
-            "id": transaction_id,
-            "user_id": current_user.user_id
-        })
+        # Soft delete: Update is_deleted and updated_at
+        result = await db.transactions.update_one(
+            {
+                "id": transaction_id,
+                "user_id": current_user.user_id
+            },
+            {
+                "$set": {
+                    "is_deleted": True,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
         
-        if result.deleted_count == 0:
+        if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Transaction not found")
         
-        return {"message": "Transaction deleted successfully"}
+        return {
+            "message": "Transaction deleted successfully",
+            "id": transaction_id,
+            "is_deleted": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1811,6 +2434,7 @@ async def create_manual_transaction(
 ):
     """Create a transaction manually"""
     try:
+        now = datetime.now(timezone.utc)
         transaction_data = {
             "id": str(uuid.uuid4()),
             "user_id": current_user.user_id,
@@ -1822,7 +2446,9 @@ async def create_manual_transaction(
             "transaction_type": request.transaction_type,
             "notes": request.notes,
             "source": "manual",
-            "created_at": datetime.now(timezone.utc)
+            "created_at": now,
+            "updated_at": now,
+            "is_deleted": False
         }
         
         await db.transactions.insert_one(transaction_data)
@@ -1835,7 +2461,7 @@ async def create_manual_transaction(
         
         return {
             "transaction": created_transaction,
-            "message": f"Transaction logged successfully"
+            "message": "Transaction logged successfully"
         }
     except Exception as e:
         logger.error(f"Error creating manual transaction: {str(e)}")
@@ -1847,7 +2473,11 @@ async def update_transaction(
     request: UpdateTransactionRequest,
     current_user: User = Depends(require_auth)
 ):
-    """Update a transaction"""
+    """
+    Update a transaction.
+    CRITICAL: Always updates updated_at for sync.
+    If record was soft-deleted (is_deleted=true), this undeletes it.
+    """
     try:
         # Build update fields
         update_fields = {}
@@ -1866,8 +2496,11 @@ async def update_transaction(
         if request.notes is not None:
             update_fields["notes"] = request.notes
         
-        if not update_fields:
-            raise HTTPException(status_code=400, detail="No fields to update")
+        # CRITICAL: Always update updated_at for sync
+        update_fields["updated_at"] = datetime.now(timezone.utc)
+        
+        # If updating a deleted record, undelete it
+        update_fields["is_deleted"] = False
         
         result = await db.transactions.update_one(
             {"id": transaction_id, "user_id": current_user.user_id},
@@ -2138,16 +2771,14 @@ Respond in JSON format:
     "spending_trend": "good|needs_attention|concerning"
 }"""
 
-        # Call OpenAI API
-        completion = await openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Analyze this financial data and provide insights:\n{context}"}
-            ],
-            temperature=0.5
-        )
-        response = completion.choices[0].message.content
+        chat = LlmChat(
+            api_key=OPENAI_API_KEY,
+            session_id=f"insights_{uuid.uuid4()}",
+            system_message=system_prompt
+        ).with_model("openai", "gpt-5.2")
+
+        user_message = UserMessage(text=f"Analyze this financial data and provide insights:\n{context}")
+        response = await chat.send_message(user_message)
         
         # Parse response
         import json
@@ -2185,6 +2816,175 @@ Respond in JSON format:
             "period_days": days,
             "currency": "USD"
         }
+
+# ==================== SYNC & MIGRATION ENDPOINTS ====================
+
+@api_router.post("/sync/migrate")
+async def migrate_transactions_for_sync(current_user: User = Depends(require_auth)):
+    """
+    Migrate existing transactions to support delta sync.
+    Adds updated_at and is_deleted fields to records missing them.
+    """
+    try:
+        # Find transactions missing updated_at
+        missing_updated = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "updated_at": {"$exists": False}
+        })
+        
+        # Find transactions missing is_deleted
+        missing_deleted = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "is_deleted": {"$exists": False}
+        })
+        
+        # Update transactions missing updated_at (use created_at or current time)
+        if missing_updated > 0:
+            async for tx in db.transactions.find({
+                "user_id": current_user.user_id,
+                "updated_at": {"$exists": False}
+            }):
+                updated_at = tx.get("created_at", datetime.now(timezone.utc))
+                await db.transactions.update_one(
+                    {"id": tx["id"]},
+                    {"$set": {"updated_at": updated_at}}
+                )
+        
+        # Update transactions missing is_deleted
+        if missing_deleted > 0:
+            await db.transactions.update_many(
+                {
+                    "user_id": current_user.user_id,
+                    "is_deleted": {"$exists": False}
+                },
+                {"$set": {"is_deleted": False}}
+            )
+        
+        return {
+            "success": True,
+            "migrated": {
+                "updated_at_added": missing_updated,
+                "is_deleted_added": missing_deleted
+            },
+            "message": f"Migrated {missing_updated + missing_deleted} records for sync support"
+        }
+    except Exception as e:
+        logger.error(f"Error migrating transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/sync/prune")
+async def prune_deleted_transactions(
+    days_threshold: int = 90,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Hard delete soft-deleted transactions older than threshold.
+    Used for maintenance to prevent database bloat.
+    Records deleted > days_threshold ago are permanently removed.
+    """
+    try:
+        threshold_date = datetime.now(timezone.utc) - timedelta(days=days_threshold)
+        
+        # Count records to be pruned
+        to_prune = await db.transactions.count_documents({
+            "user_id": current_user.user_id,
+            "is_deleted": True,
+            "updated_at": {"$lt": threshold_date}
+        })
+        
+        if to_prune > 0:
+            # Hard delete old soft-deleted records
+            result = await db.transactions.delete_many({
+                "user_id": current_user.user_id,
+                "is_deleted": True,
+                "updated_at": {"$lt": threshold_date}
+            })
+            
+            return {
+                "success": True,
+                "pruned_count": result.deleted_count,
+                "threshold_days": days_threshold,
+                "message": f"Permanently deleted {result.deleted_count} old deleted transactions"
+            }
+        
+        return {
+            "success": True,
+            "pruned_count": 0,
+            "threshold_days": days_threshold,
+            "message": "No transactions to prune"
+        }
+    except Exception as e:
+        logger.error(f"Error pruning transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/sync/restore/{transaction_id}")
+async def restore_transaction(
+    transaction_id: str,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Restore a soft-deleted transaction.
+    Sets is_deleted=false and updates updated_at.
+    """
+    try:
+        result = await db.transactions.update_one(
+            {
+                "id": transaction_id,
+                "user_id": current_user.user_id,
+                "is_deleted": True
+            },
+            {
+                "$set": {
+                    "is_deleted": False,
+                    "updated_at": datetime.now(timezone.utc)
+                }
+            }
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Deleted transaction not found")
+        
+        # Fetch restored transaction
+        transaction = await db.transactions.find_one(
+            {"id": transaction_id},
+            {"_id": 0}
+        )
+        
+        return {
+            "success": True,
+            "transaction": transaction,
+            "message": "Transaction restored successfully"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error restoring transaction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/sync/deleted")
+async def get_deleted_transactions(
+    limit: int = 100,
+    current_user: User = Depends(require_auth)
+):
+    """
+    Get soft-deleted transactions (for recovery/review).
+    """
+    try:
+        transactions = await db.transactions.find(
+            {
+                "user_id": current_user.user_id,
+                "is_deleted": True
+            },
+            {"_id": 0}
+        ).sort("updated_at", -1).limit(limit).to_list(limit)
+        
+        return {
+            "deleted_transactions": transactions,
+            "count": len(transactions)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching deleted transactions: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(api_router)
 
