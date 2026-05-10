@@ -1,0 +1,149 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`OfflineBanner — visual baseline offline + reachable false renders the offline banner 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#6B7280",
+      },
+    ]
+  }
+>
+  <Ionicons
+    color="#fff"
+    name="cloud-offline-outline"
+    size={16}
+    style={
+      {
+        "marginRight": 8,
+      }
+    }
+  />
+  <text
+    ref={null}
+    style={
+      {
+        "color": "#fff",
+        "fontSize": 13,
+        "fontWeight": "500",
+      }
+    }
+  >
+    Offline Mode
+  </text>
+  <touchable
+    onPress={[MockFunction]}
+    ref={null}
+    style={
+      {
+        "backgroundColor": "rgba(255, 255, 255, 0.2)",
+        "borderRadius": 4,
+        "marginLeft": 12,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      }
+    }
+  >
+    <Ionicons
+      color="#fff"
+      name="refresh"
+      size={14}
+    />
+  </touchable>
+</view>
+`;
+
+exports[`OfflineBanner — visual baseline online + isSyncing renders the syncing banner 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#3B82F6",
+      },
+    ]
+  }
+>
+  <activity-indicator
+    color="#fff"
+    ref={null}
+    size="small"
+    style={
+      {
+        "marginRight": 8,
+      }
+    }
+  />
+  <text
+    ref={null}
+    style={
+      {
+        "color": "#fff",
+        "fontSize": 13,
+        "fontWeight": "500",
+      }
+    }
+  >
+    Syncing...
+  </text>
+</view>
+`;
+
+exports[`OfflineBanner — visual baseline online + syncStatus=success renders the success banner 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      {
+        "backgroundColor": "#10B981",
+      },
+    ]
+  }
+>
+  <Ionicons
+    color="#fff"
+    name="checkmark-circle"
+    size={16}
+    style={
+      {
+        "marginRight": 8,
+      }
+    }
+  />
+  <text
+    ref={null}
+    style={
+      {
+        "color": "#fff",
+        "fontSize": 13,
+        "fontWeight": "500",
+      }
+    }
+  >
+    Synced
+  </text>
+</view>
+`;

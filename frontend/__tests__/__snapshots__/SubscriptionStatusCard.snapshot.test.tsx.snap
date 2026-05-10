@@ -1,0 +1,571 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`SubscriptionStatusCard — visual baseline free tier — expired status 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "backgroundColor": "#fff",
+      "borderColor": "#E5E7EB",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "marginBottom": 24,
+      "padding": 16,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 10,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#EF4444"
+      name="diamond"
+      size={24}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 18,
+          "fontWeight": "700",
+        }
+      }
+    >
+      subscription.plans.free
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        [
+          {
+            "alignSelf": "flex-start",
+            "borderRadius": 12,
+            "paddingHorizontal": 12,
+            "paddingVertical": 6,
+          },
+          {
+            "backgroundColor": "#EF4444",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+            "fontWeight": "600",
+          }
+        }
+      >
+        subscription.statusExpired
+      </text>
+    </view>
+  </view>
+</view>
+`;
+
+exports[`SubscriptionStatusCard — visual baseline pro_monthly tier — active status 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "backgroundColor": "#fff",
+      "borderColor": "#E5E7EB",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "marginBottom": 24,
+      "padding": 16,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 10,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#10B981"
+      name="diamond"
+      size={24}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 18,
+          "fontWeight": "700",
+        }
+      }
+    >
+      subscription.plans.proMonthly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        [
+          {
+            "alignSelf": "flex-start",
+            "borderRadius": 12,
+            "paddingHorizontal": 12,
+            "paddingVertical": 6,
+          },
+          {
+            "backgroundColor": "#10B981",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+            "fontWeight": "600",
+          }
+        }
+      >
+        subscription.statusActive
+      </text>
+    </view>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6B7280"
+      name="calendar-outline"
+      size={16}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      subscription.expires
+      : 
+      31/12/2026
+    </text>
+  </view>
+  <touchable
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "borderColor": "#6366F1",
+        "borderRadius": 8,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "center",
+        "paddingVertical": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6366F1"
+      name="settings-outline"
+      size={18}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6366F1",
+          "fontSize": 14,
+          "fontWeight": "600",
+        }
+      }
+    >
+      subscription.manageSubscription
+    </text>
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionStatusCard — visual baseline pro_yearly tier — active status 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "backgroundColor": "#fff",
+      "borderColor": "#E5E7EB",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "marginBottom": 24,
+      "padding": 16,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 10,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#10B981"
+      name="diamond"
+      size={24}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 18,
+          "fontWeight": "700",
+        }
+      }
+    >
+      subscription.plans.proYearly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        [
+          {
+            "alignSelf": "flex-start",
+            "borderRadius": 12,
+            "paddingHorizontal": 12,
+            "paddingVertical": 6,
+          },
+          {
+            "backgroundColor": "#10B981",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+            "fontWeight": "600",
+          }
+        }
+      >
+        subscription.statusActive
+      </text>
+    </view>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6B7280"
+      name="calendar-outline"
+      size={16}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      subscription.expires
+      : 
+      31/12/2026
+    </text>
+  </view>
+  <touchable
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "borderColor": "#6366F1",
+        "borderRadius": 8,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "center",
+        "paddingVertical": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6366F1"
+      name="settings-outline"
+      size={18}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6366F1",
+          "fontSize": 14,
+          "fontWeight": "600",
+        }
+      }
+    >
+      subscription.manageSubscription
+    </text>
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionStatusCard — visual baseline trial tier — active status with expiry date 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "backgroundColor": "#fff",
+      "borderColor": "#E5E7EB",
+      "borderRadius": 16,
+      "borderWidth": 1,
+      "marginBottom": 24,
+      "padding": 16,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 10,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#F59E0B"
+      name="diamond"
+      size={24}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 18,
+          "fontWeight": "700",
+        }
+      }
+    >
+      subscription.plans.trial.name
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        [
+          {
+            "alignSelf": "flex-start",
+            "borderRadius": 12,
+            "paddingHorizontal": 12,
+            "paddingVertical": 6,
+          },
+          {
+            "backgroundColor": "#F59E0B",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 12,
+            "fontWeight": "600",
+          }
+        }
+      >
+        subscription.statusTrial
+      </text>
+    </view>
+  </view>
+  <view
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "backgroundColor": "#FEF3C7",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 8,
+          "marginBottom": 12,
+          "padding": 10,
+        },
+        false,
+      ]
+    }
+  >
+    <Ionicons
+      color="#F59E0B"
+      name="time"
+      size={16}
+    />
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "color": "#D97706",
+            "fontSize": 14,
+            "fontWeight": "500",
+          },
+          false,
+        ]
+      }
+    >
+      235
+       
+      analytics.days
+       
+      subscription.remainingInTrial
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "marginBottom": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6B7280"
+      name="calendar-outline"
+      size={16}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      subscription.expires
+      : 
+      31/12/2026
+    </text>
+  </view>
+  <touchable
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "borderColor": "#6366F1",
+        "borderRadius": 8,
+        "borderWidth": 1,
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "center",
+        "paddingVertical": 12,
+      }
+    }
+  >
+    <Ionicons
+      color="#6366F1"
+      name="settings-outline"
+      size={18}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6366F1",
+          "fontSize": 14,
+          "fontWeight": "600",
+        }
+      }
+    >
+      subscription.manageSubscription
+    </text>
+  </touchable>
+</view>
+`;
