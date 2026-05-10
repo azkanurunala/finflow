@@ -9,10 +9,14 @@
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
   "iteration_1_progress": {
-    "shipped_so_far": ["snapshot-infra"],
+    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12"],
     "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
-    "first_baseline": "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
-    "next": "expand snapshot coverage to remaining 9 components + 24 routes, then G11/G12 baseline replacements"
+    "snapshot_baselines": [
+      "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
+      "frontend/__tests__/OfflineBanner.snapshot.test.tsx (3 visible states)",
+      "frontend/__tests__/SubscriptionStatusCard.snapshot.test.tsx (4 tier states)"
+    ],
+    "next": "chat-screen-hydration, i18n-bulk-migrate, receipt-picker-rollout"
   },
   "snapshot_replacements_iteration_1": [],
   "doc": "Source of truth for what exists and what may evolve. See LIVING_PRD.md. Protected entries are untouchable except via documented bug-fix scope. Editing this file is gated by scripts/check-registry-additive.js.",
@@ -277,6 +281,24 @@
       "rationale": "Two placeholders converted to real routes (Personal Info + About). Security placeholder retained pending backend support."
     },
     {
+      "id": "g11.sub-layout",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/subscription.tsx (packagesContainer)",
+      "status": "shipped-soaking",
+      "added_in": "iteration-1",
+      "rationale": "Inspection found the layout was already 1-column vertical (default flexDirection); explicit `flexDirection: column` declaration added so any future regression to row layout requires a deliberate edit. No runtime change."
+    },
+    {
+      "id": "g12.home-fontsize",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/index.tsx (incomeAmount/expenseAmount)",
+      "status": "shipped-soaking",
+      "added_in": "iteration-1",
+      "rationale": "Issue #15 — fontSize bumped 16 → 22 on Income/Expense numbers. Existing `numberOfLines={1} adjustsFontSizeToFit` handles overflow."
+    },
+    {
       "id": "g14.health-ping",
       "layer": "frontend",
       "type": "service",
@@ -316,24 +338,6 @@
       "status": "deferred-iteration-1",
       "added_in": "iteration-1?",
       "rationale": "Requires SES/SendGrid creds + DKIM domain. Frontend pref toggle blocked until BE channel exists."
-    },
-    {
-      "id": "g11.sub-layout",
-      "layer": "frontend",
-      "type": "page",
-      "ref": "frontend/app/(app)/subscription.tsx",
-      "status": "deferred-iteration-1",
-      "added_in": "iteration-1?",
-      "rationale": "Layout change is small but the snapshot infrastructure required to certify it (jest-image-snapshot or @testing-library/react-native serializer) does not exist yet. Land snapshot infra as Iteration 1's first task, then ship G11."
-    },
-    {
-      "id": "g12.home-fontsize",
-      "layer": "frontend",
-      "type": "page",
-      "ref": "frontend/app/(app)/index.tsx",
-      "status": "deferred-iteration-1",
-      "added_in": "iteration-1?",
-      "rationale": "Same blocker as G11 — needs snapshot infra to certify the documented baseline replacement."
     },
     {
       "id": "g13.coupon-admin-ui",

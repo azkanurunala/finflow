@@ -615,6 +615,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   packagesContainer: {
+    // G11 — tier cards stack vertically (1 column). Default flexDirection is column,
+    // but make it explicit so any future row layout requires a deliberate edit and
+    // shows up in code review.
+    flexDirection: "column",
     gap: 16,
   },
   packageCard: {

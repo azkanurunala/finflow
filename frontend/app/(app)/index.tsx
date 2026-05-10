@@ -576,12 +576,14 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   incomeAmount: {
-    fontSize: 16,
+    // G12 (Issue #15) — bumped from 16 → 22 for readability. `numberOfLines={1}
+    // adjustsFontSizeToFit` on the Text means very large amounts still fit.
+    fontSize: 22,
     fontWeight: "bold",
     color: "#10B981",
   },
   expenseAmount: {
-    fontSize: 16,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#EF4444",
   },
