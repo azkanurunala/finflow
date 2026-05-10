@@ -1,7 +1,7 @@
 # FinFlow — Living PRD
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
-> Iteration cursor: **Iteration 0 — SHIPPED.** Tag: `iteration-0-complete`. Next: Iteration 1 (see § Iteration 1 Plan below).
+> Iteration cursor: **Iterations 0 + 1 — SHIPPED.** Tags: `iteration-0-complete`, `iteration-1-complete`. Next: Iteration 2 candidates listed in § Iteration 1 — Outcome.
 
 ---
 
@@ -73,7 +73,31 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 ---
 
-## Iteration 1 — In progress
+## Iteration 1 — Outcome (retrospective)
+
+Tag: `iteration-1-complete`. Six slices, six commits, all green.
+
+| Slice | Surface | Tests | Commit |
+|---|---|---|---|
+| 1a | Snapshot infra (renderToSnapshot helper, PricingDisplay baseline 3 variants) | 3 | `c3b269d7` |
+| 1b | Snapshot expansion (OfflineBanner 3 + SubscriptionStatusCard 4) | 7 | `fe6222df` |
+| 2/3 | G11 explicit 1-column tier layout + G12 income/expense font bump 16→22 | covered by suite | `85667ccb` |
+| 4 | chat.tsx routed through ChatApiClient (3 sites) | regression | `def99048` |
+| 5 | i18n: 8 `Alert.alert("Error", ...)` sites → `t('common.error')`; audit count 108 → 101; `npm run audit:i18n` script added | regression | `3dfcf60e` |
+| 6 | RecordingModal routed through ReceiptSourcePicker helpers (`includeBase64` option added; 50+ lines of duplicated permission/launch logic removed) | 2 | `1968ef03` |
+
+End state: **22 suites / 227 pass / 1 skipped** under `--ci`. Backend pytest 3/3.
+
+### Iteration 2 candidates
+- Continue snapshot expansion to remaining components (CouponInput, CouponRedeemModal, BottomNavigation, etc.) and screens.
+- Continue i18n bulk-migrate (101 → fewer); next batch could be the `[jsx-text]` placeholders/headers (`AI Assistant`, `Confirm Selection`, `Apply Language`, `Selected Package`, etc.).
+- Promote Iteration 0 + 1 `evolving / shipped-soaking` entries to `protected` once they've ridden through one production cycle without regression.
+- G8 IAP verifier and G9 email channel — when external creds land.
+- profile-security-screen — when backend `PUT /api/auth/password` + `DELETE /api/auth/me` land.
+
+---
+
+## Iteration 1 — Snapshot infrastructure detail
 
 ### Snapshot infrastructure (shipped)
 
