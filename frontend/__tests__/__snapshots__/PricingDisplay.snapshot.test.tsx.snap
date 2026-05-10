@@ -1,0 +1,253 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`PricingDisplay — visual baseline monthly USD pricing renders the canonical layout 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "marginVertical": 8,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 24,
+          "fontWeight": "700",
+        }
+      }
+    >
+      $
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 48,
+          "fontWeight": "800",
+          "marginLeft": 4,
+        }
+      }
+    >
+      9.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 8,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+</view>
+`;
+
+exports[`PricingDisplay — visual baseline non-USD currency code renders verbatim in the prefix slot 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "marginVertical": 8,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 24,
+          "fontWeight": "700",
+        }
+      }
+    >
+      IDR
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 48,
+          "fontWeight": "800",
+          "marginLeft": 4,
+        }
+      }
+    >
+      149000.00
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 8,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+</view>
+`;
+
+exports[`PricingDisplay — visual baseline yearly USD pricing with savings renders the canonical layout 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "marginVertical": 8,
+    }
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 24,
+          "fontWeight": "700",
+        }
+      }
+    >
+      $
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#1F2937",
+          "fontSize": 48,
+          "fontWeight": "800",
+          "marginLeft": 4,
+        }
+      }
+    >
+      99.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 8,
+        }
+      }
+    >
+      / 
+      year
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginTop": 4,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#10B981",
+          "fontSize": 14,
+          "fontWeight": "600",
+        }
+      }
+    >
+      $
+      8.33
+       per month
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 12,
+        "marginTop": 8,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#9CA3AF",
+          "fontSize": 16,
+          "textDecorationLine": "line-through",
+        }
+      }
+    >
+      $119.88
+    </text>
+    <view
+      ref={null}
+      style={
+        {
+          "backgroundColor": "#FEF3C7",
+          "borderRadius": 6,
+          "paddingHorizontal": 10,
+          "paddingVertical": 4,
+        }
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#D97706",
+            "fontSize": 13,
+            "fontWeight": "600",
+          }
+        }
+      >
+        Save 
+        $19.89
+      </text>
+    </view>
+  </view>
+</view>
+`;

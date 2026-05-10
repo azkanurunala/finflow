@@ -73,11 +73,22 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 ---
 
-## Iteration 1 Plan (forward-looking)
+## Iteration 1 — In progress
 
-**Iteration 1 must start with snapshot infrastructure**, since it unblocks G11/G12 and lets the additive-only snapshot gate (Gate 3) actually run with content rather than no-ops. Recommended order:
+### Snapshot infrastructure (shipped)
 
-1. **Snapshot infra (foundational)** — pick `@testing-library/react-native` snapshots OR `jest-image-snapshot`; commit baselines for the 24 routes + 10 components currently in `protected`. After this lands, Gate 3 enforces what it was designed to enforce.
+The first slice of Iteration 1 lands the snapshot harness so Gate 3 has content to enforce.
+
+- **Helper:** [frontend/__tests__/helpers/renderToSnapshot.ts](frontend/__tests__/helpers/renderToSnapshot.ts) wraps `@testing-library/react-native`'s `render().toJSON()`. (We use RTL because `react-test-renderer` 19 returns `null` for intrinsic elements under our jest preset.)
+- **Convention:** snapshot tests live alongside other tests, suffixed `.snapshot.test.tsx`. Snapshot artifacts go to `__tests__/__snapshots__/<test-name>.tsx.snap`.
+- **First baseline:** [frontend/__tests__/PricingDisplay.snapshot.test.tsx](frontend/__tests__/PricingDisplay.snapshot.test.tsx) covers PricingDisplay across 3 prop variations.
+- **How to add another:** copy the PricingDisplay snapshot test, swap the imported component + props, run `npx jest <new-test>` once locally to seed the `.snap` file, then commit both the test and the `.snap`. Subsequent runs (under `--ci`) will fail if the rendered tree drifts.
+- **Mocking pattern (additive):** any RN-bridge surface a component touches must be mocked in the snapshot test file using the `make(tag)` forwardRef pattern from PricingDisplay so RTL can render it. Don't widen the global jest setup — keep mocks local to each snapshot file so component scope is explicit.
+- **Gate 3 enforcement:** the existing `scripts/check-registry-additive.js --mode=snapshots` check now has real artifacts to validate against. Any snapshot diff on a `protected` baseline rejects the PR unless the screen is listed in `feature-registry.json::snapshot_replacements_iteration_N`.
+
+### Remaining Iteration 1 work — recommended order
+
+1. **Expand snapshot coverage** — follow the documented pattern to add baselines for the remaining 9 components and 24 routes. Each addition is purely additive (new test + new `.snap`).
 2. **G11** subscription tier 1-column layout — additive baseline replacement, scope tracked in registry.
 3. **G12** home-screen Income/Expense font readability — same.
 4. **i18n-bulk-migrate** — drive the audit script to 0 findings; append missing keys across all 18 locales (English fallback + `// TODO: translate` for non-en).

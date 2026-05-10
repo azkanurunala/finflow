@@ -1,13 +1,20 @@
 {
   "$schema": "./scripts/feature-registry.schema.json",
-  "version": "0.1.0-iteration-0-shipped",
-  "iteration_cursor": 0,
+  "version": "0.2.0-iteration-1-in-progress",
+  "iteration_cursor": 1,
   "iteration_0_summary": {
     "shipped": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10", "G14"],
     "deferred_to_iteration_1": ["G8", "G9", "G11", "G12", "G13"],
     "tests_added": "60+ across 8 new test files",
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
+  "iteration_1_progress": {
+    "shipped_so_far": ["snapshot-infra"],
+    "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
+    "first_baseline": "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
+    "next": "expand snapshot coverage to remaining 9 components + 24 routes, then G11/G12 baseline replacements"
+  },
+  "snapshot_replacements_iteration_1": [],
   "doc": "Source of truth for what exists and what may evolve. See LIVING_PRD.md. Protected entries are untouchable except via documented bug-fix scope. Editing this file is gated by scripts/check-registry-additive.js.",
   "invariants": [
     "All backend routes are mounted on api_router with /api prefix in backend/server.py.",
@@ -144,6 +151,8 @@
     { "id": "fe.route.app.profile-personal-info", "layer": "frontend", "type": "page", "ref": "frontend/app/(app)/profile-personal-info.tsx", "added_in": "iteration-0" },
     { "id": "fe.route.app.profile-about",         "layer": "frontend", "type": "page", "ref": "frontend/app/(app)/profile-about.tsx",         "added_in": "iteration-0" },
     { "id": "fe.script.audit-i18n",  "layer": "frontend", "type": "service", "ref": "frontend/scripts/audit-i18n.ts",            "added_in": "iteration-0" },
+    { "id": "fe.test.snapshot-helper", "layer": "frontend", "type": "service", "ref": "frontend/__tests__/helpers/renderToSnapshot.ts", "added_in": "iteration-1" },
+    { "id": "fe.test.pricing-display-baseline", "layer": "frontend", "type": "service", "ref": "frontend/__tests__/PricingDisplay.snapshot.test.tsx", "added_in": "iteration-1" },
 
     { "id": "fe.util.currency",        "layer": "frontend", "type": "service", "ref": "frontend/utils/currency.ts",           "added_in": "v1.0" },
     { "id": "fe.util.i18n",            "layer": "frontend", "type": "service", "ref": "frontend/utils/i18n.ts",               "added_in": "v1.0" },
