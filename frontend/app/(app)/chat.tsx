@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { apiClient } from "../../api/client";
+import { chatApiClient } from "../../services/ChatApiClient";
 import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
@@ -60,11 +61,11 @@ export default function ChatScreen() {
 
   const loadChatHistory = async () => {
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      const response = await apiClient.get(`/api/chat/history`);
+      // Iter 1 — go through ChatApiClient (G7 deliverable) instead of raw apiClient.
+      const messages = await chatApiClient.getHistory();
 
-      if (response.data.messages && response.data.messages.length > 0) {
-        const loadedMessages = response.data.messages.map((msg: any) => ({
+      if (messages.length > 0) {
+        const loadedMessages = messages.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         }));
@@ -103,19 +104,16 @@ export default function ChatScreen() {
 
   const saveMessageToServer = async (message: any) => {
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      await apiClient.post(
-        `/api/chat/message`,
-        {
-          type: message.type,
-          text: message.text,
-          transcription: message.transcription,
-          image_base64: message.image_base64,
-          parsed_data: message.parsed_data,
-          transaction_id: message.transaction_id,
-          transaction_data: message.transaction_data,
-        }
-      );
+      // Iter 1 — go through ChatApiClient (G7 deliverable).
+      await chatApiClient.saveMessage({
+        type: message.type,
+        text: message.text,
+        transcription: message.transcription,
+        image_base64: message.image_base64,
+        parsed_data: message.parsed_data,
+        transaction_id: message.transaction_id,
+        transaction_data: message.transaction_data,
+      });
     } catch (error) {
       console.error("Save message error:", error);
     }
@@ -123,8 +121,8 @@ export default function ChatScreen() {
 
   const handleResetChat = async () => {
     try {
-      const sessionToken = await AsyncStorage.getItem("session_token");
-      await apiClient.delete(`/api/chat/history`);
+      // Iter 1 — go through ChatApiClient (G7 deliverable).
+      await chatApiClient.clearHistory();
 
       const welcomeMessage = language === 'id'
         ? `Chat direset. Saya siap membantu mencatat pengeluaranmu kembali!`

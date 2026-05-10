@@ -9,7 +9,7 @@
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
   "iteration_1_progress": {
-    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12"],
+    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration"],
     "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
     "snapshot_baselines": [
       "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
@@ -281,6 +281,16 @@
       "rationale": "Two placeholders converted to real routes (Personal Info + About). Security placeholder retained pending backend support."
     },
     {
+      "id": "chat-screen-hydration",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/chat.tsx",
+      "status": "shipped-soaking",
+      "added_in": "iteration-1",
+      "extends": ["fe.svc.chat-api"],
+      "rationale": "Chat screen now routes loadChatHistory / saveMessageToServer / handleResetChat through chatApiClient (G7) instead of direct apiClient calls. Hydration logic was already in place; this slice consolidates the path."
+    },
+    {
       "id": "g11.sub-layout",
       "layer": "frontend",
       "type": "page",
@@ -365,15 +375,6 @@
       "status": "deferred-iteration-1",
       "added_in": "iteration-1?",
       "rationale": "Component exists; wire-up at each entry point requires per-screen testing."
-    },
-    {
-      "id": "chat-screen-hydration",
-      "layer": "frontend",
-      "type": "page",
-      "ref": "frontend/app/(app)/chat.tsx",
-      "status": "deferred-iteration-1",
-      "added_in": "iteration-1?",
-      "rationale": "ChatApiClient is shipped; chat screen hydration on mount + persistence on send is the next step."
     },
     {
       "id": "profile-security-screen",
