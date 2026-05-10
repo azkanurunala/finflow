@@ -28,6 +28,15 @@ export interface ReceiptPickResult {
   width?: number;
   height?: number;
   fileSize?: number;
+  /** Populated only when caller passes `{ includeBase64: true }`. */
+  base64?: string;
+}
+
+export interface PickOptions {
+  /** Embed the image bytes as base64 in the result. Some upload paths need it. */
+  includeBase64?: boolean;
+  /** Override JPEG quality (0..1). */
+  quality?: number;
 }
 
 export interface ReceiptSourcePickerProps {
@@ -61,38 +70,38 @@ async function ensureLibraryPermission(): Promise<boolean> {
   return true;
 }
 
-const PICKER_OPTIONS: ImagePicker.ImagePickerOptions = {
-  mediaTypes: ImagePicker.MediaTypeOptions.Images,
-  allowsEditing: true,
-  quality: 0.85,
-};
-
-export async function pickFromCamera(): Promise<ReceiptPickResult | null> {
-  if (!(await ensureCameraPermission())) return null;
-  const result = await ImagePicker.launchCameraAsync(PICKER_OPTIONS);
-  if (result.canceled || !result.assets?.length) return null;
-  const asset = result.assets[0];
+function makePickerOptions(opts?: PickOptions): ImagePicker.ImagePickerOptions {
   return {
-    uri: asset.uri,
-    source: 'camera',
-    width: asset.width,
-    height: asset.height,
-    fileSize: asset.fileSize,
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    quality: opts?.quality ?? 0.85,
+    base64: !!opts?.includeBase64,
   };
 }
 
-export async function pickFromGallery(): Promise<ReceiptPickResult | null> {
-  if (!(await ensureLibraryPermission())) return null;
-  const result = await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS);
-  if (result.canceled || !result.assets?.length) return null;
-  const asset = result.assets[0];
+function toResult(asset: any, source: ReceiptSource): ReceiptPickResult {
   return {
     uri: asset.uri,
-    source: 'gallery',
+    source,
     width: asset.width,
     height: asset.height,
     fileSize: asset.fileSize,
+    base64: asset.base64 ?? undefined,
   };
+}
+
+export async function pickFromCamera(opts?: PickOptions): Promise<ReceiptPickResult | null> {
+  if (!(await ensureCameraPermission())) return null;
+  const result = await ImagePicker.launchCameraAsync(makePickerOptions(opts));
+  if (result.canceled || !result.assets?.length) return null;
+  return toResult(result.assets[0], 'camera');
+}
+
+export async function pickFromGallery(opts?: PickOptions): Promise<ReceiptPickResult | null> {
+  if (!(await ensureLibraryPermission())) return null;
+  const result = await ImagePicker.launchImageLibraryAsync(makePickerOptions(opts));
+  if (result.canceled || !result.assets?.length) return null;
+  return toResult(result.assets[0], 'gallery');
 }
 
 export const ReceiptSourcePicker: React.FC<ReceiptSourcePickerProps> = ({

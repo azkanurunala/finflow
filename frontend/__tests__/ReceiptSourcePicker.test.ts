@@ -70,7 +70,21 @@ describe('G6 — ReceiptSourcePicker helpers (Issue #17)', () => {
         width: 1080,
         height: 1920,
         fileSize: 12345,
+        base64: undefined,
       });
+    });
+
+    it('forwards includeBase64=true to ImagePicker and returns the bytes', async () => {
+      requestCamera.mockResolvedValue({ status: 'granted' });
+      launchCamera.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://camera.jpg', base64: 'AAA111' }],
+      });
+      const result = await pickFromCamera({ includeBase64: true, quality: 0.8 });
+      expect(result?.base64).toBe('AAA111');
+      expect(launchCamera).toHaveBeenCalledWith(
+        expect.objectContaining({ base64: true, quality: 0.8 })
+      );
     });
   });
 
@@ -93,7 +107,19 @@ describe('G6 — ReceiptSourcePicker helpers (Issue #17)', () => {
         width: 800,
         height: 600,
         fileSize: undefined,
+        base64: undefined,
       });
+    });
+
+    it('passes includeBase64 through and surfaces the bytes', async () => {
+      requestLibrary.mockResolvedValue({ status: 'granted' });
+      launchLibrary.mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file://g.jpg', base64: 'BBB222' }],
+      });
+      const result = await pickFromGallery({ includeBase64: true });
+      expect(result?.base64).toBe('BBB222');
+      expect(launchLibrary).toHaveBeenCalledWith(expect.objectContaining({ base64: true }));
     });
   });
 });

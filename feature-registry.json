@@ -9,7 +9,7 @@
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
   "iteration_1_progress": {
-    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration", "i18n-migrate-error-alerts"],
+    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration", "i18n-migrate-error-alerts", "receipt-picker-rollout"],
     "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
     "snapshot_baselines": [
       "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
@@ -281,6 +281,16 @@
       "rationale": "Two placeholders converted to real routes (Personal Info + About). Security placeholder retained pending backend support."
     },
     {
+      "id": "receipt-picker-rollout",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/RecordingModal.tsx now routes through pickFromCamera/pickFromGallery; helpers gained includeBase64 + quality options",
+      "status": "shipped-soaking",
+      "added_in": "iteration-1",
+      "extends": ["fe.cmp.receipt-picker"],
+      "rationale": "Single direct ImagePicker.launch* site (RecordingModal) consolidated to use the shared picker helpers. New base64 option preserves the receipt-OCR upload contract. The home FAB does not launch picker directly — it opens RecordingModal — so coverage is complete for this iteration."
+    },
+    {
       "id": "chat-screen-hydration",
       "layer": "frontend",
       "type": "page",
@@ -367,15 +377,6 @@
       "progress": "108 → 101 findings (7 reduced this slice; Alert.alert(\"Error\", ...) sites across chat/insights/manual/RecordingModal). Track via `npm run audit:i18n`.",
       "added_in": "iteration-1",
       "rationale": "Mechanical migration is incremental — each iteration drives the count down. Stays here until count reaches 0, then promotes to gate-strict."
-    },
-    {
-      "id": "receipt-picker-rollout",
-      "layer": "frontend",
-      "type": "component",
-      "ref": "ReceiptSourcePicker integrations across entry points (FAB / manual / chat / profile)",
-      "status": "deferred-iteration-1",
-      "added_in": "iteration-1?",
-      "rationale": "Component exists; wire-up at each entry point requires per-screen testing."
     },
     {
       "id": "profile-security-screen",

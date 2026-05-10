@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromCamera, pickFromGallery } from "./ReceiptSourcePicker";
 import { AudioModule, useAudioRecorder, RecordingPresets } from "expo-audio";
 import { apiClient } from "../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,29 +85,15 @@ export default function RecordingModal({
     }
   }, [visible, mode]);
 
-  // Auto open camera function
+  // Iter 1 — receipt-picker rollout. Both handlers now go through the
+  // shared ReceiptSourcePicker helpers so permission prompts + capture
+  // options are consistent across every entry point. The base64 payload
+  // (needed by /api/transactions/receipt) is requested via includeBase64.
   const handleOpenCamera = async () => {
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          language === "id" ? "Izin Diperlukan" : "Permission Required",
-          language === "id"
-            ? "Akses kamera diperlukan untuk scan struk"
-            : "Camera access is needed to scan receipts"
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
+      const result = await pickFromCamera({ includeBase64: true, quality: 0.8 });
+      if (result?.base64) {
+        setSelectedImage(result.base64);
       }
     } catch (error) {
       console.error("Camera error:", error);
@@ -116,26 +103,9 @@ export default function RecordingModal({
 
   const handleOpenGallery = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          language === "id" ? "Izin Diperlukan" : "Permission Required",
-          language === "id"
-            ? "Akses galeri diperlukan untuk memilih foto"
-            : "Gallery access is needed to select photos"
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (!result.canceled && result.assets[0].base64) {
-        setSelectedImage(result.assets[0].base64);
+      const result = await pickFromGallery({ includeBase64: true, quality: 0.8 });
+      if (result?.base64) {
+        setSelectedImage(result.base64);
       }
     } catch (error) {
       console.error("Gallery error:", error);
