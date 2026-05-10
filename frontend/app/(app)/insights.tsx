@@ -21,6 +21,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useEntitlements } from "../../hooks/useEntitlements";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import { exportFile } from "../../utils/exportFile";
 import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 import TransactionFilter, { defaultFilters, DatePreset, SortOption } from "../../components/TransactionFilter";
 import { differenceInDays } from "date-fns";
@@ -128,29 +129,20 @@ export default function AdvancedAnalyticsScreen() {
         const jsonString = JSON.stringify(response.data, null, 2);
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.json`;
 
-        if (Platform.OS === "web") {
-          const blob = new Blob([jsonString], { type: "application/json" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-        } else {
-          const fileUri = (FileSystem as any).cacheDirectory + filename;
-          await FileSystem.writeAsStringAsync(fileUri, jsonString, {
-            encoding: 'utf8'
-          });
-
-          const isSharingAvailable = await Sharing.isAvailableAsync();
-          if (isSharingAvailable) {
-            await Sharing.shareAsync(fileUri, {
-              mimeType: "application/json",
-              dialogTitle: "Export Transactions"
-            });
-          } else {
-            Alert.alert(t('common.success'), `${t('analytics.export.savedTo')}: ${fileUri}`);
-          }
+        // G5 — unified export helper handles web (Blob) + native (File API + Share).
+        const exportResult = await exportFile({
+          filename,
+          contents: jsonString,
+          mimeType: "application/json",
+          dialogTitle: "Export Transactions",
+        });
+        if (!exportResult.ok) {
+          Alert.alert(t('common.error') || 'Export failed', exportResult.reason || 'Could not save export.');
+          setExporting(false);
+          return;
+        }
+        if (exportResult.uri && Platform.OS !== "web") {
+          // Sharing handled inside exportFile when available.
         }
       } else {
         // CSV export
@@ -170,29 +162,17 @@ export default function AdvancedAnalyticsScreen() {
 
         const filename = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
 
-        if (Platform.OS === "web") {
-          const blob = new Blob([response.data], { type: "text/csv;charset=utf-8" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-        } else {
-          const fileUri = (FileSystem as any).cacheDirectory + filename;
-          await FileSystem.writeAsStringAsync(fileUri, response.data, {
-            encoding: 'utf8'
-          });
-
-          const isSharingAvailable = await Sharing.isAvailableAsync();
-          if (isSharingAvailable) {
-            await Sharing.shareAsync(fileUri, {
-              mimeType: "text/csv",
-              dialogTitle: "Export Transactions"
-            });
-          } else {
-            Alert.alert(t('common.success'), `${t('analytics.export.savedTo')}: ${fileUri}`);
-          }
+        // G5 — unified export helper.
+        const exportResult = await exportFile({
+          filename,
+          contents: response.data,
+          mimeType: "text/csv",
+          dialogTitle: "Export Transactions",
+        });
+        if (!exportResult.ok) {
+          Alert.alert(t('common.error') || 'Export failed', exportResult.reason || 'Could not save export.');
+          setExporting(false);
+          return;
         }
       }
 

@@ -4,7 +4,9 @@
  * Validates: Requirements 1.1, 3.3, 4.5
  */
 
+import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../api/client';
 import {
   SubscriptionStatus,
@@ -85,21 +87,33 @@ class RetryUtils {
   }
 
   /**
-   * Create user-friendly error message
+   * Create user-friendly error message.
+   * Priority of `message`:
+   *   1. Connectivity / timeout  (forced canonical copy + code)
+   *   2. Backend-supplied FastAPI `detail` (or axios-style `data.message`) when the
+   *      caller surfaces an actionable string (e.g. "Subscription not found",
+   *      "Trial already used"). Preserved verbatim so call-sites can branch on it.
+   *   3. HTTP-status fallback (429, 5xx).
+   *   4. Operation-name fallback.
    */
   static createUserFriendlyError(error: any, operation: string): NetworkError {
     const isOffline = error.code === 'NETWORK_ERROR' || error.message?.includes('Network Error');
     const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout');
+    const backendDetail: string | undefined =
+      error?.response?.data?.detail ?? error?.response?.data?.message;
 
     let message: string;
     let code: string;
 
     if (isOffline) {
-      message = 'Please check your internet connection and try again.';
-      code = 'NETWORK_OFFLINE';
+      message = 'Network connection error. Please check your internet connection and try again.';
+      code = 'NETWORK_ERROR';
     } else if (isTimeout) {
-      message = 'The request took too long to complete. Please try again.';
-      code = 'REQUEST_TIMEOUT';
+      message = 'Request timed out. Please try again.';
+      code = 'TIMEOUT_ERROR';
+    } else if (typeof backendDetail === 'string' && backendDetail.length > 0) {
+      message = backendDetail;
+      code = 'API_ERROR';
     } else if (error.response?.status === 429) {
       message = 'Too many requests. Please wait a moment and try again.';
       code = 'RATE_LIMITED';
@@ -111,14 +125,13 @@ class RetryUtils {
       code = 'UNKNOWN_ERROR';
     }
 
-    return {
-      code,
-      message,
-      details: error,
-      retryable: this.isRetryableError(error),
-      offline: isOffline,
-      timeout: isTimeout
-    };
+    const friendly: any = new Error(message);
+    friendly.code = code;
+    friendly.details = error;
+    friendly.retryable = isOffline || isTimeout || this.isRetryableError(error);
+    friendly.offline = isOffline;
+    friendly.timeout = isTimeout;
+    return friendly as NetworkError;
   }
 }
 
@@ -225,9 +238,9 @@ class SubscriptionApiClient implements ISubscriptionApiClient {
       
       // Transform backend response to match our SubscriptionTier interface
       const tiers = response.data.tiers || [];
-      return tiers.map((tier: any) => ({
-        id: tier.id,
-        name: tier.name,
+      return tiers.map((tier: any, index: number) => ({
+        id: tier.id || tier._id || `tier_${index}`,
+        name: tier.name || 'Unknown Tier',
         productId: tier.product_id,
         price: tier.price || '$0.00',
         currency: tier.currency || 'USD',
@@ -294,8 +307,17 @@ class SubscriptionApiClient implements ISubscriptionApiClient {
   async startTrial(): Promise<TrialResult> {
     try {
       return await ApiRequestWrapper.executeWithRetry(async () => {
+        // Use actual platform instead of generic 'mobile'
+        const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+        
+        // Get user locale/language if available
+        const locale = (await AsyncStorage.getItem('user_locale')) || 'en';
+        const currency = (await AsyncStorage.getItem('user_currency')) || 'USD';
+
         const response = await apiClient.post('/api/subscription/trial', {
-          platform: 'mobile' // Indicate this is from mobile app
+          platform: platform,
+          language: locale,
+          currency: currency
         });
 
         const data = response.data;

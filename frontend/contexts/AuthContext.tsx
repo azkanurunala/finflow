@@ -245,16 +245,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const initialBalance = await AsyncStorage.getItem("initial_balance");
       if (initialBalance && initialBalance !== "0") {
         try {
+          // G2: use the dedicated onboarding-balance endpoint. The previous POST to
+          // /api/transactions hit a non-existent route and silently failed (Issue #18).
           await axios.post(
-            `${BACKEND_URL}/api/transactions`,
+            `${BACKEND_URL}/api/auth/onboarding-balance`,
             {
               amount: parseFloat(initialBalance),
-              category: "Income",
-              transaction_type: "income",
-              date: new Date().toISOString(),
-              description: "Initial Balance",
-              merchant: "Opening Balance",
-              currency: userData.currency || "USD" // Use user's currency
+              currency: userData.currency || "USD",
             },
             { headers: { Authorization: `Bearer ${session_token}` } }
           );
@@ -332,16 +329,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const initialBalance = await AsyncStorage.getItem("initial_balance");
       if (initialBalance && initialBalance !== "0") {
         try {
+          // G2: use the dedicated onboarding-balance endpoint. The previous POST to
+          // /api/transactions hit a non-existent route and silently failed (Issue #18).
           await axios.post(
-            `${BACKEND_URL}/api/transactions`,
+            `${BACKEND_URL}/api/auth/onboarding-balance`,
             {
               amount: parseFloat(initialBalance),
-              category: "Income",
-              transaction_type: "income",
-              date: new Date().toISOString(),
-              description: "Initial Balance",
-              merchant: "Opening Balance",
-              currency: userData.currency || "USD" // Use user's currency
+              currency: userData.currency || "USD",
             },
             { headers: { Authorization: `Bearer ${session_token}` } }
           );
@@ -383,16 +377,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const initialBalance = await AsyncStorage.getItem("initial_balance");
       if (initialBalance && initialBalance !== "0") {
         try {
+          // G2: use the dedicated onboarding-balance endpoint. The previous POST to
+          // /api/transactions hit a non-existent route and silently failed (Issue #18).
           await axios.post(
-            `${BACKEND_URL}/api/transactions`,
+            `${BACKEND_URL}/api/auth/onboarding-balance`,
             {
               amount: parseFloat(initialBalance),
-              category: "Income",
-              transaction_type: "income",
-              date: new Date().toISOString(),
-              description: "Initial Balance",
-              merchant: "Opening Balance",
-              currency: userData.currency || "USD" // Use user's currency
+              currency: userData.currency || "USD",
             },
             { headers: { Authorization: `Bearer ${session_token}` } }
           );

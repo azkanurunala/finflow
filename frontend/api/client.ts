@@ -30,23 +30,34 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response interceptor to handle 401
+// G1 — Response interceptor: try silent session rotation BEFORE falling through
+// to the existing /login redirect. The redirect path is preserved unchanged for
+// terminal failure cases (no rotation possible / rotation rejected).
+import { rotateSession } from "../services/SessionManager";
+
+// Marker to avoid infinite rotation loops on a request that itself failed.
+const ROTATION_RETRY_FLAG = "__rotationRetry";
+
 apiClient.interceptors.response.use(
-    (response) => {
-        return response;
-    },
+    (response) => response,
     async (error: AxiosError) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid
+        const status = error.response?.status;
+        const original: any = error.config;
+
+        if (status === 401 && original && !original[ROTATION_RETRY_FLAG]) {
+            const newToken = await rotateSession();
+            if (newToken) {
+                original[ROTATION_RETRY_FLAG] = true;
+                original.headers = original.headers ?? {};
+                original.headers.Authorization = `Bearer ${newToken}`;
+                return apiClient.request(original);
+            }
+        }
+
+        if (status === 401) {
+            // Existing terminal-failure branch (preserved behaviour).
             console.log("Session expired (401), logging out...");
-
-            // 1. Clear storage
             await AsyncStorage.removeItem("session_token");
-
-            // 2. Notify user (optional, can be silent)
-            // Alert.alert("Session Expired", "Please login again.");
-
-            // 3. Redirect to login
             router.replace("/login");
         }
         return Promise.reject(error);

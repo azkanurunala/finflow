@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from './LanguageContext';
 
 interface CurrencyContextType {
   currency: string;
@@ -13,34 +14,13 @@ interface CurrencyContextType {
   loading: boolean;
 }
 
-const CURRENCY_SYMBOLS: { [key: string]: string } = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  IDR: 'Rp',
-  SGD: 'S$',
-  AUD: 'A$',
-  CAD: 'C$',
-  CHF: 'CHF',
-  CNY: '¥',
-  HKD: 'HK$',
-  KRW: '₩',
-  MYR: 'RM',
-  THB: '฿',
-  PHP: '₱',
-  VND: '₫',
-};
-
-// Currencies that use . for thousands and , for decimals (Indonesian format)
-const INDONESIAN_FORMAT_CURRENCIES = ['IDR', 'VND'];
-
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState('IDR');
   const [loading, setLoading] = useState(true);
   const [, forceUpdate] = useState({});
+  const { language: locale } = useLanguage();
 
   useEffect(() => {
     loadCurrency();
@@ -65,99 +45,113 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     forceUpdate({});
   };
 
-  const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
+  // Map 2-letter language codes to full locales for better Intl support
+  const getFullLocale = (lang: string) => {
+    const map: Record<string, string> = {
+      en: 'en-US',
+      id: 'id-ID',
+      es: 'es-ES',
+      fr: 'fr-FR',
+      de: 'de-DE',
+      it: 'it-IT',
+      ja: 'ja-JP',
+      ko: 'ko-KR',
+      zh: 'zh-CN',
+      ru: 'ru-RU'
+    };
+    return map[lang] || lang;
+  };
 
-  // Check if currency uses Indonesian format (. for thousands, , for decimals)
-  const usesIndonesianFormat = () => INDONESIAN_FORMAT_CURRENCIES.includes(currency);
+  const fullLocale = getFullLocale(locale);
 
-  // Get thousand separator based on currency
-  const getThousandSeparator = () => usesIndonesianFormat() ? '.' : ',';
+  // Get symbol using Intl
+  const getSymbol = (curr: string) => {
+    try {
+      const formatter = new Intl.NumberFormat(fullLocale, {
+        style: 'currency',
+        currency: curr,
+        currencyDisplay: 'narrowSymbol'
+      });
+      const parts = formatter.formatToParts(0);
+      const symbolPart = parts.find(part => part.type === 'currency');
+      return symbolPart ? symbolPart.value : curr;
+    } catch (e) {
+      console.warn('[CurrencyContext] Failed to get symbol for', curr, e);
+      return curr;
+    }
+  };
 
-  // Get decimal separator based on currency
-  const getDecimalSeparator = () => usesIndonesianFormat() ? ',' : '.';
+  const currencySymbol = getSymbol(currency);
+
+  // Helper to get separators based on locale
+  const getSeparators = () => {
+    try {
+      const numberFormat = new Intl.NumberFormat(fullLocale);
+      const parts = numberFormat.formatToParts(1000.1);
+      const thousand = parts.find(part => part.type === 'group')?.value || ',';
+      const decimal = parts.find(part => part.type === 'decimal')?.value || '.';
+      return { thousand, decimal };
+    } catch (e) {
+      return { thousand: ',', decimal: '.' };
+    }
+  };
+
+  const getThousandSeparator = () => getSeparators().thousand;
+  const getDecimalSeparator = () => getSeparators().decimal;
 
   /**
-   * Format amount for DISPLAY with proper separators
-   * IDR: Rp 1.250.000,50 (. thousands, , decimals)
-   * USD: $1,250.00 (, thousands, . decimals)
+   * Format amount for DISPLAY
+   * Uses Intl for robust international support
    */
   const formatAmount = (amount: number, sourceCurrency?: string): string => {
     const displayCurrency = sourceCurrency || currency;
-    const symbol = CURRENCY_SYMBOLS[displayCurrency] || '$';
-    const isIndonesianFormat = INDONESIAN_FORMAT_CURRENCIES.includes(displayCurrency);
-
-    // Indonesian format: . for thousands, , for decimals
-    if (isIndonesianFormat) {
-      const hasDecimals = amount % 1 !== 0;
-      const formatted = amount.toLocaleString('id-ID', {
-        minimumFractionDigits: hasDecimals ? 2 : 0,
-        maximumFractionDigits: 2,
-      });
-      return `${symbol}${formatted}`;
+    try {
+        return new Intl.NumberFormat(fullLocale, {
+            style: 'currency',
+            currency: displayCurrency,
+            currencyDisplay: 'narrowSymbol'
+        }).format(amount);
+    } catch (e) {
+        // Fallback for environments with limited Intl support
+        const { thousand, decimal } = getSeparators();
+        const symbol = getSymbol(displayCurrency);
+        const parts = amount.toFixed(2).split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousand);
+        return `${symbol}${parts.join(decimal)}`;
     }
-
-    // Japanese Yen, Korean Won - no decimals
-    if (displayCurrency === 'JPY' || displayCurrency === 'KRW') {
-      const formatted = Math.round(amount).toLocaleString('ja-JP');
-      return `${symbol}${formatted}`;
-    }
-
-    // Standard format: , for thousands, . for decimals (USD, EUR, GBP, etc.)
-    const formatted = amount.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${symbol}${formatted}`;
   };
 
   /**
-   * Format INPUT value with proper thousand separators (for masked input)
-   * Takes raw numeric string and returns formatted string
-   * IDR: 1250000 → 1.250.000
-   * USD: 1250000 → 1,250,000
+   * Format INPUT value
+   * Respects locale's thousand/decimal separators
    */
   const formatInputValue = (value: string): string => {
-    // Remove all non-numeric except decimal indicator
-    const thousandSep = getThousandSeparator();
-    const decimalSep = getDecimalSeparator();
+    const { thousand, decimal } = getSeparators();
 
-    // Clean the input - keep only numbers and the appropriate decimal separator
-    let cleaned = value.replace(new RegExp(`[^0-9${decimalSep === '.' ? '\\.' : ','}]`, 'g'), '');
-
-    // If using Indonesian format, convert , to temporary marker
-    if (usesIndonesianFormat()) {
-      // Input might have , as decimal - that's correct for IDR
-      cleaned = cleaned.replace(/\./g, ''); // Remove thousand separators if any
-    } else {
-      // Standard format - remove commas (thousand separators)
-      cleaned = cleaned.replace(/,/g, '');
-    }
-
-    // Split integer and decimal parts
-    let parts: string[];
-    if (usesIndonesianFormat()) {
-      parts = cleaned.split(',');
-    } else {
-      parts = cleaned.split('.');
-    }
-
+    // Clean input: keep numbers and current decimal separator
+    let cleaned = value.replace(new RegExp(`[^0-9${decimal === '.' ? '\\.' : decimal}]`, 'g'), '');
+    
+    // Split parts
+    let parts = cleaned.split(decimal);
     let integerPart = parts[0] || '';
     const decimalPart = parts.length > 1 ? parts[1] : '';
 
-    // Remove leading zeros (except single 0)
+    // Remove leading zeros
     integerPart = integerPart.replace(/^0+/, '') || '0';
 
-    // Add thousand separators to integer part
-    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
-
-    // Combine with decimal part
-    if (decimalPart !== '') {
-      return `${integerPart}${decimalSep}${decimalPart.slice(0, 2)}`;
+    // Add thousand separators
+    // Logic: Insert thousand separator every 3 digits from end
+    const rgx = /(\d+)(\d{3})/;
+    while (rgx.test(integerPart)) {
+      integerPart = integerPart.replace(rgx, '$1' + thousand + '$2');
     }
 
-    // If original had decimal separator at end, keep it
-    if (value.endsWith(decimalSep) || (usesIndonesianFormat() && value.endsWith(','))) {
-      return `${integerPart}${decimalSep}`;
+    if (decimalPart !== '') {
+        return `${integerPart}${decimal}${decimalPart.slice(0, 2)}`; // limit to 2 decimals usually
+    }
+
+    if (value.endsWith(decimal)) {
+        return `${integerPart}${decimal}`;
     }
 
     return integerPart;
@@ -165,21 +159,15 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   /**
    * Parse formatted INPUT value back to number
-   * IDR: 1.250.000,50 → 1250000.50
-   * USD: 1,250,000.50 → 1250000.50
    */
   const parseInputValue = (formattedValue: string): number => {
     if (!formattedValue) return 0;
+    const { thousand, decimal } = getSeparators();
 
-    let cleaned = formattedValue;
-
-    if (usesIndonesianFormat()) {
-      // IDR format: remove . (thousands), replace , with . (decimal)
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-    } else {
-      // Standard format: remove , (thousands)
-      cleaned = cleaned.replace(/,/g, '');
-    }
+    // Remove thousand separators
+    let cleaned = formattedValue.split(thousand).join('');
+    // Replace decimal with .
+    cleaned = cleaned.replace(decimal, '.');
 
     const parsed = parseFloat(cleaned);
     return isNaN(parsed) ? 0 : parsed;

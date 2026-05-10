@@ -15,11 +15,13 @@ import { useAuth } from "../contexts/AuthContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSubscription } from "../contexts/SubscriptionContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 export default function OnboardingTrialScreen() {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const { state, actions } = useSubscription();
+  const { formatAmount } = useCurrency();
   const { t } = useLanguage();
   const [selectedPlan, setSelectedPlan] = useState("trial");
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,18 @@ export default function OnboardingTrialScreen() {
     actions.loadSubscriptionStatus();
   }, []);
 
+  // Helper to safely format price string
+  const getFormattedPrice = (priceDetails: string | number, currencyCode?: string) => {
+    if (typeof priceDetails === 'number') return formatAmount(priceDetails, currencyCode);
+    
+    // Try to parse string
+    const numeric = parseFloat(priceDetails.replace(/[^0-9.-]+/g, ""));
+    if (!isNaN(numeric)) {
+      return formatAmount(numeric, currencyCode);
+    }
+    return priceDetails;
+  };
+
   // Build plans from real subscription data
   const PLANS = [
     // Add trial if user hasn't used it
@@ -36,13 +50,13 @@ export default function OnboardingTrialScreen() {
       id: "trial",
       productId: null,
       name: "14-Day Free Trial",
-      price: "$0",
+      price: formatAmount(0),
       period: "14 days",
       features: [
-        "Full Pro access",
-        "Unlimited transactions",
-        "AI categorization",
-        "All premium features",
+        t('trial.features.fullAccess') || "Full Pro access",
+        t('trial.features.unlimitedTransactions') || "Unlimited transactions",
+        t('trial.features.aiCategorization') || "AI categorization",
+        t('trial.features.allPremium') || "All premium features",
       ],
       isRecommended: true,
     }] : []),
@@ -51,8 +65,8 @@ export default function OnboardingTrialScreen() {
       id: tier.id,
       productId: tier.productId,
       name: tier.name,
-      price: tier.price,
-      period: tier.duration === 'yearly' ? '/year' : '/month',
+      price: getFormattedPrice(tier.price, tier.currency),
+      period: tier.duration === 'yearly' ? (t('subscription.perYear') || '/year') : (t('subscription.perMonth') || '/month'),
       features: tier.features,
       isRecommended: tier.isPopular || false,
     }))
@@ -118,7 +132,7 @@ export default function OnboardingTrialScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "100%" }]} />
         </View>
-        <Text style={styles.stepText}>{t('onboarding.step3of3')}</Text>
+        <Text style={styles.stepText}>{t('onboarding.step4of4') || 'Step 4 of 4'}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>

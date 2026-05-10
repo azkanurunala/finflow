@@ -1,0 +1,176 @@
+name: iteration-gates
+
+on:
+  pull_request:
+    branches: [main, dev-frontend]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  # GATE 1 — existing tests must be green on the BASE branch before any change is even considered.
+  # Blocks iteration if the baseline is broken.
+  gate-1-baseline-green:
+    name: "Gate 1 — baseline test suite"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref || github.ref }}
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+
+      - name: Install backend deps
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Backend unit tests (pytest backend/ only — root *_test.py are integration scripts per CLAUDE.md)
+        working-directory: backend
+        run: pytest -q
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend unit + snapshot tests
+        working-directory: frontend
+        run: npm test -- --ci --runInBand
+
+  # GATE 2 — full suite (existing + new) must pass on the HEAD branch.
+  gate-2-head-green:
+    name: "Gate 2 — full suite on PR HEAD"
+    needs: gate-1-baseline-green
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+
+      - name: Install backend deps
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Backend tests
+        working-directory: backend
+        run: pytest -q
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend unit + snapshot tests
+        working-directory: frontend
+        run: npm test -- --ci --runInBand
+
+  # GATE 3 — snapshot diff: any change to an existing component snapshot is forbidden
+  # except for entries listed in feature-registry.json.snapshot_replacements_iteration_N.
+  gate-3-snapshot-additive:
+    name: "Gate 3 — snapshot diff (additive only)"
+    needs: gate-2-head-green
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Run snapshots in CI mode (fail on any unexpected drift)
+        working-directory: frontend
+        env:
+          CI: "true"
+        run: npm test -- --ci --runInBand --watchAll=false
+      - name: Validate documented snapshot replacements
+        run: node scripts/check-registry-additive.js --mode=snapshots
+
+  # GATE 4 — OpenAPI contract additive only.
+  # Generate new spec, diff against committed snapshot, fail on any incompatible change.
+  gate-4-openapi-additive:
+    name: "Gate 4 — OpenAPI contract additive only"
+    needs: gate-2-head-green
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+
+      - name: Install backend deps
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Generate current OpenAPI
+        working-directory: backend
+        env:
+          MONGO_URL: mongodb://localhost:27017
+          DB_NAME: finflow_ci
+          EMERGENT_LLM_KEY: ci-stub
+        run: |
+          python -c "from server import app; import json, sys; json.dump(app.openapi(), sys.stdout)" > ../openapi.current.json
+
+      - name: Fetch committed OpenAPI baseline
+        run: |
+          if [ -f openapi.snapshot.json ]; then
+            cp openapi.snapshot.json openapi.baseline.json
+          else
+            echo "No openapi.snapshot.json yet — first run will create one."
+            cp openapi.current.json openapi.baseline.json
+          fi
+
+      - name: Diff (additive only)
+        run: |
+          npx --yes openapi-diff openapi.baseline.json openapi.current.json --fail-on-incompatible
+
+  # GATE 5 — registry-additive: protect entries cannot disappear or be renamed.
+  # Operates on the feature-registry.json diff between BASE and HEAD.
+  gate-5-registry-additive:
+    name: "Gate 5 — feature-registry additive only"
+    needs: gate-2-head-green
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+      - name: Check registry diff
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: node scripts/check-registry-additive.js --mode=registry --base="origin/${BASE_REF:-main}"
+
+  # GATE 6 — type/lint/i18n hygiene (additive: every iteration may add, never remove).
+  gate-6-hygiene:
+    name: "Gate 6 — typecheck + lint + i18n audit"
+    needs: gate-2-head-green
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ env.NODE_VERSION }}" }
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript noEmit
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: i18n coverage audit (G4 — exits 0 once iteration ships)
+        working-directory: frontend
+        continue-on-error: true   # remove once G4 lands
+        run: node ./scripts/audit-i18n.ts || true

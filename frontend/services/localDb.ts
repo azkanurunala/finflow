@@ -16,6 +16,8 @@ export interface LocalTransaction {
   last_updated: number;
 }
 
+let dbInstance: SQLite.SQLiteDatabase | null = null;
+
 // Promise to track DB initialization status
 let dbReadyResolve: () => void;
 const dbReady = new Promise<void>((resolve) => {
@@ -26,8 +28,15 @@ export const waitForDb = async () => {
   await dbReady;
 };
 
+export const getLocalDb = async () => {
+  if (!dbInstance) {
+    dbInstance = await SQLite.openDatabaseAsync(DB_NAME);
+  }
+  return dbInstance;
+};
+
 export const initDb = async () => {
-  const db = await SQLite.openDatabaseAsync(DB_NAME);
+  const db = await getLocalDb();
 
   // Transactions table
   // We include sync_status to track if it needs pushing to remote
@@ -53,15 +62,18 @@ export const initDb = async () => {
       payload TEXT, -- JSON string of the transaction
       timestamp INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS sync_metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
   
   // Mark DB as ready
   if (dbReadyResolve) dbReadyResolve();
 };
 
-export const getLocalDb = async () => {
-  return await SQLite.openDatabaseAsync(DB_NAME);
-};
+// getLocalDb is now defined at the top
 
 // Save or delete transactions based on sync data
 export const saveTransactionsLocally = async (transactions: any[]) => {
@@ -281,13 +293,7 @@ export const clearSyncedOutbox = async (ids: number[]) => {
 export const getLastSyncTimestamp = async (): Promise<number> => {
   const db = await getLocalDb();
   
-  // Ensure metadata table exists
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS sync_metadata (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
-  `);
+  // Ensure metadata table exists - handled in initDb now
 
   const result = await db.getFirstAsync<{ value: string }>(
     "SELECT value FROM sync_metadata WHERE key = 'last_sync'"
@@ -299,12 +305,7 @@ export const getLastSyncTimestamp = async (): Promise<number> => {
 export const setLastSyncTimestamp = async (timestamp: number) => {
   const db = await getLocalDb();
   
-  await db.execAsync(`
-    CREATE TABLE IF NOT EXISTS sync_metadata (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    );
-  `);
+  // Table created in initDb
 
   await db.runAsync(
     `INSERT OR REPLACE INTO sync_metadata (key, value) VALUES ('last_sync', ?)`,

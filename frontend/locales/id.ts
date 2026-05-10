@@ -299,7 +299,17 @@ export default {
     transcription: "Transkripsi"
   },
   onboarding: {
-    step3of3: "Langkah 3 dari 3",
+    step1of4: "Langkah 1 dari 4",
+    step2of4: "Langkah 2 dari 4",
+    step3of4: "Langkah 3 dari 4",
+    step4of4: "Langkah 4 dari 4",
+    chooseLanguage: "Pilih Bahasa Anda",
+    chooseLanguageDesc: "Pilih bahasa preferensi Anda. Anda dapat mengubahnya nanti di pengaturan.",
+    chooseCurrency: "Pilih Mata Uang Anda",
+    chooseCurrencyDesc: "Pilih mata uang preferensi Anda untuk melacak pengeluaran. Semua jumlah akan ditampilkan dalam mata uang ini.",
+    currentBalance: "Saldo Saat Ini",
+    currentBalanceDesc: "Masukkan total saldo Anda saat ini di semua akun. Ini akan menjadi titik awal Anda.",
+    balanceSkip: "Anda bisa melewati ini dan menambahkannya nanti sebagai transaksi \"Pemasukan\".",
     choosePlan: "Pilih Paket Anda",
     choosePlanDesc: "Mulai dengan uji coba gratis atau berlangganan untuk membuka semua fitur.",
     loadingPlans: "Memuat paket...",

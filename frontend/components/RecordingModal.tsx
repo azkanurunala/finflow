@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
+import { AudioModule, useAudioRecorder, RecordingPresets } from "expo-audio";
 import { apiClient } from "../api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -46,8 +46,8 @@ export default function RecordingModal({
   const { language } = useLanguage();
   const { currency } = useCurrency();
 
-  // Voice state
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  // Voice state - expo-audio hook
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isRecording, setIsRecording] = useState(false);
   const [processingVoice, setProcessingVoice] = useState(false);
 
@@ -60,7 +60,9 @@ export default function RecordingModal({
   useEffect(() => {
     if (!visible) {
       // Cleanup when closing
-      setRecording(null);
+      if (isRecording) {
+        stopRecordingCleanup();
+      }
       setIsRecording(false);
       setProcessingVoice(false);
       setSelectedImage(null);
@@ -146,10 +148,10 @@ export default function RecordingModal({
     try {
       console.log("Starting auto recording...");
 
-      const { status } = await Audio.requestPermissionsAsync();
+      const status = await AudioModule.requestRecordingPermissionsAsync();
       console.log("Permission status:", status);
 
-      if (status !== "granted") {
+      if (status.status !== "granted") {
         Alert.alert(
           language === "id" ? "Izin Diperlukan" : "Permission Required",
           language === "id"
@@ -160,18 +162,19 @@ export default function RecordingModal({
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
+      await AudioModule.setAudioModeAsync({
         playsInSilentModeIOS: true,
+        allowsRecordingIOS: true,
+        staysActiveInBackground: false,
       });
 
-      console.log("Creating recording...");
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      console.log("Preparing recording...");
+      await audioRecorder.prepareToRecordAsync();
+      
+      console.log("Starting recording...");
+      audioRecorder.record();
 
-      console.log("Recording created successfully");
-      setRecording(newRecording);
+      console.log("Recording started successfully");
       setIsRecording(true);
     } catch (error) {
       console.error("Auto recording start error:", error);
@@ -187,8 +190,17 @@ export default function RecordingModal({
 
   // ==================== VOICE HANDLERS ====================
 
+  const stopRecordingCleanup = async () => {
+     try {
+       await audioRecorder.stop();
+       setIsRecording(false);
+     } catch (e) {
+       console.log("Error stopping recording in cleanup", e);
+     }
+  };
+
   const stopRecording = async () => {
-    if (!recording) {
+    if (!isRecording) {
       Alert.alert(
         language === "id" ? "Info" : "Info",
         language === "id"
@@ -202,8 +214,8 @@ export default function RecordingModal({
     setProcessingVoice(true);
 
     try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
 
       if (!uri) {
         throw new Error("No recording URI");
@@ -219,7 +231,6 @@ export default function RecordingModal({
             ? "Rekaman terlalu pendek untuk ditranskripsi."
             : "Recording is too short to transcribe."
         );
-        setRecording(null);
         setProcessingVoice(false);
         return;
       }
@@ -303,19 +314,17 @@ export default function RecordingModal({
       Alert.alert(language === "id" ? "Gagal" : "Error", errorMessage);
     } finally {
       setProcessingVoice(false);
-      setRecording(null);
     }
   };
 
   const cancelRecording = async () => {
-    if (recording) {
+    if (isRecording) {
       try {
-        await recording.stopAndUnloadAsync();
+        await audioRecorder.stop();
       } catch (e) {
         // Ignore errors when canceling
       }
     }
-    setRecording(null);
     setIsRecording(false);
     onClose();
   };

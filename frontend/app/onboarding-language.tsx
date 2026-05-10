@@ -11,38 +11,32 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "../utils/i18n";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 
-const LANGUAGES = [
-  { code: "en", name: "English", native: "English", flag: "🇺🇸" },
-  { code: "id", name: "Indonesian", native: "Bahasa Indonesia", flag: "🇮🇩" },
-  { code: "es", name: "Spanish", native: "Español", flag: "🇪🇸" },
-  { code: "fr", name: "French", native: "Français", flag: "🇫🇷" },
-  { code: "de", name: "German", native: "Deutsch", flag: "🇩🇪" },
-  { code: "it", name: "Italian", native: "Italiano", flag: "🇮🇹" },
-  { code: "pt", name: "Portuguese", native: "Português", flag: "🇧🇷" },
-  { code: "zh", name: "Chinese", native: "中文", flag: "🇨🇳" },
-  { code: "ja", name: "Japanese", native: "日本語", flag: "🇯🇵" },
-  { code: "ko", name: "Korean", native: "한국어", flag: "🇰🇷" },
-  { code: "ar", name: "Arabic", native: "العربية", flag: "🇸🇦" },
-  { code: "hi", name: "Hindi", native: "हिन्दी", flag: "🇮🇳" },
-  { code: "th", name: "Thai", native: "ไทย", flag: "🇹🇭" },
-  { code: "vi", name: "Vietnamese", native: "Tiếng Việt", flag: "🇻🇳" },
-  { code: "ms", name: "Malay", native: "Bahasa Melayu", flag: "🇲🇾" },
-  { code: "ru", name: "Russian", native: "Русский", flag: "🇷🇺" },
-  { code: "tr", name: "Turkish", native: "Türkçe", flag: "🇹🇷" },
-  { code: "nl", name: "Dutch", native: "Nederlands", flag: "🇳🇱" },
-];
+import { getAllLanguages, getCurrencyForLanguage } from "../utils/worldDS";
+
+const LANGUAGES = getAllLanguages();
+
+// Removed manual map in favor of worldDS utility
 
 export default function OnboardingLanguageScreen() {
   const router = useRouter();
+  const { setLanguage, t } = useLanguage();
+  const { setCurrency } = useCurrency(); // Need this to set default
   const [selectedLanguage, setSelectedLanguage] = useState("en");
 
   const handleContinue = async () => {
-    // Save language preference
-    await AsyncStorage.setItem("user_locale", selectedLanguage);
-    i18n.locale = selectedLanguage;
+    // Update language via context
+    await setLanguage(selectedLanguage);
 
-    // Go to currency selection - use push to allow proper navigation
+    // Auto-select currency based on language
+    const defaultCurrency = getCurrencyForLanguage(selectedLanguage);
+    if (defaultCurrency) {
+       await setCurrency(defaultCurrency);
+    }
+
+    // Go to currency selection
     router.push("/onboarding-currency");
   };
 
@@ -52,7 +46,7 @@ export default function OnboardingLanguageScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "33%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 1 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step1of4')}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -60,9 +54,9 @@ export default function OnboardingLanguageScreen() {
           <Ionicons name="language" size={48} color="#4DB6AC" />
         </View>
 
-        <Text style={styles.title}>Choose Your Language</Text>
+        <Text style={styles.title}>{t('onboarding.chooseLanguage')}</Text>
         <Text style={styles.subtitle}>
-          Select your preferred language. You can change this later in settings.
+          {t('onboarding.chooseLanguageDesc')}
         </Text>
 
         <View style={styles.languageList}>
@@ -100,7 +94,7 @@ export default function OnboardingLanguageScreen() {
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>{t('common.next') || 'Continue'}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>

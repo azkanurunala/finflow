@@ -96,7 +96,7 @@ export default function ProfileScreen() {
           icon: "person-outline",
           label: t('profile.personalInfo'),
           color: "#4DB6AC",
-          onPress: handleComingSoon,
+          onPress: () => router.push("/(app)/profile-personal-info"),
         },
         {
           icon: "card-outline",
@@ -156,7 +156,7 @@ export default function ProfileScreen() {
           icon: "information-circle-outline",
           label: t('profile.about'),
           color: "#4DB6AC",
-          onPress: handleAbout,
+          onPress: () => router.push("/(app)/profile-about"),
         },
       ],
     },

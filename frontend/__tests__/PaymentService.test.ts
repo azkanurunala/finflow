@@ -10,41 +10,46 @@ jest.mock('react-native', () => ({
   }
 }));
 
-// Mock react-native-purchases
-const mockConfigure = jest.fn();
-const mockSetLogLevel = jest.fn();
-const mockGetOfferings = jest.fn();
-const mockPurchasePackage = jest.fn();
-const mockRestorePurchases = jest.fn();
-const mockGetCustomerInfo = jest.fn();
-const mockLogIn = jest.fn();
-const mockLogOut = jest.fn();
+// Mock react-native-purchases.
+// Two constraints converge here:
+//  1. babel-preset-expo emits ESM default imports as `_module.default`, so the mock
+//     must expose the SDK under `default` (interop-safe).
+//  2. jest.mock factory closures over outer `const mockX = jest.fn()` resolve to
+//     undefined at call time (TDZ) under jest@30 + this preset combo. Define the
+//     fns inside the factory and retrieve via jest.requireMock.
+jest.mock('react-native-purchases', () => {
+  const surface = {
+    configure: jest.fn(),
+    setLogLevel: jest.fn(),
+    getOfferings: jest.fn(),
+    purchasePackage: jest.fn(),
+    restorePurchases: jest.fn(),
+    getCustomerInfo: jest.fn(),
+    logIn: jest.fn(),
+    logOut: jest.fn(),
+    LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
+  };
+  return { __esModule: true, default: surface, ...surface };
+});
 
-jest.mock('react-native-purchases', () => ({
-  configure: mockConfigure,
-  setLogLevel: mockSetLogLevel,
-  getOfferings: mockGetOfferings,
-  purchasePackage: mockPurchasePackage,
-  restorePurchases: mockRestorePurchases,
-  getCustomerInfo: mockGetCustomerInfo,
-  logIn: mockLogIn,
-  logOut: mockLogOut,
-  LOG_LEVEL: {
-    DEBUG: 'DEBUG',
-    INFO: 'INFO',
-    WARN: 'WARN',
-    ERROR: 'ERROR'
-  }
-}));
+const purchasesMock: any = jest.requireMock('react-native-purchases');
+const mockConfigure = purchasesMock.default.configure as jest.Mock;
+const mockSetLogLevel = purchasesMock.default.setLogLevel as jest.Mock;
+const mockGetOfferings = purchasesMock.default.getOfferings as jest.Mock;
+const mockPurchasePackage = purchasesMock.default.purchasePackage as jest.Mock;
+const mockRestorePurchases = purchasesMock.default.restorePurchases as jest.Mock;
+const mockGetCustomerInfo = purchasesMock.default.getCustomerInfo as jest.Mock;
+const mockLogIn = purchasesMock.default.logIn as jest.Mock;
+const mockLogOut = purchasesMock.default.logOut as jest.Mock;
 
-// Mock SubscriptionApiClient
-const mockValidatePurchase = jest.fn();
-
+// Mock SubscriptionApiClient — same factory-closure TDZ issue applies.
 jest.mock('../services/SubscriptionApiClient', () => ({
   subscriptionApiClient: {
-    validatePurchase: mockValidatePurchase
-  }
+    validatePurchase: jest.fn(),
+  },
 }));
+const subApiMock: any = jest.requireMock('../services/SubscriptionApiClient');
+const mockValidatePurchase = subApiMock.subscriptionApiClient.validatePurchase as jest.Mock;
 
 import { paymentService } from '../services/PaymentService';
 

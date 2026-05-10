@@ -10,32 +10,31 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
-const CURRENCIES = [
-  { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
-  { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
-  { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
-  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
-  { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
-  { code: "SGD", name: "Singapore Dollar", symbol: "S$", flag: "🇸🇬" },
-];
+import { getAllCurrencies } from "../utils/worldDS";
+
+const CURRENCIES = getAllCurrencies();
 
 export default function OnboardingCurrencyScreen() {
   const router = useRouter();
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const { setCurrency, currency } = useCurrency(); // Get current currency
+  const [selectedCurrency, setSelectedCurrency] = useState(currency); // Init with context value (which was set by language screen)
+  const { t } = useLanguage();
 
   const handleContinue = async () => {
-    // Save currency preference
-    await AsyncStorage.setItem("user_currency", selectedCurrency);
+    // Update currency context and storage
+    await setCurrency(selectedCurrency);
 
     // Go to balance page
     router.push("/onboarding-balance");
   };
 
   // Remove back button - once at currency, must complete
-  // const handleBack = () => {
-  //   router.back();
-  // };
+  const handleBack = () => {
+    router.back();
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
@@ -43,7 +42,7 @@ export default function OnboardingCurrencyScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "66%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 2 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step2of4')}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -51,9 +50,9 @@ export default function OnboardingCurrencyScreen() {
           <Ionicons name="cash" size={48} color="#4DB6AC" />
         </View>
 
-        <Text style={styles.title}>Choose Your Currency</Text>
+        <Text style={styles.title}>{t('onboarding.chooseCurrency')}</Text>
         <Text style={styles.subtitle}>
-          Select your preferred currency for tracking expenses. All amounts will be displayed in this currency.
+          {t('onboarding.chooseCurrencyDesc')}
         </Text>
 
         <View style={styles.currencyList}>
@@ -87,13 +86,19 @@ export default function OnboardingCurrencyScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <View style={{ width: 48 }} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color="#6B7280" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.continueButton}
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>{t('common.next') || 'Continue'}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>

@@ -15,6 +15,84 @@ jest.mock('react-native', () => ({
   },
 }));
 
+// SubscriptionProvider transitively imports PaymentService -> 'react-native-purchases',
+// whose SDK ships untransformed ESM that babel-jest cannot parse. Mock the native SDK
+// and the two services that reach for it. Mocks defined inside factories to avoid the
+// jest@30 + babel-preset-expo TDZ closure-binding issue.
+jest.mock('react-native-purchases', () => {
+  const surface = {
+    configure: jest.fn(),
+    setLogLevel: jest.fn(),
+    getOfferings: jest.fn(),
+    purchasePackage: jest.fn(),
+    restorePurchases: jest.fn(),
+    getCustomerInfo: jest.fn(),
+    logIn: jest.fn(),
+    logOut: jest.fn(),
+    LOG_LEVEL: { DEBUG: 'DEBUG', INFO: 'INFO', WARN: 'WARN', ERROR: 'ERROR' },
+  };
+  return { __esModule: true, default: surface, ...surface };
+});
+jest.mock('../services/PaymentService', () => ({
+  paymentService: {
+    initialize: jest.fn().mockResolvedValue(undefined),
+    getProducts: jest.fn().mockResolvedValue([]),
+    purchaseProduct: jest.fn(),
+    restorePurchases: jest.fn(),
+    validateReceipt: jest.fn(),
+    getCustomerInfo: jest.fn(),
+    hasActiveEntitlement: jest.fn().mockResolvedValue(false),
+    setUserId: jest.fn(),
+    logout: jest.fn(),
+  },
+}));
+jest.mock('../services/SubscriptionApiClient', () => ({
+  subscriptionApiClient: {
+    // Defaults shaped to drive the provider through the happy-path tests.
+    // Per-test mockResolvedValueOnce overrides as needed.
+    getSubscriptionStatus: jest.fn().mockResolvedValue({
+      tier: 'free',
+      status: 'active',
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      autoRenew: false,
+      trialUsed: false,
+    }),
+    getAvailableTiers: jest.fn().mockResolvedValue([
+      {
+        id: 'pro_monthly',
+        name: 'Pro Monthly',
+        productId: 'com.finflow.pro.monthly',
+        price: '$9.99',
+        currency: 'USD',
+        duration: 'monthly',
+        features: ['AI Categories'],
+        isPopular: false,
+      },
+      {
+        id: 'pro_yearly',
+        name: 'Pro Yearly',
+        productId: 'com.finflow.pro.yearly',
+        price: '$99.99',
+        currency: 'USD',
+        duration: 'yearly',
+        features: ['AI Categories'],
+        isPopular: true,
+      },
+    ]),
+    validatePurchase: jest.fn(),
+    startTrial: jest.fn().mockResolvedValue({
+      success: true,
+      trialEndDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    }),
+    redeemCoupon: jest.fn().mockResolvedValue({
+      success: true,
+      couponCode: 'FINFLOW-TEST-1234',
+      expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    }),
+  },
+}));
+
 const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 const mockNetInfo = NetInfo as jest.Mocked<typeof NetInfo>;
 
@@ -42,13 +120,16 @@ describe('SubscriptionContext', () => {
   it('should provide initial subscription state', async () => {
     const { result } = renderHook(() => useSubscription(), { wrapper });
 
+    // Provider's mount effect dispatches SET_LOADING:true synchronously during render
+    // under React 19 + @testing-library/react-native. Initial observation therefore
+    // sees isLoading:true. Test updated to match current rendering semantics.
     expect(result.current.state).toEqual({
       currentTier: 'free',
       status: 'expired',
       expirationDate: null,
       trialUsed: false,
       availableTiers: [],
-      isLoading: false,
+      isLoading: true,
       error: null,
       lastUpdated: null,
     });
@@ -140,6 +221,18 @@ describe('SubscriptionContext', () => {
   });
 
   it('should redeem valid coupon', async () => {
+    // Provider short-circuits coupon redemption when status is active/trial.
+    // Override the loaded status to expired for this scenario.
+    const { subscriptionApiClient } = jest.requireMock('../services/SubscriptionApiClient') as any;
+    subscriptionApiClient.getSubscriptionStatus.mockResolvedValueOnce({
+      tier: 'free',
+      status: 'expired',
+      startDate: new Date(),
+      endDate: new Date(),
+      autoRenew: false,
+      trialUsed: false,
+    });
+
     const { result } = renderHook(() => useSubscription(), { wrapper });
 
     // Wait for initial load

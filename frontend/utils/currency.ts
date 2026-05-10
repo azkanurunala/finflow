@@ -86,6 +86,10 @@ export const convertCurrency = async (
   }
 };
 
+// G3 — output mirrors backend/server.py::format_currency for the canonical
+// currencies (USD, EUR, GBP, JPY, SGD, IDR) so server-rendered amounts and
+// client-rendered amounts are byte-identical (Issue #13). BTC retained as a
+// frontend-only fallback since the backend doesn't format it.
 export const formatCurrency = (amount: number, currencyCode: string): string => {
   const currency = [...POPULAR_CURRENCIES, ...OTHER_CURRENCIES].find(
     (c) => c.code === currencyCode
@@ -93,27 +97,45 @@ export const formatCurrency = (amount: number, currencyCode: string): string => 
 
   if (!currency) return `${amount.toFixed(2)}`;
 
-  // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
+  // Indonesian Rupiah — backend: `Rp 1.234.567` (space, integer only).
   if (currencyCode === 'IDR') {
-    const formatted = amount.toLocaleString('id-ID', {
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
-      maximumFractionDigits: 2,
-    });
-    return `${currency.symbol}${formatted}`;
+    const formatted = Math.round(amount)
+      .toLocaleString('en-US')
+      .replace(/,/g, '.');
+    return `Rp ${formatted}`;
   }
 
-  // Japanese Yen - no decimals
+  // Euro — backend: `€1.234,56` (German separators).
+  if (currencyCode === 'EUR') {
+    const formatted = amount
+      .toFixed(2)
+      .replace('.', 'X')
+      .replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+      .replace('X', ',');
+    return `€${formatted}`;
+  }
+
+  // British Pound — backend: `£1,234.56`.
+  if (currencyCode === 'GBP') {
+    return `£${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // Japanese Yen — backend: `¥1,234` (no decimals, en-US separators).
   if (currencyCode === 'JPY') {
-    const formatted = Math.round(amount).toLocaleString('ja-JP');
-    return `${currency.symbol}${formatted}`;
+    return `¥${Math.round(amount).toLocaleString('en-US')}`;
   }
 
-  // Bitcoin - 8 decimal places
+  // Singapore Dollar — backend: `S$1,234.56`.
+  if (currencyCode === 'SGD') {
+    return `S$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+
+  // Bitcoin — frontend-only, 8 decimals.
   if (currencyCode === 'BTC') {
     return `${currency.symbol}${amount.toFixed(8)}`;
   }
 
-  // USD, EUR, GBP, etc. - uses , for thousands and . for decimals ($1,300.06)
+  // Default (USD and other currencies the backend treats as the default branch).
   const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,

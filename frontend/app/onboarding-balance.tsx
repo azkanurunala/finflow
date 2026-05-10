@@ -13,36 +13,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function OnboardingBalanceScreen() {
     const router = useRouter();
+    const { currencySymbol, formatInputValue, parseInputValue } = useCurrency();
     const [balance, setBalance] = useState("");
-    const [currencySymbol, setCurrencySymbol] = useState("$");
 
-    useEffect(() => {
-        loadCurrency();
-    }, []);
-
-    const loadCurrency = async () => {
-        try {
-            const savedCurrency = await AsyncStorage.getItem("user_currency");
-            if (savedCurrency === "IDR") setCurrencySymbol("Rp");
-            else if (savedCurrency === "EUR") setCurrencySymbol("€");
-            else if (savedCurrency === "GBP") setCurrencySymbol("£");
-            else if (savedCurrency === "JPY") setCurrencySymbol("¥");
-            else if (savedCurrency === "SGD") setCurrencySymbol("S$");
-            else setCurrencySymbol("$");
-        } catch (error) {
-            console.error("Failed to load currency", error);
-        }
-    };
+  const { t } = useLanguage();
 
     const handleContinue = async () => {
         // Save initial balance preference locally
         // This will be used by AuthContext to create an initial transaction after login
         if (balance) {
-            const cleanBalance = balance.replace(/[^0-9.]/g, "");
-            await AsyncStorage.setItem("initial_balance", cleanBalance);
+            const numericBalance = parseInputValue(balance);
+            await AsyncStorage.setItem("initial_balance", numericBalance.toString());
         } else {
             await AsyncStorage.setItem("initial_balance", "0");
         }
@@ -51,18 +37,9 @@ export default function OnboardingBalanceScreen() {
         router.push("/onboarding-trial");
     };
 
-    const formatInput = (text: string) => {
-        // Basic number formatting
-        // Remove non-numeric chars except dot
-        let cleaned = text.replace(/[^0-9.]/g, "");
-
-        // Check for multiple dots
-        const parts = cleaned.split(".");
-        if (parts.length > 2) {
-            cleaned = parts[0] + "." + parts.slice(1).join("");
-        }
-
-        setBalance(cleaned);
+    const handleTextChange = (text: string) => {
+        const formatted = formatInputValue(text);
+        setBalance(formatted);
     };
 
     return (
@@ -75,7 +52,7 @@ export default function OnboardingBalanceScreen() {
                     <View style={styles.progressBar}>
                         <View style={[styles.progressFill, { width: "80%" }]} />
                     </View>
-                    <Text style={styles.stepText}>Step 3 of 4</Text>
+                    <Text style={styles.stepText}>{t('onboarding.step3of4')}</Text>
                 </View>
 
                 <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -83,9 +60,9 @@ export default function OnboardingBalanceScreen() {
                         <Ionicons name="wallet" size={48} color="#4DB6AC" />
                     </View>
 
-                    <Text style={styles.title}>Current Balance</Text>
+                    <Text style={styles.title}>{t('onboarding.currentBalance')}</Text>
                     <Text style={styles.subtitle}>
-                        Enter your current total balance across all accounts. This will be your starting point.
+                        {t('onboarding.currentBalanceDesc')}
                     </Text>
 
                     <View style={styles.inputContainer}>
@@ -93,7 +70,7 @@ export default function OnboardingBalanceScreen() {
                         <TextInput
                             style={styles.input}
                             value={balance}
-                            onChangeText={formatInput}
+                            onChangeText={handleTextChange}
                             placeholder="0"
                             keyboardType="numeric"
                             placeholderTextColor="#9CA3AF"
@@ -102,7 +79,7 @@ export default function OnboardingBalanceScreen() {
                     </View>
 
                     <Text style={styles.helperText}>
-                        You can skip this and add it later as an "Income" transaction.
+                        {t('onboarding.balanceSkip')}
                     </Text>
                 </ScrollView>
 
@@ -119,7 +96,7 @@ export default function OnboardingBalanceScreen() {
                         onPress={handleContinue}
                         activeOpacity={0.8}
                     >
-                        <Text style={styles.continueButtonText}>Continue</Text>
+                        <Text style={styles.continueButtonText}>{t('common.next') || 'Continue'}</Text>
                         <Ionicons name="arrow-forward" size={20} color="#fff" />
                     </TouchableOpacity>
                 </View>

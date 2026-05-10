@@ -1,111 +1,50 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
   ActivityIndicator,
   RefreshControl,
-  Image,
-  Alert,
-  Dimensions,
   Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
+import { AudioModule } from "expo-audio";
+import { format } from "date-fns";
+
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-import { apiClient } from "../../api/client";
-import { useCurrency } from "../../contexts/CurrencyContext";
-import { format } from "date-fns";
-import * as ImagePicker from "expo-image-picker";
-import { Audio } from "expo-av";
-import RecordingModal from "../../components/RecordingModal";
-import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
-import { useRefreshStore } from "../../store/useRefreshStore";
-import { getTransactionsLocally, getSummaryLocally } from "../../services/localDb";
 import { syncService } from "../../services/syncService";
+import { getTransactionsLocally, getSummaryLocally } from "../../services/localDb";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrency as formatAmount } from "../../utils/currency";
+import RecordingModal from "../../components/RecordingModal";
 import OfflineBanner from "../../components/OfflineBanner";
-
-import { CONFIG } from "../../constants/Config";
-
-const BACKEND_URL = CONFIG.BACKEND_URL;
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-interface Transaction {
-  id: string;
-  amount: number;
-  currency?: string;
-  merchant?: string;
-  category: string;
-  date: string;
-  transaction_type: string;
-  source: string;
-  created_at?: string;
-}
+import BottomNavWithAddModal from "../../components/BottomNavWithAddModal";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { t, language } = useLanguage();
-  const { formatAmount, currency } = useCurrency();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [insights, setInsights] = useState<any>(null);
+  const { currency } = useCurrency();
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const { lastInteraction } = useRefreshStore();
-
-  // Modal states - simplified with RecordingModal
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [insights, setInsights] = useState<any>(null);
   const [showRecordingModal, setShowRecordingModal] = useState(false);
   const [recordingMode, setRecordingMode] = useState<"voice" | "scan">("voice");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successTransaction, setSuccessTransaction] = useState<any>(null);
-
-  // Handle query params from chat screen
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        const openVoice = url.searchParams.get('openVoice');
-        const openScan = url.searchParams.get('openScan');
-
-        if (openVoice === 'true') {
-          setRecordingMode("voice");
-          setShowRecordingModal(true);
-          // Clean up URL
-          url.searchParams.delete('openVoice');
-          window.history.replaceState({}, '', url.toString());
-        } else if (openScan === 'true') {
-          setRecordingMode("scan");
-          setShowRecordingModal(true);
-          // Clean up URL
-          url.searchParams.delete('openScan');
-          window.history.replaceState({}, '', url.toString());
-        }
-      }
-    } catch (e) {
-      // Ignore - not in browser
-    }
-  }, []);
-
-  // Refresh data when screen is focused or when lastInteraction changes
-  useFocusEffect(
-    useCallback(() => {
-      fetchData();
-    }, [lastInteraction])
-  );
-
-  useEffect(() => {
-    requestPermissions();
-  }, []);
-
   const requestPermissions = async () => {
     await ImagePicker.requestCameraPermissionsAsync();
     await ImagePicker.requestMediaLibraryPermissionsAsync();
-    await Audio.requestPermissionsAsync();
+    await AudioModule.requestRecordingPermissionsAsync();
   };
 
   const fetchData = async () => {
@@ -175,6 +114,9 @@ export default function HomeScreen() {
       "Income": "cash",
       "Freelance": "briefcase",
       "Other": "ellipsis-horizontal",
+      "Salary": "cash",
+      "Business": "briefcase",
+      "Gift": "gift",
     };
     return icons[category] || "ellipsis-horizontal";
   };
@@ -194,6 +136,9 @@ export default function HomeScreen() {
       "Income": "#4ADE80",
       "Freelance": "#4ADE80",
       "Other": "#9CA3AF",
+      "Salary": "#4ADE80",
+      "Business": "#4ADE80",
+      "Gift": "#A78BFA",
     };
     return colors[category] || "#9CA3AF";
   };
@@ -277,7 +222,7 @@ export default function HomeScreen() {
         >
           <Text style={styles.balanceLabel}>Total Balance</Text>
           <Text style={styles.balanceAmount}>
-            {formatAmount(totalBalance)}
+            {formatAmount(totalBalance, currency)}
           </Text>
         </TouchableOpacity>
 
@@ -296,7 +241,7 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={14} color="#9CA3AF" style={{ marginLeft: 'auto' }} />
             </View>
             <Text style={styles.incomeAmount} numberOfLines={1} adjustsFontSizeToFit>
-              +{formatAmount(insights?.total_income || 0)}
+              +{formatAmount(insights?.total_income || 0, currency)}
             </Text>
           </TouchableOpacity>
 
@@ -313,7 +258,7 @@ export default function HomeScreen() {
               <Ionicons name="chevron-forward" size={14} color="#9CA3AF" style={{ marginLeft: 'auto' }} />
             </View>
             <Text style={styles.expenseAmount} numberOfLines={1} adjustsFontSizeToFit>
-              -{formatAmount(insights?.total_expenses || 0)}
+              -{formatAmount(insights?.total_expenses || 0, currency)}
             </Text>
           </TouchableOpacity>
         </View>

@@ -299,7 +299,17 @@ export default {
     transcription: "Transcription"
   },
   onboarding: {
-    step3of3: "Step 3 of 3",
+    step1of4: "Step 1 of 4",
+    step2of4: "Step 2 of 4",
+    step3of4: "Step 3 of 4",
+    step4of4: "Step 4 of 4",
+    chooseLanguage: "Choose Your Language",
+    chooseLanguageDesc: "Select your preferred language. You can change this later in settings.",
+    chooseCurrency: "Choose Your Currency",
+    chooseCurrencyDesc: "Select your preferred currency for tracking expenses. All amounts will be displayed in this currency.",
+    currentBalance: "Current Balance",
+    currentBalanceDesc: "Enter your current total balance across all accounts. This will be your starting point.",
+    balanceSkip: "You can skip this and add it later as an \"Income\" transaction.",
     choosePlan: "Choose Your Plan",
     choosePlanDesc: "Start with a free trial or subscribe to unlock all features.",
     loadingPlans: "Loading plans...",

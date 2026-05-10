@@ -3,23 +3,23 @@
  * Tests all API client methods and error handling
  */
 
-// Mock NetInfo before importing anything else
-const mockNetInfo = {
-  fetch: jest.fn()
-};
-
-jest.mock('@react-native-community/netinfo', () => mockNetInfo);
+// Mock NetInfo before importing anything else.
+// Define jest.fn()s INSIDE the factory (jest@30 + babel-preset-expo TDZ-binds outer
+// `const mockX = jest.fn()` to undefined when the factory runs).
+jest.mock('@react-native-community/netinfo', () => {
+  const surface = { fetch: jest.fn() };
+  return { __esModule: true, default: surface, ...surface };
+});
+const netInfoMock: any = jest.requireMock('@react-native-community/netinfo');
+const mockNetInfo = netInfoMock.default ?? netInfoMock;
 
 // Mock the API client before importing anything else
-const mockGet = jest.fn();
-const mockPost = jest.fn();
-
 jest.mock('../api/client', () => ({
-  apiClient: {
-    get: mockGet,
-    post: mockPost,
-  },
+  apiClient: { get: jest.fn(), post: jest.fn() },
 }));
+const apiClientMock: any = jest.requireMock('../api/client');
+const mockGet = apiClientMock.apiClient.get as jest.Mock;
+const mockPost = apiClientMock.apiClient.post as jest.Mock;
 
 // Mock timers for testing retry logic
 jest.useFakeTimers();
@@ -101,47 +101,60 @@ describe('SubscriptionApiClient', () => {
     });
 
     it('should retry on retryable errors', async () => {
-      // First call fails with server error, second succeeds
-      const mockError = {
-        response: {
-          status: 500,
-          data: {
-            detail: 'Internal server error'
+      // ApiRequestWrapper uses real setTimeout for backoff sleep + the timeout race;
+      // the file-wide jest.useFakeTimers() blocks them. Switch this test to real timers.
+      jest.useRealTimers();
+      try {
+        const mockError = {
+          response: {
+            status: 500,
+            data: {
+              detail: 'Internal server error'
+            }
           }
-        }
-      };
+        };
 
-      const mockResponse = {
-        data: {
-          tier: 'free',
-          is_active: false,
-          start_date: null,
-          expires_at: null,
-          auto_renew: false,
-          trial_used: false
-        }
-      };
+        const mockResponse = {
+          data: {
+            tier: 'free',
+            is_active: false,
+            start_date: null,
+            expires_at: null,
+            auto_renew: false,
+            trial_used: false
+          }
+        };
 
-      mockGet.mockRejectedValueOnce(mockError);
-      mockGet.mockResolvedValueOnce(mockResponse);
+        mockGet.mockRejectedValueOnce(mockError);
+        mockGet.mockResolvedValueOnce(mockResponse);
 
-      const result = await subscriptionApiClient.getSubscriptionStatus();
+        const result = await subscriptionApiClient.getSubscriptionStatus();
 
-      expect(mockGet).toHaveBeenCalledTimes(2);
-      expect(result.tier).toBe('free');
-    });
+        expect(mockGet).toHaveBeenCalledTimes(2);
+        expect(result.tier).toBe('free');
+      } finally {
+        jest.useFakeTimers();
+      }
+    }, 15000);
 
     it('should handle timeout errors', async () => {
-      // Mock a request that takes longer than the timeout
-      mockGet.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 15000)));
+      // Same fake-timer caveat as above — switch to real timers so Promise.race against
+      // the real setTimeout actually fires.
+      jest.useRealTimers();
+      try {
+        // Mock a request that takes longer than the wrapper's 10s internal timeout
+        mockGet.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 15000)));
 
-      await expect(subscriptionApiClient.getSubscriptionStatus()).rejects.toMatchObject({
-        code: 'TIMEOUT_ERROR',
-        message: 'Request timed out. Please try again.',
-        timeout: true,
-        retryable: true
-      });
-    }, 12000); // Increase test timeout to allow for our timeout logic
+        await expect(subscriptionApiClient.getSubscriptionStatus()).rejects.toMatchObject({
+          code: 'TIMEOUT_ERROR',
+          message: 'Request timed out. Please try again.',
+          timeout: true,
+          retryable: true
+        });
+      } finally {
+        jest.useFakeTimers();
+      }
+    }, 60000); // Three retry attempts of ~10s each plus backoff
   });
 
   describe('getAvailableTiers', () => {
@@ -263,8 +276,12 @@ describe('SubscriptionApiClient', () => {
 
       const result = await subscriptionApiClient.startTrial();
 
+      // Product evolved: trial body now carries platform + i18n locale + currency.
+      // Test signature updated to match current contract (Direction B — see LIVING_PRD).
       expect(mockPost).toHaveBeenCalledWith('/api/subscription/trial', {
-        platform: 'mobile'
+        platform: 'ios',
+        language: 'en',
+        currency: 'USD',
       });
       expect(result.success).toBe(true);
       expect(result.trialEndDate).toEqual(new Date('2024-01-15T00:00:00Z'));

@@ -1008,9 +1008,68 @@ async def logout(request: Request, response: Response):
     session_token = await get_session_token(request)
     if session_token:
         await db.user_sessions.delete_one({"session_token": session_token})
-    
+
     response.delete_cookie("session_token", path="/")
     return {"message": "Logged out successfully"}
+
+
+# G1 — Session rotation. Lets the client transparently mint a fresh session
+# token while the current one is still valid (or recently expired within a
+# short grace window) so user-facing 401-redirects are minimised.
+SESSION_GRACE_DAYS = 7  # rotate any session that's at least this close to expiry, OR up to this long after expiry
+
+@api_router.post("/auth/refresh-session")
+async def refresh_session(request: Request, response: Response):
+    """Rotate the caller's session token if eligible.
+
+    Eligibility: a session row exists for the bearer token AND its expires_at is
+    no earlier than (now - SESSION_GRACE_DAYS). The old row is deleted and a new
+    one with a fresh token + 30-day expiry is written atomically (best-effort —
+    Mongo doesn't give us a real ACID txn here, but we delete only after insert
+    succeeds).
+    """
+    old_token = await get_session_token(request)
+    if not old_token:
+        raise HTTPException(status_code=401, detail="No session token provided")
+
+    session = await db.user_sessions.find_one({"session_token": old_token}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=401, detail="Session not found")
+
+    expires_at = session["expires_at"]
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    grace_floor = now - timedelta(days=SESSION_GRACE_DAYS)
+    if expires_at < grace_floor:
+        await db.user_sessions.delete_one({"session_token": old_token})
+        raise HTTPException(status_code=401, detail="Session past grace window")
+
+    new_token = secrets.token_urlsafe(32)
+    new_expires_at = now + timedelta(days=30)
+    new_session_doc = {
+        "user_id": session["user_id"],
+        "session_token": new_token,
+        "expires_at": new_expires_at,
+        "created_at": now,
+        "rotated_from": old_token[:8] + "...",
+    }
+    await db.user_sessions.insert_one(new_session_doc)
+    await db.user_sessions.delete_one({"session_token": old_token})
+
+    response.set_cookie(
+        key="session_token",
+        value=new_token,
+        max_age=30 * 24 * 60 * 60,
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+    return {
+        "session_token": new_token,
+        "expires_at": new_expires_at.isoformat(),
+    }
 
 @api_router.post("/auth/register")
 async def register(request: RegisterRequest, response: Response):
