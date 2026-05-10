@@ -1,7 +1,93 @@
 # FinFlow — Living PRD
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
-> Iteration cursor: **Iteration 0 (Baseline + First Sync Cycle)**
+> Iteration cursor: **Iteration 0 — SHIPPED.** Tag: `iteration-0-complete`. Next: Iteration 1 (see § Iteration 1 Plan below).
+
+---
+
+## Iteration 0 — Outcome (retrospective)
+
+Captured 2026-05-10. Source-of-truth for what landed: [feature-registry.json](feature-registry.json).
+
+### Shipped (9 of 14 gaps)
+
+| Gap | Surface | Tests | Status in registry |
+|---|---|---|---|
+| **G1** session rotation | `POST /api/auth/refresh-session` (BE) + [services/SessionManager.ts](frontend/services/SessionManager.ts) + [api/client.ts](frontend/api/client.ts) interceptor | 5 | `evolving / shipped-soaking` |
+| **G2** onboarding-balance sync | 3 sites in [contexts/AuthContext.tsx](frontend/contexts/AuthContext.tsx) re-pointed to `POST /api/auth/onboarding-balance` (was 404'ing on `/api/transactions`) | 4 | `evolving / shipped-soaking` |
+| **G3** currency parity | [utils/currency.ts](frontend/utils/currency.ts) byte-mirrors backend `format_currency` for USD/EUR/GBP/JPY/SGD/IDR | 18 | `evolving / shipped-soaking` |
+| **G4** i18n audit | [scripts/audit-i18n.ts](frontend/scripts/audit-i18n.ts) — heuristic scanner + CI hook | 7 | `evolving / shipped-soaking` |
+| **G5** export fix | [utils/exportFile.ts](frontend/utils/exportFile.ts) (expo-file-system v19 `File` API) + [insights.tsx](frontend/app/(app)/insights.tsx) wiring | 4 | `evolving / shipped-soaking` |
+| **G6** ReceiptSourcePicker | [components/ReceiptSourcePicker.tsx](frontend/components/ReceiptSourcePicker.tsx) + helpers | 5 | `evolving / shipped-soaking` |
+| **G7** ChatApiClient | [services/ChatApiClient.ts](frontend/services/ChatApiClient.ts) — `/api/chat/*` wrapper | 6 | `evolving / shipped-soaking` |
+| **G10** Profile real screens | [profile-personal-info.tsx](frontend/app/(app)/profile-personal-info.tsx) + [profile-about.tsx](frontend/app/(app)/profile-about.tsx); profile menu wired through | (snapshot infra deferred) | `evolving / shipped-soaking` |
+| **G14** health-ping | `pingBackend()` + `isBackendHealthy` on [NetworkContext](frontend/contexts/NetworkContext.tsx) | 4 | `evolving / shipped-soaking` |
+
+### Gate 0 — pre-iteration baseline repair
+
+The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Root causes and fixes (all additive scaffolding / bug-fix scope):
+
+1. **Mock factory TDZ under jest@30 + babel-preset-expo** — `const mockX = jest.fn()` outer references resolved to `undefined` when the mock factory ran. Fix: define `jest.fn()`s inside the factory and retrieve via `jest.requireMock`. Applied to `PaymentService.test.ts`, `SubscriptionApiClient.test.ts`, `SubscriptionContext.test.ts`.
+2. **Default-import interop** — babel-preset-expo emits `_module.default`, so mocks must expose `default: <surface>`.
+3. **RevenueCat ESM bleeding into SubscriptionContext.test.ts** — added explicit mocks for `react-native-purchases`, `PaymentService`, `SubscriptionApiClient`.
+4. **Empty `SubscriptionApiClient.retry.test.ts`** — populated with one passing placeholder + one `it.skip` documenting future G1 retry coverage.
+5. **`createUserFriendlyError` flattened backend errors** — Direction-A code patch in [services/SubscriptionApiClient.ts](frontend/services/SubscriptionApiClient.ts): now surfaces `error.response.data.detail` verbatim; canonicalises offline (`NETWORK_ERROR`) and timeout (`TIMEOUT_ERROR`) messages to match contract tests.
+6. **Stale `startTrial` signature test** — updated to current `{platform, language, currency}` body (Direction B; product evolved, test was old).
+
+### Test-suite trajectory
+
+| Stage | Suites | Tests pass / fail / skip |
+|---|---|---|
+| Initial run on `dev-frontend` HEAD | 4 fail / 7 pass | 116 / 35 / 0 |
+| After Gate 0 baseline repair | 0 fail / 11 pass | 162 / 0 / 1 |
+| After Iteration 0 G-work | 0 fail / 19 pass | 215 / 0 / 1 |
+| Backend pytest (`backend/test_sync_logic.py`) | 0 fail / 1 pass | 3 / 0 / 0 |
+
+### Deferred — moved to `planned` in registry with rationale
+
+| Gap | Why deferred |
+|---|---|
+| **G8** IAP receipt verifier | Needs Apple App Store Connect shared secret + Google Play service account; sandbox tests blocked on creds |
+| **G9** Email notification channel | Needs SES/SendGrid creds + DKIM domain; FE pref toggle blocked until BE channel exists |
+| **G11/G12** Layout/font snapshot replacements | Snapshot infrastructure (jest-image-snapshot or RN serializers) does not yet exist in repo — Iteration 1 must land it before snapshot replacements can be certified |
+| **G13** Coupon admin UI | Intentionally back-office, web-only, out of mobile scope |
+| **i18n-bulk-migrate** | G4 audit script shipped; bulk replacement of every hardcoded string across 24 screens warrants its own pass |
+| **receipt-picker-rollout** | Component exists; per-entry-point integration + verification is a follow-up |
+| **chat-screen-hydration** | `ChatApiClient` shipped; wiring `chat.tsx` to hydrate on mount is a follow-up |
+| **profile-security-screen** | Blocked on missing BE endpoints (`PUT /api/auth/password`, `DELETE /api/auth/me`) |
+
+### Files changed in Iteration 0
+
+**Source (additive or bug-fix scope, no protected entries removed):**
+- BE: [backend/server.py](backend/server.py) (added `POST /api/auth/refresh-session` + `SESSION_GRACE_DAYS`)
+- FE source: `services/SessionManager.ts` (new), `services/ChatApiClient.ts` (new), `services/SubscriptionApiClient.ts` (patched), `utils/exportFile.ts` (new), `utils/currency.ts` (extended), `components/ReceiptSourcePicker.tsx` (new), `contexts/NetworkContext.tsx` (extended), `contexts/AuthContext.tsx` (3-site bug fix), `api/client.ts` (extended), `app/(app)/insights.tsx` (wired through new helper), `app/(app)/profile.tsx` (wired through new routes), `app/(app)/profile-personal-info.tsx` (new), `app/(app)/profile-about.tsx` (new), `scripts/audit-i18n.ts` (new)
+
+**Tests (8 new files + 4 scaffolding patches):**
+- New: `OnboardingBalanceSync.test.ts`, `currencyFormat.test.ts`, `NetworkBackendPing.test.ts`, `ReceiptSourcePicker.test.ts`, `ChatApiClient.test.ts`, `SessionManager.test.ts`, `exportFile.test.ts`, `auditI18n.test.ts`
+- Scaffolding fix: `PaymentService.test.ts`, `SubscriptionApiClient.test.ts`, `SubscriptionContext.test.ts`, `SubscriptionApiClient.retry.test.ts` (was empty)
+
+### Tags placed
+
+- `pre-iteration-0` — rollback anchor
+- `iteration-0-complete` — milestone
+
+---
+
+## Iteration 1 Plan (forward-looking)
+
+**Iteration 1 must start with snapshot infrastructure**, since it unblocks G11/G12 and lets the additive-only snapshot gate (Gate 3) actually run with content rather than no-ops. Recommended order:
+
+1. **Snapshot infra (foundational)** — pick `@testing-library/react-native` snapshots OR `jest-image-snapshot`; commit baselines for the 24 routes + 10 components currently in `protected`. After this lands, Gate 3 enforces what it was designed to enforce.
+2. **G11** subscription tier 1-column layout — additive baseline replacement, scope tracked in registry.
+3. **G12** home-screen Income/Expense font readability — same.
+4. **i18n-bulk-migrate** — drive the audit script to 0 findings; append missing keys across all 18 locales (English fallback + `// TODO: translate` for non-en).
+5. **chat-screen-hydration** — wire [chat.tsx](frontend/app/(app)/chat.tsx) to `ChatApiClient.getHistory` on mount + `saveMessage` on send.
+6. **receipt-picker-rollout** — replace each existing camera-only / gallery-only entry point with `ReceiptSourcePicker`.
+7. **G8** IAP verifier (when creds available).
+8. **G9** Email notif (when creds available).
+9. **profile-security-screen** (when BE endpoints land).
+
+The Iteration 0 `evolving / shipped-soaking` entries promote to `protected` after one cycle if no regression appears.
 
 ---
 
