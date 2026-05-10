@@ -107,7 +107,7 @@ export default function AdvancedAnalyticsScreen() {
       const sessionToken = await AsyncStorage.getItem("session_token");
 
       if (!sessionToken) {
-        Alert.alert("Error", "Please login again to export data");
+        Alert.alert(t('common.error') || "Error", "Please login again to export data");
         setExporting(false);
         return;
       }

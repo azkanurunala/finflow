@@ -91,7 +91,7 @@ export default function ManualInputScreen() {
     // Parse the formatted display amount back to numeric value
     const numericAmount = parseInputValue(displayAmount);
     if (!displayAmount || numericAmount <= 0) {
-      Alert.alert("Error", t('manual.errorAmount') || "Please enter a valid amount");
+      Alert.alert(t('common.error') || "Error", t('manual.errorAmount') || "Please enter a valid amount");
       return;
     }
 
@@ -164,10 +164,10 @@ export default function ManualInputScreen() {
             ]
           );
         } catch (localError) {
-          Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+          Alert.alert(t('common.error') || "Error", error.response?.data?.detail || "Failed to save transaction");
         }
       } else {
-        Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+        Alert.alert(t('common.error') || "Error", error.response?.data?.detail || "Failed to save transaction");
       }
     } finally {
       setLoading(false);

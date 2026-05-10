@@ -143,7 +143,7 @@ export default function ChatScreen() {
         language === 'id' ? "Riwayat chat telah dihapus" : "Chat history has been cleared"
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to reset chat");
+      Alert.alert(t('common.error') || "Error", "Failed to reset chat");
     }
   };
 
@@ -240,7 +240,7 @@ export default function ChatScreen() {
           ]
         );
       } else {
-        Alert.alert("Error", errorMsg);
+        Alert.alert(t('common.error') || "Error", errorMsg);
       }
 
       const errorMessage = {

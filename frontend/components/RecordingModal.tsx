@@ -43,7 +43,7 @@ export default function RecordingModal({
   onComplete,
 }: RecordingModalProps) {
   const router = useRouter();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { currency } = useCurrency();
 
   // Voice state - expo-audio hook
@@ -110,7 +110,7 @@ export default function RecordingModal({
       }
     } catch (error) {
       console.error("Camera error:", error);
-      Alert.alert("Error", "Failed to open camera");
+      Alert.alert(t('common.error') || "Error", "Failed to open camera");
     }
   };
 
@@ -139,7 +139,7 @@ export default function RecordingModal({
       }
     } catch (error) {
       console.error("Gallery error:", error);
-      Alert.alert("Error", "Failed to open gallery");
+      Alert.alert(t('common.error') || "Error", "Failed to open gallery");
     }
   };
 

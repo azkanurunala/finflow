@@ -13,6 +13,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:pbt": "jest --testNamePattern='Property'",
+    "audit:i18n": "ts-node --transpile-only scripts/audit-i18n.ts",
+    "audit:i18n:strict": "ts-node --transpile-only scripts/audit-i18n.ts --strict",
     "postinstall": "node apply-expo-patch.js || true"
   },
   "dependencies": {

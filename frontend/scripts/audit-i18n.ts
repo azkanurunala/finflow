@@ -49,18 +49,19 @@ function shouldSkipString(s: string): boolean {
 }
 
 async function* walk(dir: string): AsyncGenerator<string> {
-  let entries: Awaited<ReturnType<typeof fs.readdir>>;
+  let entries: any[];
   try {
-    entries = await fs.readdir(dir, { withFileTypes: true });
+    entries = (await fs.readdir(dir, { withFileTypes: true })) as any[];
   } catch {
     return;
   }
   for (const entry of entries) {
-    const full = path.join(dir, entry.name);
+    const name = String(entry.name);
+    const full = path.join(dir, name);
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === '__tests__' || entry.name.startsWith('.')) continue;
+      if (name === 'node_modules' || name === '__tests__' || name.startsWith('.')) continue;
       yield* walk(full);
-    } else if (entry.isFile() && ALLOWED_FILE_EXTS.has(path.extname(entry.name))) {
+    } else if (entry.isFile() && ALLOWED_FILE_EXTS.has(path.extname(name))) {
       yield full;
     }
   }
@@ -123,7 +124,11 @@ export async function auditDirectory(rootDir: string): Promise<Finding[]> {
 
 async function main(argv: string[]): Promise<number> {
   const strict = argv.includes('--strict');
-  const root = path.resolve(__dirname, '..');
+  // Resolve frontend root from CWD (script is typically invoked from frontend/).
+  // Fallback: argv[1] points at scripts/audit-i18n.{ts,js}, walk one up.
+  const cwdRoot = process.cwd();
+  const argvParent = path.resolve(path.dirname(process.argv[1] ?? ''), '..');
+  const root = (await fs.stat(path.join(cwdRoot, 'app')).then(() => cwdRoot).catch(() => argvParent));
   const findings = await auditDirectory(root);
 
   if (findings.length === 0) {
@@ -152,8 +157,19 @@ async function main(argv: string[]): Promise<number> {
   return strict ? 1 : 0;
 }
 
-// Allow `node scripts/audit-i18n.js`
-if (require.main === module) {
+// Allow `npx ts-node scripts/audit-i18n.ts` or `node scripts/audit-i18n.js`.
+// Detect "ran as script" without relying on `require.main` (frontend may run as
+// ESM under ts-node). We compare the resolved entry path against this file.
+const ranAsScript = (() => {
+  try {
+    const argv1 = process.argv[1] ?? '';
+    return argv1.endsWith('audit-i18n.ts') || argv1.endsWith('audit-i18n.js');
+  } catch {
+    return false;
+  }
+})();
+
+if (ranAsScript) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err) => {

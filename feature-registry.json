@@ -9,7 +9,7 @@
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
   "iteration_1_progress": {
-    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration"],
+    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration", "i18n-migrate-error-alerts"],
     "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
     "snapshot_baselines": [
       "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
@@ -362,10 +362,11 @@
       "id": "i18n-bulk-migrate",
       "layer": "frontend",
       "type": "service",
-      "ref": "(audit findings → t() migration)",
-      "status": "deferred-iteration-1",
-      "added_in": "iteration-1?",
-      "rationale": "G4 audit script is shipped; bulk migration of all hardcoded strings is a large mechanical pass that warrants its own iteration."
+      "ref": "audit findings → t() migration",
+      "status": "in-progress-iter-1",
+      "progress": "108 → 101 findings (7 reduced this slice; Alert.alert(\"Error\", ...) sites across chat/insights/manual/RecordingModal). Track via `npm run audit:i18n`.",
+      "added_in": "iteration-1",
+      "rationale": "Mechanical migration is incremental — each iteration drives the count down. Stays here until count reaches 0, then promotes to gate-strict."
     },
     {
       "id": "receipt-picker-rollout",
