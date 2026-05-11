@@ -1,7 +1,7 @@
 # FinFlow — Living PRD
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
-> Iteration cursor: **Iterations 0 + 1 — SHIPPED.** Tags: `iteration-0-complete`, `iteration-1-complete`. Next: Iteration 2 candidates listed in § Iteration 1 — Outcome.
+> Iteration cursor: **Iterations 0 + 1 + 2 — SHIPPED.** Tags: `iteration-0-complete`, `iteration-1-complete`, `iteration-2-complete`. Latest run: 24 suites / 235 tests / 0 fail.
 
 ---
 
@@ -70,6 +70,35 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 - `pre-iteration-0` — rollback anchor
 - `iteration-0-complete` — milestone
+
+---
+
+## Iteration 2 — Outcome (retrospective)
+
+Tag: `iteration-2-complete`. Three focused slices.
+
+| Slice | Surface | Commit |
+|---|---|---|
+| Gate 1 repair | Pinned system clock in `SubscriptionStatusCard.snapshot.test.tsx` (snapshot drifted with day change: 235 → 234 days remaining) | `8de92f22` |
+| 1 | Promoted 9 Iteration 0 capabilities (G1–G7, G10, G14) from `shipped-soaking` to `protected` after one-cycle soak | `6419e38b` |
+| 2 | 8 new visual baselines: SubscriptionTierCard (5 prop variants) + BottomNavigation (3 active-route variants) | `3d94198f` |
+| 3 | i18n batch 2: last `Alert.alert("Error", ...)` site + Notes label/placeholder pair across 2 screens; audit 101 → 96 | `919775e5` |
+
+End state: **24 suites / 235 pass / 1 skipped** under `--ci`. Backend pytest 3/3. i18n audit: **96 findings** (down 12 since Iter 0).
+
+### Promoted to `protected` this iteration
+
+G1 session-rotation · G2 onboarding-balance · G3 currency parity · G4 i18n audit · G5 export-file · G6 receipt-picker · G7 chat-api-client · G10 profile routes · G14 health-ping.
+
+Still `shipped-soaking` (will soak through Iter 3): receipt-picker-rollout, chat-screen-hydration, G11 sub-layout, G12 home-fontsize.
+
+### Iteration 3 candidates
+
+- Continue snapshot expansion (CouponInput, CouponRedeemModal, TransactionFilter, PricingDisplay alternate variants, route-level baselines).
+- Continue i18n bulk-migrate (96 → fewer); next mechanical target is the `[jsx-text]` headers (`Select Currency`, `Apply Language`, `Confirm Selection`, `Display Language`, `All Languages`, etc.) which each appear once but cluster in language/currency screens.
+- Promote Iter 1 `shipped-soaking` capabilities to `protected`.
+- G8 IAP verifier and G9 email channel — still blocked on external creds.
+- profile-security-screen — still blocked on BE password-change + delete-account endpoints.
 
 ---
 
