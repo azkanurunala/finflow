@@ -29,8 +29,17 @@ import SubscriptionStatusCard from '../components/SubscriptionStatusCard';
 import { renderToSnapshot } from './helpers/renderToSnapshot';
 
 const FIXED_DATE = new Date('2026-12-31T00:00:00Z');
+const FIXED_NOW = new Date('2026-05-10T00:00:00Z');
 
 describe('SubscriptionStatusCard — visual baseline', () => {
+  // Pin the clock so any "days remaining" calculations don't drift the snapshot
+  // each day. Both the now-reference and expirationDate values are fixed.
+  beforeAll(() => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] }).setSystemTime(FIXED_NOW);
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
   it('free tier — expired status', () => {
     expect(
       renderToSnapshot(
