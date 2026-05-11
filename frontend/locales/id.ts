@@ -283,6 +283,17 @@ export default {
     notesOptional: "Catatan (opsional)",
     notesPlaceholder: "Tambahkan catatan tambahan..."
   },
+  currencyScreen: {
+    title: "Pilih Mata Uang",
+    popular: "Mata Uang Populer",
+    confirm: "Konfirmasi Pilihan"
+  },
+  languageScreen: {
+    title: "Bahasa Tampilan",
+    suggested: "Disarankan",
+    all: "Semua Bahasa",
+    apply: "Terapkan Bahasa"
+  },
   edit: {
     title: "Edit Transaksi",
     reviewTitle: "Periksa & Simpan",

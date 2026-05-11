@@ -45,7 +45,7 @@ const ALL_LANGUAGES: Language[] = [
 
 export default function LanguageSelectionScreen() {
   const router = useRouter();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -74,7 +74,7 @@ export default function LanguageSelectionScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Display Language</Text>
+        <Text style={styles.headerTitle}>{t('languageScreen.title') || 'Display Language'}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -94,7 +94,7 @@ export default function LanguageSelectionScreen() {
         {/* Suggested Languages */}
         {!searchQuery && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Suggested</Text>
+            <Text style={styles.sectionTitle}>{t('languageScreen.suggested') || 'Suggested'}</Text>
             {SUGGESTED_LANGUAGES.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
@@ -124,7 +124,7 @@ export default function LanguageSelectionScreen() {
 
         {/* All Languages */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>All Languages</Text>
+          <Text style={styles.sectionTitle}>{t('languageScreen.all') || 'All Languages'}</Text>
           {filteredLanguages.map((lang) => (
             <TouchableOpacity
               key={lang.code}
@@ -159,7 +159,7 @@ export default function LanguageSelectionScreen() {
           onPress={handleApply}
           activeOpacity={0.8}
         >
-          <Text style={styles.applyButtonText}>Apply Language</Text>
+          <Text style={styles.applyButtonText}>{t('languageScreen.apply') || 'Apply Language'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -17,10 +17,12 @@ import {
   Currency,
 } from "../../utils/currency";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function CurrencySelectionScreen() {
   const router = useRouter();
   const { currency, setCurrency } = useCurrency();
+  const { t } = useLanguage();
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -58,7 +60,7 @@ export default function CurrencySelectionScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Currency</Text>
+        <Text style={styles.headerTitle}>{t('currencyScreen.title') || 'Select Currency'}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -78,7 +80,7 @@ export default function CurrencySelectionScreen() {
         {/* Popular Currencies */}
         {!searchQuery && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Popular Currencies</Text>
+            <Text style={styles.sectionTitle}>{t('currencyScreen.popular') || 'Popular Currencies'}</Text>
             {POPULAR_CURRENCIES.map((currency) => (
               <TouchableOpacity
                 key={currency.code}
@@ -145,7 +147,7 @@ export default function CurrencySelectionScreen() {
           onPress={handleConfirm}
           activeOpacity={0.8}
         >
-          <Text style={styles.confirmButtonText}>Confirm Selection</Text>
+          <Text style={styles.confirmButtonText}>{t('currencyScreen.confirm') || 'Confirm Selection'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

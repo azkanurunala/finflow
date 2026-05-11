@@ -283,6 +283,17 @@ export default {
     notesOptional: "Notes (optional)",
     notesPlaceholder: "Add any additional notes..."
   },
+  currencyScreen: {
+    title: "Select Currency",
+    popular: "Popular Currencies",
+    confirm: "Confirm Selection"
+  },
+  languageScreen: {
+    title: "Display Language",
+    suggested: "Suggested",
+    all: "All Languages",
+    apply: "Apply Language"
+  },
   edit: {
     title: "Edit Transaction",
     reviewTitle: "Review & Save",
