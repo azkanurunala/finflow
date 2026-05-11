@@ -2166,12 +2166,13 @@ async def create_chat_transaction(
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
-        
+        _invalidate_insights(current_user.user_id)
+
         # Increment usage
         await increment_usage(current_user.user_id, "chat")
-        
+
         transaction = Transaction(**transaction_data)
-        
+
         return {
             "transaction": transaction,
             "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
@@ -2208,7 +2209,8 @@ async def create_receipt_transaction(
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
-        
+        _invalidate_insights(current_user.user_id)
+
         # Increment usage
         await increment_usage(current_user.user_id, "ocr")
         
@@ -2334,7 +2336,8 @@ async def create_voice_transaction(
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
-        
+        _invalidate_insights(current_user.user_id)
+
         # Increment usage (estimate 0.5 minute per voice note)
         await increment_usage(current_user.user_id, "voice", 0.5)
         
@@ -2390,7 +2393,8 @@ async def create_voice_text_transaction(
         
         # Save to database
         await db.transactions.insert_one(transaction_data)
-        
+        _invalidate_insights(current_user.user_id)
+
         # Increment usage (estimate 0.5 minute per voice note)
         await increment_usage(current_user.user_id, "voice", 0.5)
         
@@ -2497,7 +2501,8 @@ async def delete_transaction(
         
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Transaction not found")
-        
+
+        _invalidate_insights(current_user.user_id)
         return {
             "message": "Transaction deleted successfully",
             "id": transaction_id,
@@ -2535,13 +2540,14 @@ async def create_manual_transaction(
         }
         
         await db.transactions.insert_one(transaction_data)
-        
+        _invalidate_insights(current_user.user_id)
+
         # Fetch the created transaction to ensure proper serialization
         created_transaction = await db.transactions.find_one(
             {"id": transaction_data["id"]},
             {"_id": 0}
         )
-        
+
         return {
             "transaction": created_transaction,
             "message": "Transaction logged successfully"
@@ -2592,13 +2598,14 @@ async def update_transaction(
         
         if result.matched_count == 0:
             raise HTTPException(status_code=404, detail="Transaction not found")
-        
+
+        _invalidate_insights(current_user.user_id)
         # Fetch updated transaction
         transaction = await db.transactions.find_one(
             {"id": transaction_id},
             {"_id": 0}
         )
-        
+
         return {
             "transaction": transaction,
             "message": "Transaction updated successfully"
@@ -2631,24 +2638,61 @@ async def get_transaction(
         logger.error(f"Error fetching transaction: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== PG7 — Insights TTL cache ====================
+# Per-user 60s memoization for the two insights endpoints. Keyed by
+# (user_id, endpoint_name, days). Any tx mutation calls
+# _invalidate_insights(user_id) which clears every entry for that user.
+import time as _pg7_time
+
+_INSIGHTS_CACHE_TTL_S = 60.0
+_insights_cache: dict[tuple[str, str, int], tuple[float, dict]] = {}
+
+
+def _insights_cache_get(user_id: str, endpoint: str, days: int):
+    key = (user_id, endpoint, days)
+    entry = _insights_cache.get(key)
+    if entry is None:
+        return None
+    stamped_at, value = entry
+    if _pg7_time.monotonic() - stamped_at > _INSIGHTS_CACHE_TTL_S:
+        _insights_cache.pop(key, None)
+        return None
+    return value
+
+
+def _insights_cache_set(user_id: str, endpoint: str, days: int, value: dict):
+    _insights_cache[(user_id, endpoint, days)] = (_pg7_time.monotonic(), value)
+
+
+def _invalidate_insights(user_id: str):
+    stale = [k for k in _insights_cache if k[0] == user_id]
+    for k in stale:
+        _insights_cache.pop(k, None)
+
+
 @api_router.get("/insights")
 async def get_insights(
+    response: Response,
     days: int = 30,
     current_user: User = Depends(require_auth)
 ):
     """Get spending insights for current user"""
+    cached = _insights_cache_get(current_user.user_id, "insights", days)
+    if cached is not None:
+        response.headers["X-Cache"] = "HIT"
+        return cached
     try:
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
-        
+
         transactions = await db.transactions.find({
             "user_id": current_user.user_id,
             "date": {"$gte": start_date}
         }, {"_id": 0}).to_list(1000)
-        
+
         total_expenses = 0
         total_income = 0
         by_category = {}
-        
+
         for t in transactions:
             if t["transaction_type"] == "expense":
                 total_expenses += t["amount"]
@@ -2656,14 +2700,17 @@ async def get_insights(
                 by_category[category] = by_category.get(category, 0) + t["amount"]
             else:
                 total_income += t["amount"]
-        
-        return {
+
+        payload = {
             "total_expenses": round(total_expenses, 2),
             "total_income": round(total_income, 2),
             "net": round(total_income - total_expenses, 2),
             "by_category": {k: round(v, 2) for k, v in by_category.items()},
             "period": f"Last {days} days"
         }
+        _insights_cache_set(current_user.user_id, "insights", days, payload)
+        response.headers["X-Cache"] = "MISS"
+        return payload
     except Exception as e:
         logger.error(f"Error calculating insights: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -2785,13 +2832,18 @@ async def export_transactions(
 
 @api_router.get("/insights/ai")
 async def get_ai_insights(
+    http_response: Response,
     days: int = 30,
     current_user: User = Depends(require_auth)
 ):
     """Get AI-powered financial insights and recommendations"""
+    cached = _insights_cache_get(current_user.user_id, "insights_ai", days)
+    if cached is not None:
+        http_response.headers["X-Cache"] = "HIT"
+        return cached
     try:
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
-        
+
         # Get transactions
         transactions = await db.transactions.find(
             {
@@ -2800,14 +2852,17 @@ async def get_ai_insights(
             },
             {"_id": 0}
         ).to_list(500)
-        
+
         if not transactions:
-            return {
+            empty_payload = {
                 "summary": "No transactions found for this period.",
                 "insights": [],
                 "recommendations": ["Start logging your expenses to get personalized insights!"],
                 "spending_trend": "neutral"
             }
+            _insights_cache_set(current_user.user_id, "insights_ai", days, empty_payload)
+            http_response.headers["X-Cache"] = "MISS"
+            return empty_payload
         
         # Calculate basic stats
         total_income = sum(t["amount"] for t in transactions if t.get("transaction_type") == "income")
@@ -2880,7 +2935,9 @@ Respond in JSON format:
         }
         ai_insights["period_days"] = days
         ai_insights["currency"] = main_currency
-        
+
+        _insights_cache_set(current_user.user_id, "insights_ai", days, ai_insights)
+        http_response.headers["X-Cache"] = "MISS"
         return ai_insights
         
     except Exception as e:

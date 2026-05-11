@@ -2,7 +2,7 @@
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
 > Iteration cursor: **Iterations 0–4 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-4-complete`. Latest run: 27 suites / 242 tests / 0 fail. i18n audit: 76 findings (down from 108 — 29.6% reduction).
-> **Iteration 5 — IN PROGRESS (performance focus).** Slices 1–3 **SHIPPED**: PG1 telemetry → PG3 SQLite + PG6 Mongo indexes → PG2 FlatList virtualization + PG12 single-query summary. Frontend suite 27/242 → **31/281** (four new suites, 39 new tests). Backend pytest 3/3 → **6/6**. 25 snapshots clean across all 3 slices. Remaining: PG10 lazy locales → PG5/PG7 compression + insights cache → carry-overs.
+> **Iteration 5 — IN PROGRESS (performance focus).** Slices 1–5 **SHIPPED** (5 of 6): PG1 telemetry → PG3 + PG6 indexes → PG2 + PG12 list + summary → PG10 lazy locales → PG5 + PG7 compression + insights cache. Frontend suite 27/242 → **33/298** (six new suites, 56 new tests). Backend pytest 3/3 → **15/15** (three new suites, 12 new tests). 25 snapshots clean across all 5 slices. Remaining: Slice 6 carry-overs (BottomNavWithAddModal snapshot, three route-level baselines, i18n batch 5).
 > **Deploy-prep:** finished migration off `emergentintegrations` (private SDK, dead PyPI) to direct `openai` SDK calls — backend now boots in any clean Python env. Railway artifacts (`backend/Procfile`, `runtime.txt`, `.env.example`, `RAILWAY_DEPLOY.md`) shipped. Awaiting user-paste of Atlas + OpenAI creds into Railway dashboard.
 
 ---
@@ -290,13 +290,41 @@ PG1 must land first — every other PG-item's acceptance criterion references me
 | Suite trajectory | Frontend 29/261/1 → **31/281/1** (two new suites, 20 new tests). Backend pytest unchanged (6/6). |
 | Snapshot impact | Zero — bug-fix scope preserves visual output. History.tsx has no snapshot baseline yet (route-level snapshots are Iter 5 Slice 6 work); if/when one lands, the rendered DOM is byte-identical for the same data. |
 
+### Slice 4 — SHIPPED (PG10 lazy locale loading)
+
+| | |
+|---|---|
+| Files extended | [frontend/utils/i18n.ts](frontend/utils/i18n.ts) — only `en` statically imported; the other 17 locales lazy-load via static `import()` calls inside a `switch(code)` (not template-interpolated, so Metro can statically analyze them); in-flight dedup map; injectable loader via `__testing.setLoader` for tests |
+| Files added | [frontend/__tests__/i18nLazyLoad.test.ts](frontend/__tests__/i18nLazyLoad.test.ts) |
+| Public API | `initI18n`, `changeLocale`, `t`, default `i18n` — all signatures unchanged. Tests would have caught any breakage of `changeLocale("xx").then(() => i18n.locale === "xx")`. |
+| Hermes risk mitigation | Plan flagged "Hermes + dynamic `import()` with template interpolation" as risky. Implementation uses a `switch` of 17 static `import()` calls — Metro's static analyzer can emit each as its own chunk. Verified the production codepath compiles via `tsc --noEmit` (no errors on the new file). |
+| Test stub strategy | Jest's runtime cannot execute real dynamic `import()` without `--experimental-vm-modules`. Rather than touch babel config (would ripple to all suites), the source exposes a `__testing.setLoader` hook that swaps in a sync stub loader during tests. Production always uses the default async-import loader. |
+| Tests added | 8 — only `en` loaded at boot, `changeLocale("id")` hydrates exactly one dict, second-call no-op, two concurrent calls dedup to one import (in-flight Map), unsupported locale silently ignored, `initI18n` hydrates persisted locale before flipping `i18n.locale`, AsyncStorage rejection survives, every supported non-en code loads on demand. |
+| Perf instrumentation | New `locale.dynamicLoad` mark fires inside `ensureLocaleLoaded`; `measure("app.firstRouteMount", "locale.dynamicLoad", "locale.{code}.load")` captured into PG1 ring buffer for the Gate 6 baseline. |
+| Suite trajectory | Frontend 31/281/1 → **32/289/1** (one new suite, 8 new tests). Backend unchanged. |
+
+### Slice 5 — SHIPPED (PG5 receipt compression + PG7 insights TTL cache)
+
+| | |
+|---|---|
+| Files added | [frontend/utils/imageCompress.ts](frontend/utils/imageCompress.ts), [frontend/__tests__/imageCompress.test.ts](frontend/__tests__/imageCompress.test.ts), [backend/test_pg7_insights_cache.py](backend/test_pg7_insights_cache.py) |
+| Files extended (additive) | [backend/server.py](backend/server.py) — new `_insights_cache` module-state + `_insights_cache_get/_set/_invalidate_insights` helpers; both `/api/insights` and `/api/insights/ai` handlers wrapped with HIT/MISS header emission; 7 transaction-mutation handlers now call `_invalidate_insights(current_user.user_id)` |
+| New native dep | `expo-image-manipulator ~14.0.8` installed via `npx expo install` (standard Expo SDK module; integrates into existing EAS build path without config changes) |
+| PG5 compression behavior | Long-edge cap = 1600px, JPEG quality = 0.85. Aspect ratio preserved (3024×4032 → 1200×1600, 4032×3024 → 1600×1200). Passthrough when already at/below cap, when width/height missing, or when manipulator throws — **never blocks the upload** (additive safety net). |
+| PG7 cache semantics | Per-user 60s TTL, keyed by `(user_id, endpoint_name, days)`. Cross-user isolation verified. Monotonic clock via `time.monotonic()` (no wall-clock drift). Emits `X-Cache: HIT \| MISS` response header on both endpoints. |
+| Invalidation surface | 7 handlers invalidate: `POST /api/transactions/chat`, `/receipt`, `/voice`, `/voice-text`, `/manual`; `PUT /api/transactions/{id}`; `DELETE /api/transactions/{id}`. Sync-restore and admin paths intentionally do not invalidate — they are infrequent and not user-facing. |
+| Tests added | PG5: 9 — passthrough at/below cap, landscape resize, portrait resize, JPEG/q=0.85 save options, post-compression byte-size reporting, manipulator-throw fallthrough, missing-dimensions short-circuit, stat-rejection survival. PG7: 9 — get/set roundtrip, segregation by user, by endpoint, by days; TTL expiry; targeted user invalidation; full HTTP handler hit/miss round-trip; post-mutation invalidation visible via `X-Cache: MISS`; cross-user isolation at the handler level. |
+| Suite trajectory | Frontend 32/289/1 → **33/298/1** (one new suite, 9 new tests). Backend pytest 6/6 → **15/15** (one new suite, 9 new tests). |
+| Snapshot impact | None — both PG5 and PG7 are non-rendering changes. |
+| Risk notes | The plan flagged "PG7 invalidation completeness — 7 handlers need calls, missing one creates a stale-insights bug." Mitigated by the `it_n` test matrix in `test_pg7_insights_cache.py` (specifically `test_invalidate_after_mutation_makes_next_call_miss`) plus the call-site grep that confirmed every `db.transactions.insert_one` / `update_one` mutation in tx-handlers is now followed by `_invalidate_insights`. |
+
 ### Iteration 5 progress checklist
 
 - [x] **Slice 1** — PG1 telemetry + baseline.
 - [x] **Slice 2** — PG3 (SQLite indexes) + PG6 (Mongo indexes via FastAPI startup hook).
 - [x] **Slice 3** — PG2 (FlatList virtualization) + PG12 (single-query home summary).
-- [ ] **Slice 4** — PG10 (lazy locale loading).
-- [ ] **Slice 5** — PG5 (receipt compression) + PG7 (insights TTL cache).
+- [x] **Slice 4** — PG10 (lazy locale loading).
+- [x] **Slice 5** — PG5 (receipt compression) + PG7 (insights TTL cache).
 - [ ] **Slice 6** — carry-overs (BottomNavWithAddModal snapshot, three route-level baselines, i18n batch 5).
 
 ---
