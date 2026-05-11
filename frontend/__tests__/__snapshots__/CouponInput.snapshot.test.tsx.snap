@@ -1,0 +1,231 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`CouponInput — visual baseline default state 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "marginVertical": 16,
+    }
+  }
+>
+  <text
+    ref={null}
+    style={
+      {
+        "color": "#1F2937",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "marginBottom": 8,
+      }
+    }
+  >
+    Have a coupon code?
+  </text>
+  <view
+    ref={null}
+    style={
+      {
+        "flexDirection": "row",
+        "gap": 8,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#F9FAFB",
+          "borderColor": "#E5E7EB",
+          "borderRadius": 12,
+          "borderWidth": 1,
+          "flex": 1,
+          "flexDirection": "row",
+          "paddingHorizontal": 12,
+        }
+      }
+    >
+      <Ionicons
+        color="#6B7280"
+        name="gift-outline"
+        size={20}
+        style={
+          {
+            "marginRight": 8,
+          }
+        }
+      />
+      <text-input
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={true}
+        maxLength={19}
+        onChangeText={[Function]}
+        placeholder="FINFLOW-XXXX-XXXX"
+        placeholderTextColor="#9CA3AF"
+        ref={null}
+        style={
+          {
+            "color": "#1F2937",
+            "flex": 1,
+            "fontFamily": "Menlo",
+            "fontSize": 16,
+            "paddingVertical": 12,
+          }
+        }
+        value=""
+      />
+    </view>
+    <touchable
+      disabled={true}
+      onPress={[Function]}
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "backgroundColor": "#6366F1",
+            "borderRadius": 12,
+            "justifyContent": "center",
+            "minWidth": 90,
+            "paddingHorizontal": 20,
+            "paddingVertical": 12,
+          },
+          {
+            "backgroundColor": "#D1D5DB",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 14,
+            "fontWeight": "600",
+          }
+        }
+      >
+        Redeem
+      </text>
+    </touchable>
+  </view>
+</view>
+`;
+
+exports[`CouponInput — visual baseline disabled state 1`] = `
+<view
+  ref={null}
+  style={
+    {
+      "marginVertical": 16,
+    }
+  }
+>
+  <text
+    ref={null}
+    style={
+      {
+        "color": "#1F2937",
+        "fontSize": 14,
+        "fontWeight": "600",
+        "marginBottom": 8,
+      }
+    }
+  >
+    Have a coupon code?
+  </text>
+  <view
+    ref={null}
+    style={
+      {
+        "flexDirection": "row",
+        "gap": 8,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#F9FAFB",
+          "borderColor": "#E5E7EB",
+          "borderRadius": 12,
+          "borderWidth": 1,
+          "flex": 1,
+          "flexDirection": "row",
+          "paddingHorizontal": 12,
+        }
+      }
+    >
+      <Ionicons
+        color="#6B7280"
+        name="gift-outline"
+        size={20}
+        style={
+          {
+            "marginRight": 8,
+          }
+        }
+      />
+      <text-input
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={false}
+        maxLength={19}
+        onChangeText={[Function]}
+        placeholder="FINFLOW-XXXX-XXXX"
+        placeholderTextColor="#9CA3AF"
+        ref={null}
+        style={
+          {
+            "color": "#1F2937",
+            "flex": 1,
+            "fontFamily": "Menlo",
+            "fontSize": 16,
+            "paddingVertical": 12,
+          }
+        }
+        value=""
+      />
+    </view>
+    <touchable
+      disabled={true}
+      onPress={[Function]}
+      ref={null}
+      style={
+        [
+          {
+            "alignItems": "center",
+            "backgroundColor": "#6366F1",
+            "borderRadius": 12,
+            "justifyContent": "center",
+            "minWidth": 90,
+            "paddingHorizontal": 20,
+            "paddingVertical": 12,
+          },
+          {
+            "backgroundColor": "#D1D5DB",
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#fff",
+            "fontSize": 14,
+            "fontWeight": "600",
+          }
+        }
+      >
+        Redeem
+      </text>
+    </touchable>
+  </view>
+</view>
+`;

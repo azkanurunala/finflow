@@ -1168,6 +1168,13 @@
       "type": "service",
       "ref": "frontend/__tests__/BottomNavigation.snapshot.test.tsx",
       "added_in": "iteration-2"
+    },
+    {
+      "id": "fe.test.coupon-input-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/CouponInput.snapshot.test.tsx",
+      "added_in": "iteration-3"
     }
   ],
   "evolving": [
@@ -1405,7 +1412,8 @@
   },
   "iteration_3_progress": {
     "shipped_so_far": [
-      "promote-iter1-to-protected"
+      "promote-iter1-to-protected",
+      "couponinput-bugfix+snapshot"
     ],
     "promotion_note": "4 iteration-1 capabilities promoted: receipt-picker-rollout, chat-screen-hydration, g11.sub-layout, g12.home-fontsize. iteration_2 added no new capability-level entries, only file-level (snapshots).",
     "next": "more snapshots; i18n batch 3"
