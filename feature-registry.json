@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/feature-registry.schema.json",
-  "version": "0.3.0-iteration-2-in-progress",
-  "iteration_cursor": 2,
+  "version": "0.4.0-iteration-3-in-progress",
+  "iteration_cursor": 3,
   "iteration_0_summary": {
     "shipped": [
       "G1",
@@ -41,15 +41,6 @@
       "frontend/__tests__/SubscriptionStatusCard.snapshot.test.tsx (4 tier states; clock pinned to 2026-05-10)"
     ],
     "tag": "iteration-1-complete"
-  },
-  "iteration_2_progress": {
-    "shipped_so_far": [
-      "promote-iter0-to-protected",
-      "snapshot-coverage-expansion-2",
-      "i18n-batch-2"
-    ],
-    "promotion_note": "9 iteration-0 capabilities (G1-G7, G10, G14) promoted from `shipped-soaking` to `protected` after one full iteration with no regression. iteration-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) remain `shipped-soaking` for one more cycle.",
-    "next": "i18n batch 2; more snapshots as needed"
   },
   "snapshot_replacements_iteration_1": [],
   "snapshot_replacements_iteration_2": [],
@@ -1279,42 +1270,46 @@
       "layer": "frontend",
       "type": "component",
       "ref": "frontend/components/RecordingModal.tsx now routes through pickFromCamera/pickFromGallery; helpers gained includeBase64 + quality options",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-1",
       "extends": [
         "fe.cmp.receipt-picker"
       ],
-      "rationale": "Single direct ImagePicker.launch* site (RecordingModal) consolidated to use the shared picker helpers. New base64 option preserves the receipt-OCR upload contract. The home FAB does not launch picker directly \u2014 it opens RecordingModal \u2014 so coverage is complete for this iteration."
+      "rationale": "Single direct ImagePicker.launch* site (RecordingModal) consolidated to use the shared picker helpers. New base64 option preserves the receipt-OCR upload contract. The home FAB does not launch picker directly \u2014 it opens RecordingModal \u2014 so coverage is complete for this iteration.",
+      "protected_since": "iteration-3"
     },
     {
       "id": "chat-screen-hydration",
       "layer": "frontend",
       "type": "page",
       "ref": "frontend/app/(app)/chat.tsx",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-1",
       "extends": [
         "fe.svc.chat-api"
       ],
-      "rationale": "Chat screen now routes loadChatHistory / saveMessageToServer / handleResetChat through chatApiClient (G7) instead of direct apiClient calls. Hydration logic was already in place; this slice consolidates the path."
+      "rationale": "Chat screen now routes loadChatHistory / saveMessageToServer / handleResetChat through chatApiClient (G7) instead of direct apiClient calls. Hydration logic was already in place; this slice consolidates the path.",
+      "protected_since": "iteration-3"
     },
     {
       "id": "g11.sub-layout",
       "layer": "frontend",
       "type": "page",
       "ref": "frontend/app/(app)/subscription.tsx (packagesContainer)",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-1",
-      "rationale": "Inspection found the layout was already 1-column vertical (default flexDirection); explicit `flexDirection: column` declaration added so any future regression to row layout requires a deliberate edit. No runtime change."
+      "rationale": "Inspection found the layout was already 1-column vertical (default flexDirection); explicit `flexDirection: column` declaration added so any future regression to row layout requires a deliberate edit. No runtime change.",
+      "protected_since": "iteration-3"
     },
     {
       "id": "g12.home-fontsize",
       "layer": "frontend",
       "type": "page",
       "ref": "frontend/app/(app)/index.tsx (incomeAmount/expenseAmount)",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-1",
-      "rationale": "Issue #15 \u2014 fontSize bumped 16 \u2192 22 on Income/Expense numbers. Existing `numberOfLines={1} adjustsFontSizeToFit` handles overflow."
+      "rationale": "Issue #15 \u2014 fontSize bumped 16 \u2192 22 on Income/Expense numbers. Existing `numberOfLines={1} adjustsFontSizeToFit` handles overflow.",
+      "protected_since": "iteration-3"
     },
     {
       "id": "g14.health-ping",
@@ -1397,5 +1392,23 @@
   "snapshot_replacements_iteration_0": [
     "frontend/app/(app)/subscription.tsx",
     "frontend/app/(app)/index.tsx"
-  ]
+  ],
+  "iteration_2_summary": {
+    "shipped_so_far": [
+      "promote-iter0-to-protected",
+      "snapshot-coverage-expansion-2",
+      "i18n-batch-2"
+    ],
+    "promotion_note": "9 iteration-0 capabilities (G1-G7, G10, G14) promoted from `shipped-soaking` to `protected` after one full iteration with no regression. iteration-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) remain `shipped-soaking` for one more cycle.",
+    "next": "i18n batch 2; more snapshots as needed",
+    "tag": "iteration-2-complete"
+  },
+  "iteration_3_progress": {
+    "shipped_so_far": [
+      "promote-iter1-to-protected"
+    ],
+    "promotion_note": "4 iteration-1 capabilities promoted: receipt-picker-rollout, chat-screen-hydration, g11.sub-layout, g12.home-fontsize. iteration_2 added no new capability-level entries, only file-level (snapshots).",
+    "next": "more snapshots; i18n batch 3"
+  },
+  "snapshot_replacements_iteration_3": []
 }
