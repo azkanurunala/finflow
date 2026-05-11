@@ -1,24 +1,54 @@
 {
   "$schema": "./scripts/feature-registry.schema.json",
-  "version": "0.2.0-iteration-1-in-progress",
-  "iteration_cursor": 1,
+  "version": "0.3.0-iteration-2-in-progress",
+  "iteration_cursor": 2,
   "iteration_0_summary": {
-    "shipped": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G10", "G14"],
-    "deferred_to_iteration_1": ["G8", "G9", "G11", "G12", "G13"],
+    "shipped": [
+      "G1",
+      "G2",
+      "G3",
+      "G4",
+      "G5",
+      "G6",
+      "G7",
+      "G10",
+      "G14"
+    ],
+    "deferred_to_iteration_1": [
+      "G8",
+      "G9",
+      "G11",
+      "G12",
+      "G13"
+    ],
     "tests_added": "60+ across 8 new test files",
     "baseline_repair": "Pre-existing 35 test failures fixed (mock TDZ + RC ESM + 2 stale tests)"
   },
-  "iteration_1_progress": {
-    "shipped_so_far": ["snapshot-infra", "snapshot-coverage-expansion-1", "G11", "G12", "chat-screen-hydration", "i18n-migrate-error-alerts", "receipt-picker-rollout"],
+  "iteration_1_summary": {
+    "shipped": [
+      "snapshot-infra",
+      "snapshot-coverage-expansion-1",
+      "G11",
+      "G12",
+      "chat-screen-hydration",
+      "i18n-migrate-error-alerts",
+      "receipt-picker-rollout"
+    ],
     "snapshot_helper": "frontend/__tests__/helpers/renderToSnapshot.ts (uses @testing-library/react-native; react-test-renderer 19 returns null under our preset)",
     "snapshot_baselines": [
       "frontend/__tests__/PricingDisplay.snapshot.test.tsx (3 variants)",
       "frontend/__tests__/OfflineBanner.snapshot.test.tsx (3 visible states)",
-      "frontend/__tests__/SubscriptionStatusCard.snapshot.test.tsx (4 tier states)"
+      "frontend/__tests__/SubscriptionStatusCard.snapshot.test.tsx (4 tier states; clock pinned to 2026-05-10)"
     ],
-    "next": "chat-screen-hydration, i18n-bulk-migrate, receipt-picker-rollout"
+    "tag": "iteration-1-complete"
+  },
+  "iteration_2_progress": {
+    "shipped_so_far": ["promote-iter0-to-protected"],
+    "promotion_note": "9 iteration-0 capabilities (G1-G7, G10, G14) promoted from `shipped-soaking` to `protected` after one full iteration with no regression. iteration-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) remain `shipped-soaking` for one more cycle.",
+    "next": "more snapshot coverage; i18n batch 2"
   },
   "snapshot_replacements_iteration_1": [],
+  "snapshot_replacements_iteration_2": [],
   "doc": "Source of truth for what exists and what may evolve. See LIVING_PRD.md. Protected entries are untouchable except via documented bug-fix scope. Editing this file is gated by scripts/check-registry-additive.js.",
   "invariants": [
     "All backend routes are mounted on api_router with /api prefix in backend/server.py.",
@@ -31,172 +61,1105 @@
     "Root-level *_test.py files are integration scripts; pytest unit suites live under backend/ only."
   ],
   "protected": [
-    { "id": "be.health.root",       "layer": "backend", "type": "endpoint", "ref": "GET /health",                              "added_in": "v1.0" },
-    { "id": "be.health.api",        "layer": "backend", "type": "endpoint", "ref": "GET /api/health",                          "added_in": "v1.0" },
-    { "id": "be.auth.session",      "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/session",                   "added_in": "v1.0" },
-    { "id": "be.auth.refresh-session","layer": "backend","type": "endpoint", "ref": "POST /api/auth/refresh-session",           "added_in": "iteration-0" },
-    { "id": "be.auth.apple",        "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/apple",                     "added_in": "v1.0" },
-    { "id": "be.auth.register",     "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/register",                  "added_in": "v1.0" },
-    { "id": "be.auth.login",        "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/login",                     "added_in": "v1.0" },
-    { "id": "be.auth.logout",       "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/logout",                    "added_in": "v1.0" },
-    { "id": "be.auth.me",           "layer": "backend", "type": "endpoint", "ref": "GET /api/auth/me",                         "added_in": "v1.0" },
-    { "id": "be.auth.onboarding",   "layer": "backend", "type": "endpoint", "ref": "PUT /api/auth/onboarding",                 "added_in": "v1.0" },
-    { "id": "be.auth.onb-balance",  "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/onboarding-balance",        "added_in": "v1.0" },
-    { "id": "be.auth.start-trial",  "layer": "backend", "type": "endpoint", "ref": "POST /api/auth/start-trial",               "added_in": "v1.0" },
-    { "id": "be.sub.get",           "layer": "backend", "type": "endpoint", "ref": "GET /api/subscription",                    "added_in": "v1.0" },
-    { "id": "be.sub.status",        "layer": "backend", "type": "endpoint", "ref": "GET /api/subscription/status",             "added_in": "v1.0" },
-    { "id": "be.sub.tiers",         "layer": "backend", "type": "endpoint", "ref": "GET /api/subscription/tiers",              "added_in": "v1.0" },
-    { "id": "be.sub.validate",      "layer": "backend", "type": "endpoint", "ref": "POST /api/subscription/validate",          "added_in": "v1.0" },
-    { "id": "be.sub.trial",         "layer": "backend", "type": "endpoint", "ref": "POST /api/subscription/trial",             "added_in": "v1.0" },
-    { "id": "be.sub.verify-apple",  "layer": "backend", "type": "endpoint", "ref": "POST /api/subscription/verify-apple",      "added_in": "v1.0" },
-    { "id": "be.coupon.redeem",     "layer": "backend", "type": "endpoint", "ref": "POST /api/coupon/redeem",                  "added_in": "v1.0" },
-    { "id": "be.coupon.generate",   "layer": "backend", "type": "endpoint", "ref": "POST /api/coupon/generate",                "added_in": "v1.0" },
-    { "id": "be.coupon.list",       "layer": "backend", "type": "endpoint", "ref": "GET /api/coupon/list",                     "added_in": "v1.0" },
-    { "id": "be.tx.chat",           "layer": "backend", "type": "endpoint", "ref": "POST /api/transactions/chat",              "added_in": "v1.0" },
-    { "id": "be.tx.receipt",        "layer": "backend", "type": "endpoint", "ref": "POST /api/transactions/receipt",           "added_in": "v1.0" },
-    { "id": "be.tx.voice",          "layer": "backend", "type": "endpoint", "ref": "POST /api/transactions/voice",             "added_in": "v1.0" },
-    { "id": "be.tx.voice-text",     "layer": "backend", "type": "endpoint", "ref": "POST /api/transactions/voice-text",        "added_in": "v1.0" },
-    { "id": "be.tx.manual",         "layer": "backend", "type": "endpoint", "ref": "POST /api/transactions/manual",            "added_in": "v1.0" },
-    { "id": "be.tx.update",         "layer": "backend", "type": "endpoint", "ref": "PUT /api/transactions/{id}",               "added_in": "v1.0" },
-    { "id": "be.tx.list",           "layer": "backend", "type": "endpoint", "ref": "GET /api/transactions",                    "added_in": "v1.0" },
-    { "id": "be.tx.get",            "layer": "backend", "type": "endpoint", "ref": "GET /api/transactions/{id}",               "added_in": "v1.0" },
-    { "id": "be.tx.delete",         "layer": "backend", "type": "endpoint", "ref": "DELETE /api/transactions/{id}",            "added_in": "v1.0" },
-    { "id": "be.chat.history.get",  "layer": "backend", "type": "endpoint", "ref": "GET /api/chat/history",                    "added_in": "v1.0" },
-    { "id": "be.chat.message",      "layer": "backend", "type": "endpoint", "ref": "POST /api/chat/message",                   "added_in": "v1.0" },
-    { "id": "be.chat.history.del",  "layer": "backend", "type": "endpoint", "ref": "DELETE /api/chat/history",                 "added_in": "v1.0" },
-    { "id": "be.notif.list",        "layer": "backend", "type": "endpoint", "ref": "GET /api/notifications",                   "added_in": "v1.0" },
-    { "id": "be.notif.read",        "layer": "backend", "type": "endpoint", "ref": "POST /api/notifications/{id}/read",        "added_in": "v1.0" },
-    { "id": "be.notif.read-all",    "layer": "backend", "type": "endpoint", "ref": "POST /api/notifications/read-all",         "added_in": "v1.0" },
-    { "id": "be.insights",          "layer": "backend", "type": "endpoint", "ref": "GET /api/insights",                        "added_in": "v1.0" },
-    { "id": "be.insights.ai",       "layer": "backend", "type": "endpoint", "ref": "GET /api/insights/ai",                     "added_in": "v1.0" },
-    { "id": "be.export.tx",         "layer": "backend", "type": "endpoint", "ref": "GET /api/export/transactions",             "added_in": "v1.0" },
-    { "id": "be.sync.migrate",      "layer": "backend", "type": "endpoint", "ref": "POST /api/sync/migrate",                   "added_in": "v1.0" },
-    { "id": "be.sync.prune",        "layer": "backend", "type": "endpoint", "ref": "POST /api/sync/prune",                     "added_in": "v1.0" },
-    { "id": "be.sync.restore",      "layer": "backend", "type": "endpoint", "ref": "POST /api/sync/restore/{id}",              "added_in": "v1.0" },
-    { "id": "be.sync.deleted",      "layer": "backend", "type": "endpoint", "ref": "GET /api/sync/deleted",                    "added_in": "v1.0" },
-    { "id": "be.user.settings.put", "layer": "backend", "type": "endpoint", "ref": "PUT /api/user/settings",                   "added_in": "v1.0" },
-    { "id": "be.user.settings.get", "layer": "backend", "type": "endpoint", "ref": "GET /api/user/settings",                   "added_in": "v1.0" },
-    { "id": "be.categories",        "layer": "backend", "type": "endpoint", "ref": "GET /api/categories",                      "added_in": "v1.0" },
-
-    { "id": "be.helper.format-currency",   "layer": "backend", "type": "service", "ref": "backend/server.py::format_currency",        "added_in": "v1.0" },
-    { "id": "be.helper.entitlement",       "layer": "backend", "type": "service", "ref": "backend/server.py::get_user_entitlement",   "added_in": "v1.0" },
-    { "id": "be.helper.require-auth",      "layer": "backend", "type": "service", "ref": "backend/server.py::require_auth",           "added_in": "v1.0" },
-    { "id": "be.const.subscription-tiers", "layer": "backend", "type": "service", "ref": "backend/server.py::SUBSCRIPTION_TIERS",     "added_in": "v1.0" },
-    { "id": "be.const.product-tier-map",   "layer": "backend", "type": "service", "ref": "backend/server.py::PRODUCT_TIER_MAP",       "added_in": "v1.0" },
-    { "id": "be.const.us-categories",      "layer": "backend", "type": "service", "ref": "backend/server.py::US_CATEGORIES",          "added_in": "v1.0" },
-
-    { "id": "be.model.User",                       "layer": "backend", "type": "service", "ref": "backend/server.py::User",                       "added_in": "v1.0" },
-    { "id": "be.model.UserSession",                "layer": "backend", "type": "service", "ref": "backend/server.py::UserSession",                "added_in": "v1.0" },
-    { "id": "be.model.Transaction",                "layer": "backend", "type": "service", "ref": "backend/server.py::Transaction",                "added_in": "v1.0" },
-    { "id": "be.model.ChatMessage",                "layer": "backend", "type": "service", "ref": "backend/server.py::ChatMessage",                "added_in": "v1.0" },
-    { "id": "be.model.ManualTransactionRequest",   "layer": "backend", "type": "service", "ref": "backend/server.py::ManualTransactionRequest",   "added_in": "v1.0" },
-    { "id": "be.model.UpdateTransactionRequest",   "layer": "backend", "type": "service", "ref": "backend/server.py::UpdateTransactionRequest",   "added_in": "v1.0" },
-    { "id": "be.model.SubscriptionInfo",           "layer": "backend", "type": "service", "ref": "backend/server.py::SubscriptionInfo",           "added_in": "v1.0" },
-    { "id": "be.model.CouponRedeemRequest",        "layer": "backend", "type": "service", "ref": "backend/server.py::CouponRedeemRequest",        "added_in": "v1.0" },
-    { "id": "be.model.LoginRequest",               "layer": "backend", "type": "service", "ref": "backend/server.py::LoginRequest",               "added_in": "v1.0" },
-    { "id": "be.model.RegisterRequest",            "layer": "backend", "type": "service", "ref": "backend/server.py::RegisterRequest",            "added_in": "v1.0" },
-    { "id": "be.model.StartTrialRequest",          "layer": "backend", "type": "service", "ref": "backend/server.py::StartTrialRequest",          "added_in": "v1.0" },
-    { "id": "be.model.UpdateOnboardingRequest",    "layer": "backend", "type": "service", "ref": "backend/server.py::UpdateOnboardingRequest",    "added_in": "v1.0" },
-    { "id": "be.model.ReceiptTransactionRequest",  "layer": "backend", "type": "service", "ref": "backend/server.py::ReceiptTransactionRequest",  "added_in": "v1.0" },
-    { "id": "be.model.VoiceTransactionRequest",    "layer": "backend", "type": "service", "ref": "backend/server.py::VoiceTransactionRequest",    "added_in": "v1.0" },
-    { "id": "be.model.ChatTransactionRequest",     "layer": "backend", "type": "service", "ref": "backend/server.py::ChatTransactionRequest",     "added_in": "v1.0" },
-    { "id": "be.model.SaveChatMessageRequest",     "layer": "backend", "type": "service", "ref": "backend/server.py::SaveChatMessageRequest",     "added_in": "v1.0" },
-    { "id": "be.model.UsageStats",                 "layer": "backend", "type": "service", "ref": "backend/server.py::UsageStats",                 "added_in": "v1.0" },
-    { "id": "be.model.SubscriptionValidateRequest","layer": "backend", "type": "service", "ref": "backend/server.py::SubscriptionValidateRequest","added_in": "v1.0" },
-    { "id": "be.model.SessionDataRequest",         "layer": "backend", "type": "service", "ref": "backend/server.py::SessionDataRequest",         "added_in": "v1.0" },
-    { "id": "be.model.SessionDataResponse",        "layer": "backend", "type": "service", "ref": "backend/server.py::SessionDataResponse",        "added_in": "v1.0" },
-    { "id": "be.model.AppleAuthRequest",           "layer": "backend", "type": "service", "ref": "backend/server.py::AppleAuthRequest",           "added_in": "v1.0" },
-    { "id": "be.model.AppleAuthResponse",          "layer": "backend", "type": "service", "ref": "backend/server.py::AppleAuthResponse",          "added_in": "v1.0" },
-
-    { "id": "fe.route.app-layout",       "layer": "frontend", "type": "page",      "ref": "frontend/app/_layout.tsx",                    "added_in": "v1.0" },
-    { "id": "fe.route.index",            "layer": "frontend", "type": "page",      "ref": "frontend/app/index.tsx",                      "added_in": "v1.0" },
-    { "id": "fe.route.login",            "layer": "frontend", "type": "page",      "ref": "frontend/app/login.tsx",                      "added_in": "v1.0" },
-    { "id": "fe.route.signup",           "layer": "frontend", "type": "page",      "ref": "frontend/app/signup.tsx",                     "added_in": "v1.0" },
-    { "id": "fe.route.free-trial",       "layer": "frontend", "type": "page",      "ref": "frontend/app/free-trial.tsx",                 "added_in": "v1.0" },
-    { "id": "fe.route.onb-language",     "layer": "frontend", "type": "page",      "ref": "frontend/app/onboarding-language.tsx",        "added_in": "v1.0" },
-    { "id": "fe.route.onb-currency",     "layer": "frontend", "type": "page",      "ref": "frontend/app/onboarding-currency.tsx",        "added_in": "v1.0" },
-    { "id": "fe.route.onb-balance",      "layer": "frontend", "type": "page",      "ref": "frontend/app/onboarding-balance.tsx",         "added_in": "v1.0" },
-    { "id": "fe.route.onb-trial",        "layer": "frontend", "type": "page",      "ref": "frontend/app/onboarding-trial.tsx",           "added_in": "v1.0" },
-    { "id": "fe.route.app.layout",       "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/_layout.tsx",              "added_in": "v1.0" },
-    { "id": "fe.route.app.tabs.layout",  "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/(tabs)/_layout.tsx",       "added_in": "v1.0" },
-    { "id": "fe.route.app.index",        "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/index.tsx",                "added_in": "v1.0" },
-    { "id": "fe.route.app.add",          "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/add.tsx",                  "added_in": "v1.0" },
-    { "id": "fe.route.app.chat",         "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/chat.tsx",                 "added_in": "v1.0" },
-    { "id": "fe.route.app.edit-tx",      "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/edit-transaction.tsx",     "added_in": "v1.0" },
-    { "id": "fe.route.app.manual",       "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/manual.tsx",               "added_in": "v1.0" },
-    { "id": "fe.route.app.history",      "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/history.tsx",              "added_in": "v1.0" },
-    { "id": "fe.route.app.insights",     "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/insights.tsx",             "added_in": "v1.0" },
-    { "id": "fe.route.app.currency",     "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/currency.tsx",             "added_in": "v1.0" },
-    { "id": "fe.route.app.language",     "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/language.tsx",             "added_in": "v1.0" },
-    { "id": "fe.route.app.profile",      "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/profile.tsx",              "added_in": "v1.0" },
-    { "id": "fe.route.app.subscription", "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/subscription.tsx",         "added_in": "v1.0" },
-    { "id": "fe.route.app.payment",      "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/payment-processing.tsx",   "added_in": "v1.0" },
-    { "id": "fe.route.app.notifications","layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/notifications.tsx",        "added_in": "v1.0" },
-
-    { "id": "fe.ctx.network",      "layer": "frontend", "type": "service", "ref": "frontend/contexts/NetworkContext.tsx",       "added_in": "v1.0" },
-    { "id": "fe.ctx.language",     "layer": "frontend", "type": "service", "ref": "frontend/contexts/LanguageContext.tsx",      "added_in": "v1.0" },
-    { "id": "fe.ctx.currency",     "layer": "frontend", "type": "service", "ref": "frontend/contexts/CurrencyContext.tsx",      "added_in": "v1.0" },
-    { "id": "fe.ctx.auth",         "layer": "frontend", "type": "service", "ref": "frontend/contexts/AuthContext.tsx",          "added_in": "v1.0" },
-    { "id": "fe.ctx.subscription", "layer": "frontend", "type": "service", "ref": "frontend/contexts/SubscriptionContext.tsx",  "added_in": "v1.0" },
-    { "id": "fe.ctx.add-modal",    "layer": "frontend", "type": "service", "ref": "frontend/contexts/AddModalContext.tsx",      "added_in": "v1.0" },
-
-    { "id": "fe.svc.api-client",     "layer": "frontend", "type": "service", "ref": "frontend/api/client.ts",                     "added_in": "v1.0" },
-    { "id": "fe.svc.subapi",         "layer": "frontend", "type": "service", "ref": "frontend/services/SubscriptionApiClient.ts", "added_in": "v1.0" },
-    { "id": "fe.svc.oauth",          "layer": "frontend", "type": "service", "ref": "frontend/services/OAuthService.ts",          "added_in": "v1.0" },
-    { "id": "fe.svc.payment",        "layer": "frontend", "type": "service", "ref": "frontend/services/PaymentService.ts",        "added_in": "v1.0" },
-    { "id": "fe.svc.localdb",        "layer": "frontend", "type": "service", "ref": "frontend/services/localDb.ts",               "added_in": "v1.0" },
-    { "id": "fe.svc.sync",           "layer": "frontend", "type": "service", "ref": "frontend/services/syncService.ts",           "added_in": "v1.0" },
-    { "id": "fe.svc.profile-extr",   "layer": "frontend", "type": "service", "ref": "frontend/services/ProfileExtractor.ts",      "added_in": "v1.0" },
-    { "id": "fe.svc.profile-store",  "layer": "frontend", "type": "service", "ref": "frontend/services/ProfileStorageManager.ts", "added_in": "v1.0" },
-    { "id": "fe.svc.session-mgr",    "layer": "frontend", "type": "service", "ref": "frontend/services/SessionManager.ts",       "added_in": "iteration-0" },
-    { "id": "fe.svc.chat-api",       "layer": "frontend", "type": "service", "ref": "frontend/services/ChatApiClient.ts",        "added_in": "iteration-0" },
-    { "id": "fe.util.export-file",   "layer": "frontend", "type": "service", "ref": "frontend/utils/exportFile.ts",              "added_in": "iteration-0" },
-    { "id": "fe.cmp.receipt-picker", "layer": "frontend", "type": "component","ref": "frontend/components/ReceiptSourcePicker.tsx","added_in": "iteration-0" },
-    { "id": "fe.route.app.profile-personal-info", "layer": "frontend", "type": "page", "ref": "frontend/app/(app)/profile-personal-info.tsx", "added_in": "iteration-0" },
-    { "id": "fe.route.app.profile-about",         "layer": "frontend", "type": "page", "ref": "frontend/app/(app)/profile-about.tsx",         "added_in": "iteration-0" },
-    { "id": "fe.script.audit-i18n",  "layer": "frontend", "type": "service", "ref": "frontend/scripts/audit-i18n.ts",            "added_in": "iteration-0" },
-    { "id": "fe.test.snapshot-helper", "layer": "frontend", "type": "service", "ref": "frontend/__tests__/helpers/renderToSnapshot.ts", "added_in": "iteration-1" },
-    { "id": "fe.test.pricing-display-baseline", "layer": "frontend", "type": "service", "ref": "frontend/__tests__/PricingDisplay.snapshot.test.tsx", "added_in": "iteration-1" },
-
-    { "id": "fe.util.currency",        "layer": "frontend", "type": "service", "ref": "frontend/utils/currency.ts",           "added_in": "v1.0" },
-    { "id": "fe.util.i18n",            "layer": "frontend", "type": "service", "ref": "frontend/utils/i18n.ts",               "added_in": "v1.0" },
-    { "id": "fe.util.display-name",    "layer": "frontend", "type": "service", "ref": "frontend/utils/displayName.ts",        "added_in": "v1.0" },
-    { "id": "fe.util.data-sanitize",   "layer": "frontend", "type": "service", "ref": "frontend/utils/dataSanitization.ts",   "added_in": "v1.0" },
-    { "id": "fe.util.world-ds",        "layer": "frontend", "type": "service", "ref": "frontend/utils/worldDS.ts",            "added_in": "v1.0" },
-
-    { "id": "fe.hook.entitlements",  "layer": "frontend", "type": "service",   "ref": "frontend/hooks/useEntitlements.ts",       "added_in": "v1.0" },
-    { "id": "fe.store.refresh",      "layer": "frontend", "type": "service",   "ref": "frontend/store/useRefreshStore.ts",       "added_in": "v1.0" },
-    { "id": "fe.const.config",       "layer": "frontend", "type": "service",   "ref": "frontend/constants/Config.ts",            "added_in": "v1.0" },
-
-    { "id": "fe.cmp.bottom-nav",        "layer": "frontend", "type": "component", "ref": "frontend/components/BottomNavigation.tsx",          "added_in": "v1.0" },
-    { "id": "fe.cmp.bottom-nav-modal",  "layer": "frontend", "type": "component", "ref": "frontend/components/BottomNavWithAddModal.tsx",     "added_in": "v1.0" },
-    { "id": "fe.cmp.tx-filter",         "layer": "frontend", "type": "component", "ref": "frontend/components/TransactionFilter.tsx",         "added_in": "v1.0" },
-    { "id": "fe.cmp.offline-banner",    "layer": "frontend", "type": "component", "ref": "frontend/components/OfflineBanner.tsx",             "added_in": "v1.0" },
-    { "id": "fe.cmp.sub-tier-card",     "layer": "frontend", "type": "component", "ref": "frontend/components/SubscriptionTierCard.tsx",      "added_in": "v1.0" },
-    { "id": "fe.cmp.pricing-display",   "layer": "frontend", "type": "component", "ref": "frontend/components/PricingDisplay.tsx",            "added_in": "v1.0" },
-    { "id": "fe.cmp.coupon-input",      "layer": "frontend", "type": "component", "ref": "frontend/components/CouponInput.tsx",               "added_in": "v1.0" },
-    { "id": "fe.cmp.coupon-redeem",     "layer": "frontend", "type": "component", "ref": "frontend/components/CouponRedeemModal.tsx",         "added_in": "v1.0" },
-    { "id": "fe.cmp.sub-status-card",   "layer": "frontend", "type": "component", "ref": "frontend/components/SubscriptionStatusCard.tsx",    "added_in": "v1.0" },
-    { "id": "fe.cmp.recording-modal",   "layer": "frontend", "type": "component", "ref": "frontend/components/RecordingModal.tsx",            "added_in": "v1.0" },
-
-    { "id": "fe.locale.en", "layer": "frontend", "type": "service", "ref": "frontend/locales/en.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.id", "layer": "frontend", "type": "service", "ref": "frontend/locales/id.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.es", "layer": "frontend", "type": "service", "ref": "frontend/locales/es.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.fr", "layer": "frontend", "type": "service", "ref": "frontend/locales/fr.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.de", "layer": "frontend", "type": "service", "ref": "frontend/locales/de.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.it", "layer": "frontend", "type": "service", "ref": "frontend/locales/it.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.pt", "layer": "frontend", "type": "service", "ref": "frontend/locales/pt.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.zh", "layer": "frontend", "type": "service", "ref": "frontend/locales/zh.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.ja", "layer": "frontend", "type": "service", "ref": "frontend/locales/ja.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.ko", "layer": "frontend", "type": "service", "ref": "frontend/locales/ko.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.ar", "layer": "frontend", "type": "service", "ref": "frontend/locales/ar.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.hi", "layer": "frontend", "type": "service", "ref": "frontend/locales/hi.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.th", "layer": "frontend", "type": "service", "ref": "frontend/locales/th.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.vi", "layer": "frontend", "type": "service", "ref": "frontend/locales/vi.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.ms", "layer": "frontend", "type": "service", "ref": "frontend/locales/ms.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.ru", "layer": "frontend", "type": "service", "ref": "frontend/locales/ru.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.tr", "layer": "frontend", "type": "service", "ref": "frontend/locales/tr.ts", "added_in": "v1.0" },
-    { "id": "fe.locale.nl", "layer": "frontend", "type": "service", "ref": "frontend/locales/nl.ts", "added_in": "v1.0" }
+    {
+      "id": "be.health.root",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /health",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.health.api",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/health",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.session",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/session",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.refresh-session",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/refresh-session",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "be.auth.apple",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/apple",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.register",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/register",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.login",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/login",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.logout",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/logout",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.me",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/auth/me",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.onboarding",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "PUT /api/auth/onboarding",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.onb-balance",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/onboarding-balance",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.auth.start-trial",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/auth/start-trial",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.get",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/subscription",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.status",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/subscription/status",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.tiers",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/subscription/tiers",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.validate",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/subscription/validate",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.trial",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/subscription/trial",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sub.verify-apple",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/subscription/verify-apple",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.coupon.redeem",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/coupon/redeem",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.coupon.generate",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/coupon/generate",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.coupon.list",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/coupon/list",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.chat",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/transactions/chat",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.receipt",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/transactions/receipt",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.voice",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/transactions/voice",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.voice-text",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/transactions/voice-text",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.manual",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/transactions/manual",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.update",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "PUT /api/transactions/{id}",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.list",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/transactions",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.get",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/transactions/{id}",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.tx.delete",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "DELETE /api/transactions/{id}",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.chat.history.get",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/chat/history",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.chat.message",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/chat/message",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.chat.history.del",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "DELETE /api/chat/history",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.notif.list",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/notifications",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.notif.read",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/notifications/{id}/read",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.notif.read-all",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/notifications/read-all",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.insights",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/insights",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.insights.ai",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/insights/ai",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.export.tx",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/export/transactions",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sync.migrate",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/sync/migrate",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sync.prune",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/sync/prune",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sync.restore",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "POST /api/sync/restore/{id}",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.sync.deleted",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/sync/deleted",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.user.settings.put",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "PUT /api/user/settings",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.user.settings.get",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/user/settings",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.categories",
+      "layer": "backend",
+      "type": "endpoint",
+      "ref": "GET /api/categories",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.helper.format-currency",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::format_currency",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.helper.entitlement",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::get_user_entitlement",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.helper.require-auth",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::require_auth",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.const.subscription-tiers",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SUBSCRIPTION_TIERS",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.const.product-tier-map",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::PRODUCT_TIER_MAP",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.const.us-categories",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::US_CATEGORIES",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.User",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::User",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.UserSession",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::UserSession",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.Transaction",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::Transaction",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.ChatMessage",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::ChatMessage",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.ManualTransactionRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::ManualTransactionRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.UpdateTransactionRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::UpdateTransactionRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.SubscriptionInfo",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SubscriptionInfo",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.CouponRedeemRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::CouponRedeemRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.LoginRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::LoginRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.RegisterRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::RegisterRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.StartTrialRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::StartTrialRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.UpdateOnboardingRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::UpdateOnboardingRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.ReceiptTransactionRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::ReceiptTransactionRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.VoiceTransactionRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::VoiceTransactionRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.ChatTransactionRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::ChatTransactionRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.SaveChatMessageRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SaveChatMessageRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.UsageStats",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::UsageStats",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.SubscriptionValidateRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SubscriptionValidateRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.SessionDataRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SessionDataRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.SessionDataResponse",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::SessionDataResponse",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.AppleAuthRequest",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::AppleAuthRequest",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "be.model.AppleAuthResponse",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::AppleAuthResponse",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app-layout",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/_layout.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.index",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/index.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.login",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/login.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.signup",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/signup.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.free-trial",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/free-trial.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.onb-language",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/onboarding-language.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.onb-currency",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/onboarding-currency.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.onb-balance",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/onboarding-balance.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.onb-trial",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/onboarding-trial.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.layout",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/_layout.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.tabs.layout",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/(tabs)/_layout.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.index",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/index.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.add",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/add.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.chat",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/chat.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.edit-tx",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/edit-transaction.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.manual",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/manual.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.history",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/history.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.insights",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/insights.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.currency",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/currency.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.language",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/language.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.profile",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/profile.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.subscription",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/subscription.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.payment",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/payment-processing.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.route.app.notifications",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/notifications.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.network",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/NetworkContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.language",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/LanguageContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.currency",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/CurrencyContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.auth",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/AuthContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.subscription",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/SubscriptionContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.ctx.add-modal",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/contexts/AddModalContext.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.api-client",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/api/client.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.subapi",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/SubscriptionApiClient.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.oauth",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/OAuthService.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.payment",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/PaymentService.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.localdb",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/localDb.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.sync",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/syncService.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.profile-extr",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/ProfileExtractor.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.profile-store",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/ProfileStorageManager.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.svc.session-mgr",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/SessionManager.ts",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.svc.chat-api",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/services/ChatApiClient.ts",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.util.export-file",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/exportFile.ts",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.cmp.receipt-picker",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/ReceiptSourcePicker.tsx",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.route.app.profile-personal-info",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/profile-personal-info.tsx",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.route.app.profile-about",
+      "layer": "frontend",
+      "type": "page",
+      "ref": "frontend/app/(app)/profile-about.tsx",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.script.audit-i18n",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/scripts/audit-i18n.ts",
+      "added_in": "iteration-0"
+    },
+    {
+      "id": "fe.test.snapshot-helper",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/helpers/renderToSnapshot.ts",
+      "added_in": "iteration-1"
+    },
+    {
+      "id": "fe.test.pricing-display-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/PricingDisplay.snapshot.test.tsx",
+      "added_in": "iteration-1"
+    },
+    {
+      "id": "fe.util.currency",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/currency.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.util.i18n",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/i18n.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.util.display-name",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/displayName.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.util.data-sanitize",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/dataSanitization.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.util.world-ds",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/utils/worldDS.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.hook.entitlements",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/hooks/useEntitlements.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.store.refresh",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/store/useRefreshStore.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.const.config",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/constants/Config.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.bottom-nav",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/BottomNavigation.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.bottom-nav-modal",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/BottomNavWithAddModal.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.tx-filter",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/TransactionFilter.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.offline-banner",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/OfflineBanner.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.sub-tier-card",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/SubscriptionTierCard.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.pricing-display",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/PricingDisplay.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.coupon-input",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/CouponInput.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.coupon-redeem",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/CouponRedeemModal.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.sub-status-card",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/SubscriptionStatusCard.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.cmp.recording-modal",
+      "layer": "frontend",
+      "type": "component",
+      "ref": "frontend/components/RecordingModal.tsx",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.en",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/en.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.id",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/id.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.es",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/es.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.fr",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/fr.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.de",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/de.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.it",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/it.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.pt",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/pt.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.zh",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/zh.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.ja",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/ja.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.ko",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/ko.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.ar",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/ar.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.hi",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/hi.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.th",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/th.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.vi",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/vi.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.ms",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/ms.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.ru",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/ru.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.tr",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/tr.ts",
+      "added_in": "v1.0"
+    },
+    {
+      "id": "fe.locale.nl",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/locales/nl.ts",
+      "added_in": "v1.0"
+    }
   ],
   "evolving": [
     {
@@ -204,81 +1167,94 @@
       "layer": "both",
       "type": "endpoint",
       "ref": "POST /api/auth/refresh-session + frontend/services/SessionManager.ts + api/client.ts interceptor",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 5,
-      "extends": ["fe.svc.api-client"],
-      "rationale": "Issue #18 — silent session rotation; existing /login fallback intact for terminal-fail cases. 7-day grace window. Promote to protected once observed in production for one cycle."
+      "extends": [
+        "fe.svc.api-client"
+      ],
+      "rationale": "Issue #18 \u2014 silent session rotation; existing /login fallback intact for terminal-fail cases. 7-day grace window. Promote to protected once observed in production for one cycle.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g2.onb-balance-call",
       "layer": "frontend",
       "type": "page",
       "ref": "frontend/contexts/AuthContext.tsx (3 sites switched to /api/auth/onboarding-balance)",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 4,
-      "rationale": "Was hitting 404'ing /api/transactions; now uses dedicated endpoint."
+      "rationale": "Was hitting 404'ing /api/transactions; now uses dedicated endpoint.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g3.currency-format-parity",
       "layer": "frontend",
       "type": "service",
       "ref": "frontend/utils/currency.ts",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 18,
-      "extends": ["fe.util.currency", "be.helper.format-currency"],
-      "rationale": "Issue #13 — table-driven parity vs backend across USD/EUR/GBP/JPY/SGD/IDR."
+      "extends": [
+        "fe.util.currency",
+        "be.helper.format-currency"
+      ],
+      "rationale": "Issue #13 \u2014 table-driven parity vs backend across USD/EUR/GBP/JPY/SGD/IDR.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g4.i18n-audit",
       "layer": "frontend",
       "type": "service",
       "ref": "frontend/scripts/audit-i18n.ts",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 7,
-      "rationale": "Audit-only deliverable; bulk migration of hardcoded strings tracked as planned/i18n-bulk-migrate."
+      "rationale": "Audit-only deliverable; bulk migration of hardcoded strings tracked as planned/i18n-bulk-migrate.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g5.export-file",
       "layer": "frontend",
       "type": "service",
       "ref": "frontend/utils/exportFile.ts + frontend/app/(app)/insights.tsx wiring",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 4,
-      "rationale": "Issue #14 — replaces crypto-js / legacy FS path with v19 File API + Sharing."
+      "rationale": "Issue #14 \u2014 replaces crypto-js / legacy FS path with v19 File API + Sharing.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g6.receipt-picker",
       "layer": "frontend",
       "type": "component",
       "ref": "frontend/components/ReceiptSourcePicker.tsx",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 5,
-      "rationale": "Issue #17 — unified Camera/Gallery helper. Wiring at all entry points tracked under planned/receipt-picker-rollout."
+      "rationale": "Issue #17 \u2014 unified Camera/Gallery helper. Wiring at all entry points tracked under planned/receipt-picker-rollout.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g7.chat-api-client",
       "layer": "frontend",
       "type": "service",
       "ref": "frontend/services/ChatApiClient.ts",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 6,
-      "rationale": "Wraps GET/POST/DELETE /api/chat/*. Screen hydration tracked under planned/chat-screen-hydration."
+      "rationale": "Wraps GET/POST/DELETE /api/chat/*. Screen hydration tracked under planned/chat-screen-hydration.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "g10.profile-routes",
       "layer": "frontend",
       "type": "page",
       "ref": "frontend/app/(app)/profile-personal-info.tsx + profile-about.tsx",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
-      "rationale": "Two placeholders converted to real routes (Personal Info + About). Security placeholder retained pending backend support."
+      "rationale": "Two placeholders converted to real routes (Personal Info + About). Security placeholder retained pending backend support.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "receipt-picker-rollout",
@@ -287,8 +1263,10 @@
       "ref": "frontend/components/RecordingModal.tsx now routes through pickFromCamera/pickFromGallery; helpers gained includeBase64 + quality options",
       "status": "shipped-soaking",
       "added_in": "iteration-1",
-      "extends": ["fe.cmp.receipt-picker"],
-      "rationale": "Single direct ImagePicker.launch* site (RecordingModal) consolidated to use the shared picker helpers. New base64 option preserves the receipt-OCR upload contract. The home FAB does not launch picker directly — it opens RecordingModal — so coverage is complete for this iteration."
+      "extends": [
+        "fe.cmp.receipt-picker"
+      ],
+      "rationale": "Single direct ImagePicker.launch* site (RecordingModal) consolidated to use the shared picker helpers. New base64 option preserves the receipt-OCR upload contract. The home FAB does not launch picker directly \u2014 it opens RecordingModal \u2014 so coverage is complete for this iteration."
     },
     {
       "id": "chat-screen-hydration",
@@ -297,7 +1275,9 @@
       "ref": "frontend/app/(app)/chat.tsx",
       "status": "shipped-soaking",
       "added_in": "iteration-1",
-      "extends": ["fe.svc.chat-api"],
+      "extends": [
+        "fe.svc.chat-api"
+      ],
       "rationale": "Chat screen now routes loadChatHistory / saveMessageToServer / handleResetChat through chatApiClient (G7) instead of direct apiClient calls. Hydration logic was already in place; this slice consolidates the path."
     },
     {
@@ -316,18 +1296,22 @@
       "ref": "frontend/app/(app)/index.tsx (incomeAmount/expenseAmount)",
       "status": "shipped-soaking",
       "added_in": "iteration-1",
-      "rationale": "Issue #15 — fontSize bumped 16 → 22 on Income/Expense numbers. Existing `numberOfLines={1} adjustsFontSizeToFit` handles overflow."
+      "rationale": "Issue #15 \u2014 fontSize bumped 16 \u2192 22 on Income/Expense numbers. Existing `numberOfLines={1} adjustsFontSizeToFit` handles overflow."
     },
     {
       "id": "g14.health-ping",
       "layer": "frontend",
       "type": "service",
       "ref": "frontend/contexts/NetworkContext.tsx",
-      "status": "shipped-soaking",
+      "status": "protected",
       "added_in": "iteration-0",
       "tests": 4,
-      "extends": ["fe.ctx.network", "be.health.api"],
-      "rationale": "Cold-boot probe via fetch; AbortController-based 5s timeout."
+      "extends": [
+        "fe.ctx.network",
+        "be.health.api"
+      ],
+      "rationale": "Cold-boot probe via fetch; AbortController-based 5s timeout.",
+      "protected_since": "iteration-2"
     },
     {
       "id": "kiro.social-auth-profile-fix",
@@ -336,7 +1320,11 @@
       "ref": ".kiro/specs/social-auth-profile-fix",
       "status": "in-progress",
       "added_in": "v1.0",
-      "extends": ["fe.svc.profile-extr", "fe.svc.profile-store", "fe.ctx.auth"],
+      "extends": [
+        "fe.svc.profile-extr",
+        "fe.svc.profile-store",
+        "fe.ctx.auth"
+      ],
       "rationale": "Pre-existing initiative tracked under .kiro/specs/. Carried forward; subject to gates from this iteration onward."
     }
   ],
@@ -363,7 +1351,7 @@
       "id": "g13.coupon-admin-ui",
       "layer": "frontend",
       "type": "page",
-      "ref": "(deferred — back-office, web-only)",
+      "ref": "(deferred \u2014 back-office, web-only)",
       "status": "deferred",
       "added_in": "iteration-1?",
       "rationale": "Backend endpoints POST /api/coupon/generate and GET /api/coupon/list remain protected and back-office-only. Not built in mobile."
@@ -372,11 +1360,11 @@
       "id": "i18n-bulk-migrate",
       "layer": "frontend",
       "type": "service",
-      "ref": "audit findings → t() migration",
+      "ref": "audit findings \u2192 t() migration",
       "status": "in-progress-iter-1",
-      "progress": "108 → 101 findings (7 reduced this slice; Alert.alert(\"Error\", ...) sites across chat/insights/manual/RecordingModal). Track via `npm run audit:i18n`.",
+      "progress": "108 \u2192 101 findings (7 reduced this slice; Alert.alert(\"Error\", ...) sites across chat/insights/manual/RecordingModal). Track via `npm run audit:i18n`.",
       "added_in": "iteration-1",
-      "rationale": "Mechanical migration is incremental — each iteration drives the count down. Stays here until count reaches 0, then promotes to gate-strict."
+      "rationale": "Mechanical migration is incremental \u2014 each iteration drives the count down. Stays here until count reaches 0, then promotes to gate-strict."
     },
     {
       "id": "profile-security-screen",
