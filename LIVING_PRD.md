@@ -2,6 +2,8 @@
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
 > Iteration cursor: **Iterations 0–4 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-4-complete`. Latest run: 27 suites / 242 tests / 0 fail. i18n audit: 76 findings (down from 108 — 29.6% reduction).
+> **Iteration 5 — PLANNED (performance focus).** Establish telemetry baseline (PG1), then ship FlatList virtualization (PG2), SQLite + Mongo indexes (PG3, PG6), lazy locales (PG10), single-query home summary (PG12), receipt compression (PG5), and insights caching (PG7). Carries over BottomNavWithAddModal + TransactionFilter snapshots, first three route-level snapshots, and i18n batch 5.
+> **Deploy-prep:** finished migration off `emergentintegrations` (private SDK, dead PyPI) to direct `openai` SDK calls — backend now boots in any clean Python env. Railway artifacts (`backend/Procfile`, `runtime.txt`, `.env.example`, `RAILWAY_DEPLOY.md`) shipped. Awaiting user-paste of Atlas + OpenAI creds into Railway dashboard.
 
 ---
 
@@ -70,6 +72,179 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 - `pre-iteration-0` — rollback anchor
 - `iteration-0-complete` — milestone
+
+---
+
+## Iteration 5 — Plan (performance focus)
+
+Theme: **measurable performance under the additive-only constraint.** Iter 0–4 closed all 14 functional sync gaps that had inputs available; the remaining drag on the app is not feature-shaped, it's runtime-shaped — list scroll on long histories, cold-start bundle size, un-indexed Mongo + SQLite reads, full-resolution receipt uploads. Iter 5 makes those measurable and then closes the largest ones.
+
+**Recon findings backing this iteration** (verified pre-plan):
+
+- [frontend/app/(app)/history.tsx:310](frontend/app/(app)/history.tsx) — uses `FlatList` but with **zero virtualization props** (no `windowSize`, no `getItemLayout`, no `initialNumToRender`, no `removeClippedSubviews`). Default windowSize=21 wastes layout work past ~200 rows.
+- [frontend/services/localDb.ts:43-69](frontend/services/localDb.ts) — `transactions`, `sync_outbox`, `sync_metadata` schema has **no `CREATE INDEX`** anywhere. Hot queries (`WHERE sync_status != 'deleted' ORDER BY date DESC`, sync delta lookups) full-scan.
+- [backend/server.py](backend/server.py) — no `create_index` / `create_indexes` calls. Every Mongo query against `transactions`, `user_sessions`, `notifications`, `coupons` is unindexed.
+- [frontend/utils/i18n.ts:1-20](frontend/utils/i18n.ts) — static `import` of all 18 locale modules at app boot; locale switching never needs more than 1 active + the `en` fallback at any moment.
+- [frontend/services/localDb.ts](frontend/services/localDb.ts) `getSummaryLocally` — runs two separate `SELECT SUM(...)` queries; one `CASE WHEN` would do.
+- `/api/insights` and `/api/insights/ai` ([backend/server.py:2551, :2703](backend/server.py)) recompute aggregations every call; per-user 60s cache is invisible to clients.
+
+### New gaps — PG series
+
+| # | Surface | Owner | Priority | Complexity | Mode |
+|---|---|---|---|---|---|
+| **PG1** | App perf telemetry (cold-start TTI, route-mount, sync drain duration) → `perf-baseline.json` | FE | **Critical (prereq)** | M | new evolving |
+| **PG2** | `FlatList` virtualization tuning on history.tsx (+ any other long-list screens) | FE | High | S | bug-fix scope |
+| **PG3** | SQLite indexes on `transactions(sync_status, date)` and `transactions(updated_at)` and `sync_outbox(timestamp)` | FE | High | S | new evolving (additive DDL) |
+| **PG6** | Mongo compound indexes on `transactions`, `user_sessions`, `notifications`, `coupons` (created in FastAPI startup hook) | BE | High | S | new evolving |
+| **PG10** | Lazy-load locale dictionaries — keep `en` + active locale statically imported, dynamic-import the other 16 on language switch | FE | Medium | M | service-extension on `utils/i18n.ts` |
+| **PG12** | Single-query home summary (combined `SUM(CASE WHEN ...)`) + memoize result for 1s window across mount-flurries | FE | Low | XS | bug-fix scope |
+| **PG5** | Receipt image compress + resize (≤1600px long edge, JPEG q=0.85) before base64 → `/api/transactions/receipt` | FE | Medium | S | new evolving |
+| **PG7** | Per-user 60s cache for `/api/insights` and `/api/insights/ai`; invalidated by any tx mutation on the same `user_id` | BE | Medium | M | new evolving |
+
+> No protected entry is removed by any PG-item. PG3/PG6 are pure index additions (`CREATE INDEX IF NOT EXISTS`, `create_indexes(...)` are idempotent). PG10 keeps `utils/i18n.ts` exports byte-identical — only the import strategy changes behind it. PG12 preserves `getSummaryLocally`'s return-shape. PG7 invalidation is the only semantic change and is bounded by TTL.
+
+### Evolution detail (per gap)
+
+#### PG1 — Perf telemetry baseline (Critical, FE — gates everything else)
+
+- **What to build:** Lightweight measurement layer that records timestamps at four anchors and emits them to (a) `console.info('[perf]', payload)` for local + Sentry breadcrumb in dev/prod, and (b) a local AsyncStorage ring buffer (`perf_samples`, max 50) for in-app inspection.
+  - Anchors: `app.bootStart` (in [app/_layout.tsx](frontend/app/_layout.tsx) top-level effect), `app.firstRouteMount` (in each `app/(app)/*` `useEffect(() => {…}, [])`), `db.initComplete` (in [localDb.ts](frontend/services/localDb.ts) `initDb` tail), `sync.drainComplete` (in [syncService.ts](frontend/services/syncService.ts) after outbox drain).
+- **Files to create:**
+  - `frontend/utils/perf.ts` (new) — `mark(name)`, `measure(from, to)`, `flushSamples()`, in-memory + AsyncStorage ring buffer.
+  - `frontend/__tests__/perf.test.ts` (new) — verifies anchor ordering, ring-buffer eviction, monotonic clock guards.
+  - `perf-baseline.json` (new, repo root) — committed at end of iteration with the first measured medians. Future iterations diff against this.
+- **Files to extend (additive only):** the four anchor sites above. Each becomes a single-line `perf.mark('…')` insertion; existing behavior unchanged.
+- **Acceptance criteria:** `flushSamples()` returns a JSON array; `app.bootStart → app.firstRouteMount` median over 5 runs is recorded; CI gate compares post-iteration median ≤ 1.10× baseline (Gate 6 — see below).
+- **Complexity:** M.
+- **New tests required:** unit (perf helper) + integration (anchors fire in expected order on a happy-path render).
+
+#### PG2 — FlatList virtualization (High, FE — bug-fix scope)
+
+- **What to build:** Add `windowSize={7}`, `initialNumToRender={12}`, `maxToRenderPerBatch={8}`, `removeClippedSubviews` (Android only — leave iOS default), and `getItemLayout` (transaction rows are fixed-height per current styles) to the `<FlatList>` at [history.tsx:310](frontend/app/(app)/history.tsx). Row height is constant — compute it once from the existing `styles.transactionRow` heights and export the constant from a sibling helper for reuse.
+- **Files to extend:** `frontend/app/(app)/history.tsx`.
+- **Files to create:** `frontend/utils/listLayout.ts` (new) — exports `TRANSACTION_ROW_HEIGHT` constant + `getTransactionItemLayout` helper.
+- **Acceptance criteria:**
+  - Existing snapshot of `history.tsx` continues to match (bug-fix scope, but the rendered DOM is byte-identical for the same data).
+  - On a synthetic 1000-row dataset, scroll-to-bottom completes in ≤2s on iPhone 12 emulator (recorded via PG1 telemetry as `history.scrollEnd`).
+- **Complexity:** S.
+- **New tests required:** unit (`getTransactionItemLayout` is pure math) + perf assertion (`history.scrollEnd` recorded).
+
+#### PG3 — SQLite indexes (High, FE)
+
+- **What to build:** Append three `CREATE INDEX IF NOT EXISTS` statements at the end of `initDb` in [localDb.ts](frontend/services/localDb.ts):
+  - `idx_tx_sync_date` on `transactions(sync_status, date DESC)` — primary list query.
+  - `idx_tx_updated` on `transactions(last_updated)` — delta sync candidate set.
+  - `idx_outbox_ts` on `sync_outbox(timestamp)` — drain ordering.
+- **Files to extend:** [frontend/services/localDb.ts](frontend/services/localDb.ts) — only the `execAsync` DDL string grows; exported function signatures unchanged.
+- **Acceptance criteria:** Indexes exist after `initDb` (asserted via `PRAGMA index_list('transactions')`); `EXPLAIN QUERY PLAN` on the two hot queries reports `SEARCH … USING INDEX` rather than `SCAN`. Existing local-db tests still pass byte-identical.
+- **Complexity:** S.
+- **New tests required:** unit (`PRAGMA index_list` assertion) + regression (`getTransactionsLocally` return values unchanged across schema-upgrade boundary).
+
+#### PG6 — MongoDB indexes (High, BE)
+
+- **What to build:** Add an `@app.on_event("startup")` hook in [backend/server.py](backend/server.py) (the file already has a `@app.on_event("shutdown")` at line ~2999 — mirror it) that calls `await db.<col>.create_indexes([...])` with:
+  - `transactions`: `[(user_id, 1), (date, -1)]`, `[(user_id, 1), (updated_at, 1)]`, `[(user_id, 1), (is_deleted, 1)]`
+  - `user_sessions`: `[(session_token, 1)] unique`, `[(expires_at, 1)] TTL`
+  - `notifications`: `[(user_id, 1), (created_at, -1)]`
+  - `coupons`: `[(code, 1)] unique`
+- **Files to extend:** [backend/server.py](backend/server.py) — additive startup hook only.
+- **Acceptance criteria:** all `db.<col>.index_information()` post-startup contains the new keys. Existing `backend/test_sync_logic.py` (3 tests) stays green. No removal of the default `_id_` indexes. OpenAPI snapshot byte-identical (this change is pure storage-layer).
+- **Complexity:** S.
+- **New tests required:** pytest fixture that boots the app, asserts indexes present.
+
+#### PG10 — Lazy locale loading (Medium, FE)
+
+- **What to build:** Refactor [frontend/utils/i18n.ts](frontend/utils/i18n.ts) so that:
+  - Only `en` is statically imported at module load.
+  - `i18n.translations` is seeded with `{ en }`.
+  - On `setLocale(code)`, if `code !== 'en'` and not already in `i18n.translations`, dynamically `await import(`../locales/${code}`)` and merge before flipping the active locale.
+  - Public exports (`initI18n`, `setLocale`, the `i18n` default) keep identical signatures.
+- **Files to extend:** [frontend/utils/i18n.ts](frontend/utils/i18n.ts).
+- **Files to reference (read-only):** all 18 locale files — none renamed, none deleted.
+- **Acceptance criteria:** Bundle size (Metro `expo export --platform ios --analyze` or equivalent) shrinks by the sum of 17 non-active locale modules at boot; cold-boot TTI measured by PG1 improves ≥5%. Language switch on first use of a non-active locale completes within 100ms on emulator.
+- **Complexity:** M (async coordination + cache).
+- **New tests required:** unit (mocked dynamic import) + integration (switch from `en → id` triggers exactly one dynamic load; second switch is a no-op).
+
+#### PG12 — Single-query home summary (Low, FE — bug-fix scope)
+
+- **What to build:** Replace the two-`SELECT SUM(...)` pattern in [localDb.ts](frontend/services/localDb.ts) `getSummaryLocally` with one `SELECT SUM(CASE WHEN transaction_type='income' THEN amount ELSE 0 END) AS income, SUM(CASE WHEN transaction_type='expense' THEN amount ELSE 0 END) AS expenses FROM transactions WHERE sync_status != 'deleted'`. Memoize result in-module for 1s to absorb mount-burst (home, history, insights all re-call on focus).
+- **Files to extend:** [frontend/services/localDb.ts](frontend/services/localDb.ts).
+- **Acceptance criteria:** function returns identical shape `{ total_income, total_expenses }`; under property test with 100 random tx-sets, output matches the pre-refactor implementation byte-for-byte.
+- **Complexity:** XS.
+- **New tests required:** property test (parity vs. legacy two-query impl) + unit (1s memo expires correctly).
+
+#### PG5 — Receipt compression before upload (Medium, FE)
+
+- **What to build:** Before any call to `POST /api/transactions/receipt`, route the image through `expo-image-manipulator` to resize to ≤1600px on the long edge and re-encode JPEG at quality 0.85. Wrap as `frontend/utils/imageCompress.ts`. Hook into the existing receipt entry points (`ReceiptSourcePicker` consumers, `manual.tsx` if it accepts attachments, chat-attach if applicable).
+- **Files to create:** `frontend/utils/imageCompress.ts`, `frontend/__tests__/imageCompress.test.ts`.
+- **Files to extend:** call sites of `ReceiptSourcePicker.launchCamera` / `launchLibrary` consumers — additive (pass the result through the new helper before base64-encoding).
+- **Acceptance criteria:** A 4032×3024 receipt photo is reduced to ≤1600×1200 with file size ≤500KB; OCR result on a fixture image is functionally equivalent (same merchant + amount + category extracted) within the existing OCR test corpus.
+- **Complexity:** S.
+- **New tests required:** unit (helper output dimensions + size) + integration smoke against the `/api/transactions/receipt` mock.
+
+#### PG7 — Insights endpoint caching (Medium, BE)
+
+- **What to build:** In-process per-user TTL cache (60s) around `/api/insights` and `/api/insights/ai`. Stored as `dict[str, tuple[float, dict]]` keyed by `user_id`. Any of `POST /api/transactions/{chat,receipt,voice,voice-text,manual}`, `PUT /api/transactions/{id}`, `DELETE /api/transactions/{id}` invalidates the corresponding user entry before returning. Headers: emit `X-Cache: HIT|MISS` for observability.
+- **Files to extend:** [backend/server.py](backend/server.py) — new module-level dict, helper `_invalidate_insights(user_id)` called at the end of each tx-mutating handler. Existing response shapes unchanged.
+- **Acceptance criteria:**
+  - Two consecutive `GET /api/insights` calls within 60s for the same user → second is `X-Cache: HIT`, identical body.
+  - A `POST /api/transactions/manual` between them → next `GET /api/insights` is `X-Cache: MISS`.
+  - Cache is per-user (cross-user requests do not see each other's data — tested with two mock users).
+- **Complexity:** M (invalidation hooks span 7 handlers; care needed to not break existing 200 contracts).
+- **New tests required:** pytest (hit/miss/invalidate matrix, cross-user isolation, TTL expiry).
+
+### Iteration 5 acceptance gates (extends the standard 5)
+
+- **Gate 6 — Perf-regression gate.** New file `perf-baseline.json` at repo root. CI step compares `perf_samples` medians collected by PG1 against baseline. Reject PR if any tracked metric regresses >10%. First iteration to ship PG1 *sets* the baseline; subsequent iterations *defend* it.
+- All other gates (1–5) unchanged.
+
+### Files registered in `feature-registry.json` (additions only)
+
+```jsonc
+"evolving": [
+  { "id": "pg1.perf-telemetry",    "layer": "frontend", "type": "service",   "ref": "frontend/utils/perf.ts",         "status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg2.tx-list-virtual",   "layer": "frontend", "type": "page",      "ref": "frontend/app/(app)/history.tsx", "status": "bug-fix",     "added_in": "iteration-5" },
+  { "id": "pg3.sqlite-indexes",    "layer": "frontend", "type": "service",   "ref": "frontend/services/localDb.ts",   "status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg5.receipt-compress",  "layer": "frontend", "type": "service",   "ref": "frontend/utils/imageCompress.ts","status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg6.mongo-indexes",     "layer": "backend",  "type": "service",   "ref": "backend/server.py startup hook", "status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg7.insights-cache",    "layer": "backend",  "type": "service",   "ref": "backend/server.py insights TTL", "status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg10.lazy-locales",     "layer": "frontend", "type": "service",   "ref": "frontend/utils/i18n.ts",         "status": "in-progress", "added_in": "iteration-5" },
+  { "id": "pg12.home-summary-1q",  "layer": "frontend", "type": "service",   "ref": "frontend/services/localDb.ts",   "status": "bug-fix",     "added_in": "iteration-5" }
+]
+```
+
+### Carried over (non-perf, deferred from Iter 4)
+
+- BottomNavWithAddModal + TransactionFilter snapshot baselines (still deferred due to `@react-native-community/datetimepicker` + `date-fns` mocking complexity — Iter 5 should land at least BottomNavWithAddModal since it has no native-date dep).
+- First three route-level snapshot baselines: `login.tsx`, `signup.tsx`, `onboarding-language.tsx`.
+- i18n batch 5: chat screen interior labels (`AI Assistant`, `Selected Package`, `Initiating`, `Processing`, `Validating`, `Retry`, `Cancel`). Target audit: 76 → ≤69.
+
+### Promotions this iteration
+
+- Iter 4 added baselines (CouponRedeemModal, ReceiptSourcePicker UI snapshots) — promote `shipped-soaking → protected` per Rule (one full iteration without regression).
+- No PG-item is promoted in Iter 5; they all enter as `evolving` and soak through Iter 6.
+
+### Sequencing inside the iteration
+
+PG1 must land first — every other PG-item's acceptance criterion references metrics it produces. Recommended slice order:
+
+1. **Slice 1 — PG1 telemetry + `perf-baseline.json` seed.** No behavior change; only marks + measurements.
+2. **Slice 2 — PG3 + PG6 indexes.** Pure additive DDL on both sides. Measure index impact via PG1.
+3. **Slice 3 — PG2 virtualization + PG12 single-query summary.** Visible UX improvements; bug-fix scope keeps snapshots intact.
+4. **Slice 4 — PG10 lazy locales.** Biggest cold-start win; standalone so it can be rolled back independently if dynamic-import surfaces issues under Hermes.
+5. **Slice 5 — PG5 receipt compression + PG7 insights cache.** Both are pure additions to the request/response flow with TTL bounds.
+6. **Slice 6 — carry-overs (snapshot baselines + i18n batch 5).**
+
+### Risks / known unknowns
+
+- **Hermes + dynamic `import()` interaction** for PG10. Metro should resolve dynamic imports of static string-literal paths at build time, but `import(`../locales/${code}`)` uses template interpolation. Verify with `expo export` analyze before relying on it; fall back to a `switch(code)` over 17 static dynamic-imports if template-interpolation isn't bundled.
+- **expo-sqlite index migration** for PG3. Adding `CREATE INDEX IF NOT EXISTS` on an existing user's DB is safe (idempotent), but on first run after upgrade the indexes are built synchronously on app launch; with very large local DBs this could add visible latency. Measure via PG1 — if `db.initComplete` regresses >50% for users with >5000 rows, defer index build to a background task post-`initDb` resolve.
+- **PG7 invalidation completeness.** 7 mutation handlers need invalidation calls; missing one creates a stale-insights bug. Mitigate with a `pytest` matrix that exercises each mutation endpoint and asserts the next `/api/insights` is `X-Cache: MISS`.
+
+### Tags to place
+
+- `pre-iteration-5` — before any Iter 5 slice lands.
+- `iteration-5-complete` — at end.
 
 ---
 

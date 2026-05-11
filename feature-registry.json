@@ -1189,6 +1189,34 @@
       "type": "service",
       "ref": "frontend/__tests__/ReceiptSourcePicker.snapshot.test.tsx",
       "added_in": "iteration-4"
+    },
+    {
+      "id": "be.deploy.procfile",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/Procfile",
+      "added_in": "deploy-prep"
+    },
+    {
+      "id": "be.deploy.runtime",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/runtime.txt",
+      "added_in": "deploy-prep"
+    },
+    {
+      "id": "be.deploy.env-example",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/.env.example",
+      "added_in": "deploy-prep"
+    },
+    {
+      "id": "be.deploy.railway-md",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/RAILWAY_DEPLOY.md",
+      "added_in": "deploy-prep"
     }
   ],
   "evolving": [
@@ -1360,6 +1388,15 @@
         "fe.ctx.auth"
       ],
       "rationale": "Pre-existing initiative tracked under .kiro/specs/. Carried forward; subject to gates from this iteration onward."
+    },
+    {
+      "id": "deploy.llm-migration",
+      "layer": "backend",
+      "type": "service",
+      "ref": "backend/server.py::_llm_json_completion + openai client",
+      "status": "shipped-soaking",
+      "added_in": "deploy-prep",
+      "rationale": "Removed unbuildable emergentintegrations==0.1.0 (not on public PyPI) blocking Railway/Render deploys. Three LlmChat call-sites (chat parse, receipt OCR, insights) now share _llm_json_completion helper using openai SDK. Endpoint contracts unchanged. OPENAI_API_KEY moved from hardcoded source literal to env var (previous hardcoded key leaked to git history \u2014 user must rotate before prod)."
     }
   ],
   "planned": [

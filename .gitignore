@@ -171,4 +171,7 @@ android-sdk/
 # Environment files
 *.env
 *.env.*
+# ... but template files (.env.example, .env.sample) are intentionally checked in.
+!*.env.example
+!*.env.sample
 .kiro

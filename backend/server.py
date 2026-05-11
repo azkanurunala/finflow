@@ -16,7 +16,7 @@ import io
 import httpx
 import hashlib
 import secrets
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+from openai import AsyncOpenAI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -26,9 +26,45 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'test_database')]
 
-# Emergent LLM Key
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
-OPENAI_API_KEY = "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"
+# OpenAI client + model config.
+# Key is read from env; never hardcode (the previous hardcoded key in this file
+# has been leaked to public git history and should be rotated on OpenAI's
+# dashboard before this code reaches production).
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+LLM_TEXT_MODEL = os.environ.get('LLM_TEXT_MODEL', 'gpt-4o-mini')
+LLM_VISION_MODEL = os.environ.get('LLM_VISION_MODEL', 'gpt-4o')
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+
+async def _llm_json_completion(system_prompt: str, user_text: str, *, vision_image_base64: Optional[str] = None) -> str:
+    """Shared LLM helper. Returns the raw text response from the model.
+
+    JSON-shaped responses are encouraged via response_format when the prompt
+    asks for JSON; the caller still defensively strips markdown fences.
+    """
+    if openai_client is None:
+        raise HTTPException(status_code=503, detail="LLM is not configured on this server")
+
+    content: Any
+    model = LLM_TEXT_MODEL
+    if vision_image_base64:
+        model = LLM_VISION_MODEL
+        content = [
+            {"type": "text", "text": user_text},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{vision_image_base64}"}},
+        ]
+    else:
+        content = user_text
+
+    response = await openai_client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content},
+        ],
+        response_format={"type": "json_object"},
+    )
+    return response.choices[0].message.content or ""
 
 # Create the main app
 app = FastAPI()
@@ -640,15 +676,11 @@ DATE PARSING:
 - "minggu lalu" / "last week" = 7 days ago
 - If no date mentioned, use today: {today}"""
 
-        chat = LlmChat(
-            api_key=OPENAI_API_KEY,
-            session_id=f"transaction_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
+        response = await _llm_json_completion(
+            system_prompt=system_prompt,
+            user_text=f"Parse this transaction: {text}",
+        )
 
-        user_message = UserMessage(text=f"Parse this transaction: {text}")
-        response = await chat.send_message(user_message)
-        
         # Parse GPT response
         import json
         response_text = response.strip()
@@ -703,20 +735,12 @@ Rules:
 - Note any tip or tax separately
 - If receipt shows multiple items, mention key items in notes"""
 
-        chat = LlmChat(
-            api_key=OPENAI_API_KEY,
-            session_id=f"receipt_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        image_content = ImageContent(image_base64=image_base64)
-        user_message = UserMessage(
-            text="Extract transaction details from this receipt.",
-            file_contents=[image_content]
+        response = await _llm_json_completion(
+            system_prompt=system_prompt,
+            user_text="Extract transaction details from this receipt.",
+            vision_image_base64=image_base64,
         )
-        
-        response = await chat.send_message(user_message)
-        
+
         # Parse response
         import json
         response_text = response.strip()
@@ -2830,15 +2854,11 @@ Respond in JSON format:
     "spending_trend": "good|needs_attention|concerning"
 }"""
 
-        chat = LlmChat(
-            api_key=OPENAI_API_KEY,
-            session_id=f"insights_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
+        response = await _llm_json_completion(
+            system_prompt=system_prompt,
+            user_text=f"Analyze this financial data and provide insights:\n{context}",
+        )
 
-        user_message = UserMessage(text=f"Analyze this financial data and provide insights:\n{context}")
-        response = await chat.send_message(user_message)
-        
         # Parse response
         import json
         response_text = response.strip()
