@@ -45,7 +45,8 @@
   "iteration_2_progress": {
     "shipped_so_far": [
       "promote-iter0-to-protected",
-      "snapshot-coverage-expansion-2"
+      "snapshot-coverage-expansion-2",
+      "i18n-batch-2"
     ],
     "promotion_note": "9 iteration-0 capabilities (G1-G7, G10, G14) promoted from `shipped-soaking` to `protected` after one full iteration with no regression. iteration-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) remain `shipped-soaking` for one more cycle.",
     "next": "i18n batch 2; more snapshots as needed"

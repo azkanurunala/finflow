@@ -353,10 +353,10 @@ export default function ManualInputScreen() {
 
           {/* Notes */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Notes (optional)</Text>
+            <Text style={styles.inputLabel}>{t('manual.notesOptional') || 'Notes (optional)'}</Text>
             <TextInput
               style={[styles.textInput, styles.notesInput]}
-              placeholder="Add any additional notes..."
+              placeholder={t('manual.notesPlaceholder') || 'Add any additional notes...'}
               placeholderTextColor="#9CA3AF"
               value={notes}
               onChangeText={setNotes}

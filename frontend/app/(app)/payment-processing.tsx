@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 type ProcessingState = 'initiating' | 'processing' | 'validating' | 'success' | 'error';
 
@@ -26,6 +27,7 @@ export default function PaymentProcessingScreen() {
   const params = useLocalSearchParams();
   const { actions } = useSubscription();
   const { refreshUser } = useAuth();
+  const { t } = useLanguage();
   
   const [processingState, setProcessingState] = useState<ProcessingState>('initiating');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function PaymentProcessingScreen() {
 
   useEffect(() => {
     if (!selectedProductId) {
-      Alert.alert('Error', 'No subscription selected', [
+      Alert.alert(t('common.error') || 'Error', 'No subscription selected', [
         { text: 'OK', onPress: () => router.back() }
       ]);
       return;

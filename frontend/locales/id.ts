@@ -279,7 +279,9 @@ export default {
     save: "Simpan Transaksi",
     addCustom: "Tambah Kategori Custom",
     customPlaceholder: "Nama Kategori Baru",
-    add: "Tambah"
+    add: "Tambah",
+    notesOptional: "Catatan (opsional)",
+    notesPlaceholder: "Tambahkan catatan tambahan..."
   },
   edit: {
     title: "Edit Transaksi",

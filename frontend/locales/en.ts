@@ -279,7 +279,9 @@ export default {
     save: "Save Transaction",
     addCustom: "Add Custom Category",
     customPlaceholder: "New Category Name",
-    add: "Add"
+    add: "Add",
+    notesOptional: "Notes (optional)",
+    notesPlaceholder: "Add any additional notes..."
   },
   edit: {
     title: "Edit Transaction",
