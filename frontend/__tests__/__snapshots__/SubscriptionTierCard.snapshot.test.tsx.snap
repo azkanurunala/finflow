@@ -1,0 +1,1273 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`SubscriptionTierCard — visual baseline current plan — disabled state 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#E5E7EB",
+        "borderRadius": 16,
+        "borderWidth": 2,
+        "overflow": "hidden",
+        "padding": 20,
+        "position": "relative",
+      },
+      false,
+      false,
+      {
+        "backgroundColor": "#F0FDF4",
+        "borderColor": "#10B981",
+      },
+    ]
+  }
+>
+  <view
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderBottomLeftRadius": 12,
+          "flexDirection": "row",
+          "gap": 4,
+          "paddingHorizontal": 12,
+          "paddingVertical": 6,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#10B981",
+        },
+      ]
+    }
+  >
+    <Ionicons
+      color="#fff"
+      name="checkmark-circle"
+      size={16}
+    />
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.5,
+        }
+      }
+    >
+      Current
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 20,
+            "fontWeight": "700",
+            "marginBottom": 4,
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      Pro Monthly
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      monthly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "marginBottom": 16,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 36,
+            "fontWeight": "800",
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      $9.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 4,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "gap": 10,
+        "marginBottom": 16,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        AI Categories
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Analytics
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Export
+      </text>
+    </view>
+  </view>
+  <touchable
+    disabled={true}
+    onPress={[Function]}
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 12,
+          "justifyContent": "center",
+          "paddingVertical": 16,
+        },
+        {
+          "backgroundColor": "#8B5CF6",
+        },
+        {
+          "opacity": 0.6,
+        },
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 16,
+          "fontWeight": "700",
+        }
+      }
+    >
+      Current Plan
+    </text>
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionTierCard — visual baseline loading state 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#E5E7EB",
+        "borderRadius": 16,
+        "borderWidth": 2,
+        "overflow": "hidden",
+        "padding": 20,
+        "position": "relative",
+      },
+      false,
+      false,
+      false,
+    ]
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 20,
+            "fontWeight": "700",
+            "marginBottom": 4,
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      Pro Monthly
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      monthly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "marginBottom": 16,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 36,
+            "fontWeight": "800",
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      $9.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 4,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "gap": 10,
+        "marginBottom": 16,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        AI Categories
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Analytics
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Export
+      </text>
+    </view>
+  </view>
+  <touchable
+    disabled={true}
+    onPress={[Function]}
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 12,
+          "justifyContent": "center",
+          "paddingVertical": 16,
+        },
+        {
+          "backgroundColor": "#8B5CF6",
+        },
+        {
+          "opacity": 0.6,
+        },
+      ]
+    }
+  >
+    <activity-indicator
+      color="#fff"
+      ref={null}
+      size="small"
+    />
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionTierCard — visual baseline monthly tier — default state 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#E5E7EB",
+        "borderRadius": 16,
+        "borderWidth": 2,
+        "overflow": "hidden",
+        "padding": 20,
+        "position": "relative",
+      },
+      false,
+      false,
+      false,
+    ]
+  }
+>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 20,
+            "fontWeight": "700",
+            "marginBottom": 4,
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      Pro Monthly
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      monthly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "marginBottom": 16,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 36,
+            "fontWeight": "800",
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      $9.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 4,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "gap": 10,
+        "marginBottom": 16,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        AI Categories
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Analytics
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Export
+      </text>
+    </view>
+  </view>
+  <touchable
+    disabled={false}
+    onPress={[Function]}
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 12,
+          "justifyContent": "center",
+          "paddingVertical": 16,
+        },
+        {
+          "backgroundColor": "#8B5CF6",
+        },
+        false,
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 16,
+          "fontWeight": "700",
+        }
+      }
+    >
+      Subscribe $9.99
+    </text>
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionTierCard — visual baseline monthly tier — marked as recommended 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#E5E7EB",
+        "borderRadius": 16,
+        "borderWidth": 2,
+        "overflow": "hidden",
+        "padding": 20,
+        "position": "relative",
+      },
+      {
+        "borderColor": "#8B5CF6",
+      },
+      false,
+      false,
+    ]
+  }
+>
+  <view
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderBottomLeftRadius": 12,
+          "flexDirection": "row",
+          "gap": 4,
+          "paddingHorizontal": 12,
+          "paddingVertical": 6,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#8B5CF6",
+        },
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.5,
+        }
+      }
+    >
+      Recommended
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 20,
+            "fontWeight": "700",
+            "marginBottom": 4,
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      Pro Monthly
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      monthly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "marginBottom": 16,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 36,
+            "fontWeight": "800",
+          },
+          {
+            "color": "#8B5CF6",
+          },
+        ]
+      }
+    >
+      $9.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 4,
+        }
+      }
+    >
+      / 
+      month
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "gap": 10,
+        "marginBottom": 16,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        AI Categories
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Analytics
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#8B5CF6"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Export
+      </text>
+    </view>
+  </view>
+  <touchable
+    disabled={false}
+    onPress={[Function]}
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 12,
+          "justifyContent": "center",
+          "paddingVertical": 16,
+        },
+        {
+          "backgroundColor": "#8B5CF6",
+        },
+        false,
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 16,
+          "fontWeight": "700",
+        }
+      }
+    >
+      Subscribe $9.99
+    </text>
+  </touchable>
+</view>
+`;
+
+exports[`SubscriptionTierCard — visual baseline yearly tier — marked as best value 1`] = `
+<view
+  ref={null}
+  style={
+    [
+      {
+        "backgroundColor": "#fff",
+        "borderColor": "#E5E7EB",
+        "borderRadius": 16,
+        "borderWidth": 2,
+        "overflow": "hidden",
+        "padding": 20,
+        "position": "relative",
+      },
+      false,
+      {
+        "borderColor": "#F59E0B",
+      },
+      false,
+    ]
+  }
+>
+  <view
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderBottomLeftRadius": 12,
+          "flexDirection": "row",
+          "gap": 4,
+          "paddingHorizontal": 12,
+          "paddingVertical": 6,
+          "position": "absolute",
+          "right": 0,
+          "top": 0,
+        },
+        {
+          "backgroundColor": "#F59E0B",
+        },
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 10,
+          "fontWeight": "700",
+          "letterSpacing": 0.5,
+        }
+      }
+    >
+      Best Value
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "marginBottom": 12,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 20,
+            "fontWeight": "700",
+            "marginBottom": 4,
+          },
+          {
+            "color": "#F59E0B",
+          },
+        ]
+      }
+    >
+      Pro Yearly
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 14,
+        }
+      }
+    >
+      yearly
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "alignItems": "baseline",
+        "flexDirection": "row",
+        "marginBottom": 16,
+      }
+    }
+  >
+    <text
+      ref={null}
+      style={
+        [
+          {
+            "fontSize": 36,
+            "fontWeight": "800",
+          },
+          {
+            "color": "#F59E0B",
+          },
+        ]
+      }
+    >
+      $99.99
+    </text>
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#6B7280",
+          "fontSize": 16,
+          "marginLeft": 4,
+        }
+      }
+    >
+      / 
+      year
+    </text>
+  </view>
+  <view
+    ref={null}
+    style={
+      {
+        "gap": 10,
+        "marginBottom": 16,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#F59E0B"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        AI Categories
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#F59E0B"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Analytics
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#F59E0B"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Export
+      </text>
+    </view>
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "flexDirection": "row",
+          "gap": 10,
+        }
+      }
+    >
+      <Ionicons
+        color="#F59E0B"
+        name="checkmark-circle"
+        size={18}
+      />
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#4B5563",
+            "flex": 1,
+            "fontSize": 14,
+          }
+        }
+      >
+        Priority support
+      </text>
+    </view>
+  </view>
+  <touchable
+    disabled={false}
+    onPress={[Function]}
+    ref={null}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "borderRadius": 12,
+          "justifyContent": "center",
+          "paddingVertical": 16,
+        },
+        {
+          "backgroundColor": "#F59E0B",
+        },
+        false,
+      ]
+    }
+  >
+    <text
+      ref={null}
+      style={
+        {
+          "color": "#fff",
+          "fontSize": 16,
+          "fontWeight": "700",
+        }
+      }
+    >
+      Subscribe $99.99
+    </text>
+  </touchable>
+</view>
+`;

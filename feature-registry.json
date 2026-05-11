@@ -43,9 +43,12 @@
     "tag": "iteration-1-complete"
   },
   "iteration_2_progress": {
-    "shipped_so_far": ["promote-iter0-to-protected"],
+    "shipped_so_far": [
+      "promote-iter0-to-protected",
+      "snapshot-coverage-expansion-2"
+    ],
     "promotion_note": "9 iteration-0 capabilities (G1-G7, G10, G14) promoted from `shipped-soaking` to `protected` after one full iteration with no regression. iteration-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) remain `shipped-soaking` for one more cycle.",
-    "next": "more snapshot coverage; i18n batch 2"
+    "next": "i18n batch 2; more snapshots as needed"
   },
   "snapshot_replacements_iteration_1": [],
   "snapshot_replacements_iteration_2": [],
@@ -1159,6 +1162,20 @@
       "type": "service",
       "ref": "frontend/locales/nl.ts",
       "added_in": "v1.0"
+    },
+    {
+      "id": "fe.test.subscription-tier-card-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/SubscriptionTierCard.snapshot.test.tsx",
+      "added_in": "iteration-2"
+    },
+    {
+      "id": "fe.test.bottom-navigation-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/BottomNavigation.snapshot.test.tsx",
+      "added_in": "iteration-2"
     }
   ],
   "evolving": [
