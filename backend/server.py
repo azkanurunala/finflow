@@ -3075,6 +3075,37 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def ensure_mongo_indexes():
+    """PG6 — idempotent index creation for hot query paths.
+
+    Each spec is wrapped individually so a single conflict (e.g. a stale
+    index with the same name but different options) cannot crash the
+    deploy. create_index is a no-op when the requested spec already exists.
+    """
+    from pymongo import ASCENDING, DESCENDING
+
+    index_plan = [
+        ("transactions", [("user_id", ASCENDING), ("date", DESCENDING)], {"name": "idx_tx_user_date"}),
+        ("transactions", [("user_id", ASCENDING), ("updated_at", ASCENDING)], {"name": "idx_tx_user_updated"}),
+        ("transactions", [("user_id", ASCENDING), ("is_deleted", ASCENDING)], {"name": "idx_tx_user_deleted"}),
+        ("user_sessions", [("session_token", ASCENDING)], {"name": "idx_session_token", "unique": True}),
+        ("user_sessions", [("expires_at", ASCENDING)], {"name": "idx_session_ttl", "expireAfterSeconds": 0}),
+        ("notifications", [("user_id", ASCENDING), ("created_at", DESCENDING)], {"name": "idx_notif_user_created"}),
+        ("coupons", [("code", ASCENDING)], {"name": "idx_coupon_code", "unique": True}),
+    ]
+
+    created = 0
+    for collection_name, keys, options in index_plan:
+        try:
+            await db[collection_name].create_index(keys, **options)
+            created += 1
+        except Exception as e:
+            # Stale-spec conflicts are logged and skipped; never fatal.
+            logger.warning(f"[PG6] index '{options.get('name')}' on '{collection_name}' skipped: {e}")
+    logger.info(f"[PG6] ensured {created}/{len(index_plan)} indexes")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

@@ -2,7 +2,7 @@
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
 > Iteration cursor: **Iterations 0–4 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-4-complete`. Latest run: 27 suites / 242 tests / 0 fail. i18n audit: 76 findings (down from 108 — 29.6% reduction).
-> **Iteration 5 — PLANNED (performance focus).** Establish telemetry baseline (PG1), then ship FlatList virtualization (PG2), SQLite + Mongo indexes (PG3, PG6), lazy locales (PG10), single-query home summary (PG12), receipt compression (PG5), and insights caching (PG7). Carries over BottomNavWithAddModal + TransactionFilter snapshots, first three route-level snapshots, and i18n batch 5.
+> **Iteration 5 — IN PROGRESS (performance focus).** Slices 1–3 **SHIPPED**: PG1 telemetry → PG3 SQLite + PG6 Mongo indexes → PG2 FlatList virtualization + PG12 single-query summary. Frontend suite 27/242 → **31/281** (four new suites, 39 new tests). Backend pytest 3/3 → **6/6**. 25 snapshots clean across all 3 slices. Remaining: PG10 lazy locales → PG5/PG7 compression + insights cache → carry-overs.
 > **Deploy-prep:** finished migration off `emergentintegrations` (private SDK, dead PyPI) to direct `openai` SDK calls — backend now boots in any clean Python env. Railway artifacts (`backend/Procfile`, `runtime.txt`, `.env.example`, `RAILWAY_DEPLOY.md`) shipped. Awaiting user-paste of Atlas + OpenAI creds into Railway dashboard.
 
 ---
@@ -245,6 +245,59 @@ PG1 must land first — every other PG-item's acceptance criterion references me
 
 - `pre-iteration-5` — before any Iter 5 slice lands.
 - `iteration-5-complete` — at end.
+
+### Slice 1 — SHIPPED (PG1 perf telemetry + baseline)
+
+| | |
+|---|---|
+| Files added | [frontend/utils/perf.ts](frontend/utils/perf.ts), [frontend/__tests__/perf.test.ts](frontend/__tests__/perf.test.ts), [perf-baseline.json](perf-baseline.json) |
+| Files extended (additive only) | [frontend/app/_layout.tsx](frontend/app/_layout.tsx) (boot + first-route-mount marks), [frontend/services/localDb.ts](frontend/services/localDb.ts) (db.initComplete mark after `initDb` resolves), [frontend/services/syncService.ts](frontend/services/syncService.ts) (drainStart/drainComplete marks bracketing `syncWithRemote`) |
+| API surface | `mark(anchor)`, `measure(from, to, name?)`, `flushSamples()`, `clearSamples()`, `getMark(anchor)`, `resetMarksForTest()` — all from `utils/perf` |
+| Anchor union | `app.bootStart`, `app.firstRouteMount`, `db.initComplete`, `sync.drainStart`, `sync.drainComplete`, `history.scrollEnd` (reserved for PG2), `locale.dynamicLoad` (reserved for PG10) |
+| Persistence | AsyncStorage ring buffer `perf_samples`, max 50 entries; eviction is FIFO; reads/writes are crash-safe (telemetry never throws into the host) |
+| Clock source | `globalThis.performance.now()` preferred (Hermes provides it, monotonic), `Date.now()` fallback; negative deltas clamped to 0 (clock-jump guard) |
+| Tests added | 14 — clock-source selection, mark/measure pairing, missing-mark guard, negative-delta clamp, ring-buffer eviction at 50, AsyncStorage persistence, `flushSamples` empty case, `clearSamples` round-trip, crash-safety under storage rejection |
+| Baseline file | [perf-baseline.json](perf-baseline.json) seeded with 5 metric placeholders (`boot.tti`, `db.initFromBoot`, `sync.drainDuration`, `history.scrollEnd`, `locale.dynamicLoad`) — values null until first capture; Gate 6 informational this iteration, enforces from Iter 6 |
+| Suite trajectory | 27 / 242 / 1 → **28 / 256 / 1**. No snapshot drift. Backend pytest unchanged (3/3). |
+| Typecheck | `tsc --noEmit` reports zero new errors on changed files; pre-existing errors in `payment-processing.tsx`, `profile.tsx`, `subscription.tsx`, `free-trial.tsx`, `RecordingModal.tsx` are unchanged. |
+
+### Slice 2 — SHIPPED (PG3 SQLite indexes + PG6 Mongo indexes)
+
+| | |
+|---|---|
+| Files extended (additive only) | [frontend/services/localDb.ts](frontend/services/localDb.ts) — three `CREATE INDEX IF NOT EXISTS` statements appended to the existing DDL block (one round-trip), [backend/server.py](backend/server.py) — new `@app.on_event("startup") async def ensure_mongo_indexes()` mirroring the existing shutdown hook |
+| Files added | [frontend/__tests__/localDbIndexes.test.ts](frontend/__tests__/localDbIndexes.test.ts), [backend/test_pg6_indexes.py](backend/test_pg6_indexes.py) |
+| SQLite indexes (PG3) | `idx_tx_sync_date` on `transactions(sync_status, date DESC)` — history list; `idx_tx_last_updated` on `transactions(last_updated)` — sync delta candidate set; `idx_outbox_ts` on `sync_outbox(timestamp)` — drain ordering. All `IF NOT EXISTS` (idempotent on upgrade). |
+| Mongo indexes (PG6) | `transactions` × 3 compound (user_id, date DESC / updated_at / is_deleted); `user_sessions` (session_token UNIQUE + expires_at TTL with `expireAfterSeconds=0`); `notifications` (user_id, created_at DESC); `coupons` (code UNIQUE). |
+| Per-spec resilience | Each create_index is wrapped in try/except — a single stale-spec conflict logs a warning and is skipped, never crashes Render boot. Test `test_one_failing_spec_does_not_abort_others` asserts this. |
+| Tests added | PG3: 5 — DDL regex match for each index name + table, single-round-trip assertion, IF-NOT-EXISTS count = 3. PG6: 3 — all 7 indexes created across 4 collections, unique/TTL flags pass through, one-failing-spec resilience. |
+| Suite trajectory | Frontend 28/256/1 → **29/261/1**. Backend 3/3 → **6/6**. No snapshot drift. |
+| Mock-factory note | localDbIndexes.test.ts hit the documented jest@30 + babel-preset-expo TDZ trap; fixed by inlining `jest.fn()` declarations inside the factory and retrieving via `jest.requireMock` (same pattern as Iter 0 Gate-0 repairs to `PaymentService.test.ts` et al). |
+| Deprecation warnings | The new startup hook uses `@app.on_event("startup")` deliberately to mirror the existing shutdown hook idiom. FastAPI now prefers lifespan handlers but migrating both events is a non-additive change reserved for a future cleanup iteration. |
+
+### Slice 3 — SHIPPED (PG2 FlatList virtualization + PG12 single-query home summary)
+
+| | |
+|---|---|
+| Files added | [frontend/utils/listLayout.ts](frontend/utils/listLayout.ts), [frontend/__tests__/listLayout.test.ts](frontend/__tests__/listLayout.test.ts), [frontend/__tests__/localDbSummary.test.ts](frontend/__tests__/localDbSummary.test.ts) |
+| Files extended (additive / bug-fix scope) | [frontend/app/(app)/history.tsx](frontend/app/(app)/history.tsx) — spread `{...LONG_LIST_VIRTUALIZATION}` onto the FlatList + `onEndReached` perf mark; [frontend/services/localDb.ts](frontend/services/localDb.ts) — single-query `getSummaryLocally` with 1s mount-flurry memo + new `invalidateSummaryMemo` helper wired into all 5 mutation paths (add/update/delete/save/purge) |
+| PG2 prop bundle | `windowSize=7`, `initialNumToRender=12`, `maxToRenderPerBatch=8`, `removeClippedSubviews` Android-only (iOS has known re-mount issues), `updateCellsBatchingPeriod=50` |
+| PG2 deviation from plan | `getItemLayout` **not** applied to history.tsx: rows are variable-height (optional notes line). `makeFixedItemLayout` factory still exported from `utils/listLayout.ts` for future fixed-height lists; documented inline. |
+| PG12 query shape | one `getFirstAsync` with `SUM(CASE WHEN transaction_type='income'/'expense' THEN amount ELSE 0 END)`; preserves `{ total_income, total_expenses }` byte-for-byte |
+| PG12 memo invariant | 1s TTL absorbs mount-flurry across Home / History / Insights focusing in sequence; ANY mutation flushes it so callers never observe a stale total |
+| Tests added | listLayout: 8 — windowSize/initial/batch bounds, Android-only clipping, factory purity. localDbSummary: 12 — single-call assertion, CASE-WHEN SQL match, shape preservation, null-coalesce, TTL hit/miss, 5 mutation-invalidation cases (one `it.each` row per mutation path), fast-check property test asserting parity with the legacy two-query implementation across 30 random tx-sets. |
+| Perf instrumentation | New `history.scrollEnd` mark fires on `onEndReached` (threshold 0.1); `measure("app.firstRouteMount", "history.scrollEnd", "history.scrollEndFromMount")` is captured into the PG1 ring buffer for the Gate 6 baseline. |
+| Suite trajectory | Frontend 29/261/1 → **31/281/1** (two new suites, 20 new tests). Backend pytest unchanged (6/6). |
+| Snapshot impact | Zero — bug-fix scope preserves visual output. History.tsx has no snapshot baseline yet (route-level snapshots are Iter 5 Slice 6 work); if/when one lands, the rendered DOM is byte-identical for the same data. |
+
+### Iteration 5 progress checklist
+
+- [x] **Slice 1** — PG1 telemetry + baseline.
+- [x] **Slice 2** — PG3 (SQLite indexes) + PG6 (Mongo indexes via FastAPI startup hook).
+- [x] **Slice 3** — PG2 (FlatList virtualization) + PG12 (single-query home summary).
+- [ ] **Slice 4** — PG10 (lazy locale loading).
+- [ ] **Slice 5** — PG5 (receipt compression) + PG7 (insights TTL cache).
+- [ ] **Slice 6** — carry-overs (BottomNavWithAddModal snapshot, three route-level baselines, i18n batch 5).
 
 ---
 

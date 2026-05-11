@@ -11,6 +11,7 @@ import {
   waitForDb,
 } from "./localDb";
 import { useRefreshStore } from "../store/useRefreshStore";
+import { mark, measure } from "../utils/perf";
 
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 
@@ -112,6 +113,7 @@ class SyncService {
 
     this.isSyncing = true;
     this.notifyListeners("syncing", "Menyinkronkan data...");
+    mark("sync.drainStart");
 
     try {
       console.log("[SyncService] Starting Sync Process...");
@@ -134,6 +136,8 @@ class SyncService {
       console.log("[SyncService] Sync Process Completed.");
       this.notifyListeners("success", "Sinkronisasi selesai");
 
+      mark("sync.drainComplete");
+      measure("sync.drainStart", "sync.drainComplete", "sync.drainDuration");
       return true;
     } catch (error) {
       console.error("[SyncService] Sync failed:", error);

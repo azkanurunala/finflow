@@ -8,10 +8,15 @@ import { NetworkProvider } from "../contexts/NetworkContext";
 import { SubscriptionProvider } from "../contexts/SubscriptionContext";
 import { useEffect } from "react";
 import { initDb } from "../services/localDb";
+import { mark, measure } from "../utils/perf";
 import "../services/syncService"; // Import to initialize listener
+
+mark("app.bootStart");
 
 export default function RootLayout() {
   useEffect(() => {
+    mark("app.firstRouteMount");
+    measure("app.bootStart", "app.firstRouteMount", "boot.tti");
     initDb().catch(console.error);
   }, []);
 

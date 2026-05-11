@@ -1,0 +1,53 @@
+{
+  "_meta": {
+    "version": 1,
+    "captured_at": null,
+    "captured_in": "iteration-5",
+    "device": "pending-first-capture",
+    "build_profile": "development",
+    "notes": "Seeded by Iteration 5 PG1. Values are nullable until first capture lands; the perf-regression gate (Gate 6) is informational on this iteration and enforces from Iter 6 onward.",
+    "regression_threshold_pct": 10
+  },
+  "metrics": {
+    "boot.tti": {
+      "description": "ms from app module import (app.bootStart) to first RootLayout effect (app.firstRouteMount)",
+      "from": "app.bootStart",
+      "to": "app.firstRouteMount",
+      "median_ms": null,
+      "p95_ms": null,
+      "samples_n": 0
+    },
+    "db.initFromBoot": {
+      "description": "ms from app.bootStart to localDb.initDb completion (includes CREATE TABLE/INDEX DDL)",
+      "from": "app.bootStart",
+      "to": "db.initComplete",
+      "median_ms": null,
+      "p95_ms": null,
+      "samples_n": 0
+    },
+    "sync.drainDuration": {
+      "description": "ms for one syncWithRemote() pass (push outbox + pull deltas + purge)",
+      "from": "sync.drainStart",
+      "to": "sync.drainComplete",
+      "median_ms": null,
+      "p95_ms": null,
+      "samples_n": 0
+    },
+    "history.scrollEnd": {
+      "description": "Reserved for PG2 — ms to reach last row in a synthetic 1000-row history list",
+      "from": "app.firstRouteMount",
+      "to": "history.scrollEnd",
+      "median_ms": null,
+      "p95_ms": null,
+      "samples_n": 0
+    },
+    "locale.dynamicLoad": {
+      "description": "Reserved for PG10 — ms for the first non-en locale to load on language switch",
+      "from": "app.firstRouteMount",
+      "to": "locale.dynamicLoad",
+      "median_ms": null,
+      "p95_ms": null,
+      "samples_n": 0
+    }
+  }
+}

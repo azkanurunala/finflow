@@ -1,4 +1,5 @@
 import * as SQLite from "expo-sqlite";
+import { mark, measure } from "../utils/perf";
 
 const DB_NAME = "finflow.db";
 
@@ -67,18 +68,26 @@ export const initDb = async () => {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE INDEX IF NOT EXISTS idx_tx_sync_date ON transactions(sync_status, date DESC);
+    CREATE INDEX IF NOT EXISTS idx_tx_last_updated ON transactions(last_updated);
+    CREATE INDEX IF NOT EXISTS idx_outbox_ts ON sync_outbox(timestamp);
   `);
-  
+
   // Mark DB as ready
   if (dbReadyResolve) dbReadyResolve();
+
+  mark("db.initComplete");
+  measure("app.bootStart", "db.initComplete", "db.initFromBoot");
 };
 
 // getLocalDb is now defined at the top
 
 // Save or delete transactions based on sync data
 export const saveTransactionsLocally = async (transactions: any[]) => {
+  invalidateSummaryMemo();
   const db = await getLocalDb();
-  
+
   await db.withTransactionAsync(async () => {
     for (const tx of transactions) {
       if (tx.is_deleted) {
@@ -123,6 +132,7 @@ export const getTransactionsLocally = async (limit = 100): Promise<LocalTransact
 };
 
 export const addPendingTransaction = async (tx: any) => {
+  invalidateSummaryMemo();
   const db = await getLocalDb();
   const id = tx.id || `local_${Date.now()}`;
   
@@ -153,27 +163,38 @@ export const addPendingTransaction = async (tx: any) => {
   return id;
 };
 
-// Get summary (total income and expenses) from local DB
-export const getSummaryLocally = async (): Promise<{
-  total_income: number;
-  total_expenses: number;
-}> => {
+// PG12 — single-query summary with 1s mount-flurry memo. Home, history,
+// and insights all call getSummaryLocally on focus; without the memo
+// the same two scans run three times in quick succession on cold nav.
+type SummaryShape = { total_income: number; total_expenses: number };
+const SUMMARY_MEMO_TTL_MS = 1000;
+let summaryMemo: { at: number; value: SummaryShape } | null = null;
+
+export const invalidateSummaryMemo = () => {
+  summaryMemo = null;
+};
+
+export const getSummaryLocally = async (): Promise<SummaryShape> => {
+  if (summaryMemo && Date.now() - summaryMemo.at < SUMMARY_MEMO_TTL_MS) {
+    return summaryMemo.value;
+  }
+
   const db = await getLocalDb();
-  
-  const incomeResult = await db.getFirstAsync<{ total: number }>(
-    `SELECT COALESCE(SUM(amount), 0) as total FROM transactions 
-     WHERE transaction_type = 'income' AND sync_status != 'deleted'`
-  );
-  
-  const expenseResult = await db.getFirstAsync<{ total: number }>(
-    `SELECT COALESCE(SUM(amount), 0) as total FROM transactions 
-     WHERE transaction_type = 'expense' AND sync_status != 'deleted'`
+
+  const row = await db.getFirstAsync<{ income: number; expenses: number }>(
+    `SELECT
+       COALESCE(SUM(CASE WHEN transaction_type = 'income'  THEN amount ELSE 0 END), 0) AS income,
+       COALESCE(SUM(CASE WHEN transaction_type = 'expense' THEN amount ELSE 0 END), 0) AS expenses
+     FROM transactions
+     WHERE sync_status != 'deleted'`
   );
 
-  return {
-    total_income: incomeResult?.total || 0,
-    total_expenses: expenseResult?.total || 0,
+  const value: SummaryShape = {
+    total_income: row?.income ?? 0,
+    total_expenses: row?.expenses ?? 0,
   };
+  summaryMemo = { at: Date.now(), value };
+  return value;
 };
 
 // Update an existing transaction locally
@@ -182,6 +203,7 @@ export const updateLocalTransaction = async (
   updates: Partial<LocalTransaction>,
   markAsPending = true
 ) => {
+  invalidateSummaryMemo();
   const db = await getLocalDb();
 
   const fields: string[] = [];
@@ -249,6 +271,7 @@ export const updateLocalTransaction = async (
 
 // Soft-delete a transaction (mark as deleted for sync)
 export const deleteLocalTransaction = async (id: string) => {
+  invalidateSummaryMemo();
   const db = await getLocalDb();
 
   await db.runAsync(
@@ -333,6 +356,7 @@ export const markTransactionSynced = async (localId: string, remoteId?: string) 
 
 // Permanently delete transactions marked as deleted after sync
 export const purgeDeletedTransactions = async () => {
+  invalidateSummaryMemo();
   const db = await getLocalDb();
   await db.runAsync(
     "DELETE FROM transactions WHERE sync_status = 'deleted'"

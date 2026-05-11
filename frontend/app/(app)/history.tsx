@@ -29,6 +29,8 @@ import { getTransactionsLocally, deleteLocalTransaction } from "../../services/l
 import { syncService } from "../../services/syncService";
 import OfflineBanner from "../../components/OfflineBanner";
 import { useNetwork } from "../../contexts/NetworkContext";
+import { LONG_LIST_VIRTUALIZATION } from "../../utils/listLayout";
+import { mark, measure } from "../../utils/perf";
 
 import { CONFIG } from "../../constants/Config";
 
@@ -312,6 +314,12 @@ export default function HistoryScreen() {
           renderItem={renderTransaction}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          {...LONG_LIST_VIRTUALIZATION}
+          onEndReached={() => {
+            mark("history.scrollEnd");
+            measure("app.firstRouteMount", "history.scrollEnd", "history.scrollEndFromMount");
+          }}
+          onEndReachedThreshold={0.1}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
