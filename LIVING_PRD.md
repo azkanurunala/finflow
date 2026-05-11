@@ -1,7 +1,7 @@
 # FinFlow — Living PRD
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
-> Iteration cursor: **Iterations 0 + 1 + 2 — SHIPPED.** Tags: `iteration-0-complete`, `iteration-1-complete`, `iteration-2-complete`. Latest run: 24 suites / 235 tests / 0 fail.
+> Iteration cursor: **Iterations 0 + 1 + 2 + 3 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-3-complete`. Latest run: 25 suites / 237 tests / 0 fail. i18n audit: 89 findings (down from 108).
 
 ---
 
@@ -70,6 +70,38 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 - `pre-iteration-0` — rollback anchor
 - `iteration-0-complete` — milestone
+
+---
+
+## Iteration 3 — Outcome (retrospective)
+
+Tag: `iteration-3-complete`. Three slices.
+
+| Slice | Surface | Commit |
+|---|---|---|
+| 1 | Promoted 4 Iter-1 capabilities (receipt-picker-rollout, chat-screen-hydration, G11, G12) from `shipped-soaking` to `protected` | `c848d9ca` |
+| 2 | CouponInput snapshot baseline (2 prop variants) + pre-existing **missing `Platform` import bug fixed** (line 167 would crash at render) | `95bb1494` |
+| 3 | i18n batch 3: 7 currency/language screen header strings → `t(...)`; audit 96 → 89 | `17783cdd` |
+
+End state: **25 suites / 237 pass / 1 skipped** under `--ci`. Backend pytest 3/3.
+
+### Promoted to `protected` this iteration
+
+`receipt-picker-rollout` · `chat-screen-hydration` · G11 sub-layout · G12 home-fontsize.
+
+13 capability-level entries are now `protected` (9 from Iter 0 + 4 from Iter 1). No `shipped-soaking` entries remain at the end of Iter 3 — Iter 2 added file-level entries only, no new capabilities to soak.
+
+### Bug found and fixed in baseline
+
+`components/CouponInput.tsx:167` referenced `Platform.OS` without importing `Platform`. The component would crash at render. Caught by the snapshot pipeline. Bug-fix scope per Rule A. This is exactly the kind of latent issue the additive evolution loop is designed to surface.
+
+### Iteration 4 candidates
+
+- Continue snapshot expansion: CouponRedeemModal, TransactionFilter, RecordingModal, BottomNavWithAddModal, then move to route-level baselines.
+- Continue i18n bulk-migrate (89 → fewer); next batch could be the home-screen action labels (`Chat`, `Voice Log`, `Scan`, `Recent Activity`, `View All`, etc.) which all live in one file.
+- Once snapshot pipeline has covered all 10 components and several screens, capabilities like `snapshot-infra` itself become candidates for `protected` promotion.
+- G8 IAP verifier and G9 email channel — still blocked on external creds.
+- profile-security-screen — still blocked on BE password-change + delete-account endpoints.
 
 ---
 
