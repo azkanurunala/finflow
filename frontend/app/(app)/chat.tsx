@@ -428,7 +428,7 @@ export default function ChatScreen() {
                       </Text>
                       <View style={styles.editHint}>
                         <Ionicons name="create-outline" size={14} color="#9CA3AF" />
-                        <Text style={styles.editHintText}>Tap to edit</Text>
+                        <Text style={styles.editHintText}>{t('home.tapToEdit') || 'Tap to edit'}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>

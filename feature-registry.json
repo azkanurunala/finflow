@@ -1437,7 +1437,8 @@
   },
   "iteration_4_progress": {
     "shipped_so_far": [
-      "snapshot-coverage-expansion-3"
+      "snapshot-coverage-expansion-3",
+      "i18n-batch-4"
     ],
     "next": "i18n batch 4 (home-screen action labels)"
   },

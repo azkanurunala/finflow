@@ -220,7 +220,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(app)/history?tab=all")}
           activeOpacity={0.7}
         >
-          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text style={styles.balanceLabel}>{t('home.totalBalance') || 'Total Balance'}</Text>
           <Text style={styles.balanceAmount}>
             {formatAmount(totalBalance, currency)}
           </Text>
@@ -272,7 +272,7 @@ export default function HomeScreen() {
             <View style={[styles.actionIconCircle, { backgroundColor: "#10B981" }]}>
               <Ionicons name="chatbubble-ellipses" size={26} color="#fff" />
             </View>
-            <Text style={styles.actionButtonText}>Chat</Text>
+            <Text style={styles.actionButtonText}>{t('home.actionChat') || 'Chat'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -287,7 +287,7 @@ export default function HomeScreen() {
                 <Ionicons name="mic" size={44} color="#fff" />
               </View>
             </View>
-            <Text style={styles.actionButtonTextLarge}>Voice Log</Text>
+            <Text style={styles.actionButtonTextLarge}>{t('home.actionVoiceLog') || 'Voice Log'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -300,16 +300,16 @@ export default function HomeScreen() {
             <View style={[styles.actionIconCircle, { backgroundColor: "#F59E0B" }]}>
               <Ionicons name="scan" size={26} color="#fff" />
             </View>
-            <Text style={styles.actionButtonText}>Scan</Text>
+            <Text style={styles.actionButtonText}>{t('home.actionScan') || 'Scan'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>{t('home.recentActivity') || 'Recent Activity'}</Text>
             <TouchableOpacity onPress={() => router.push("/(app)/history")}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={styles.viewAllText}>{t('home.viewAll') || 'View All'}</Text>
             </TouchableOpacity>
           </View>
 
@@ -385,7 +385,7 @@ export default function HomeScreen() {
             <View style={styles.successIcon}>
               <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             </View>
-            <Text style={styles.successTitle}>Transaction Saved!</Text>
+            <Text style={styles.successTitle}>{t('home.transactionSaved') || 'Transaction Saved!'}</Text>
 
             {successTransaction && (
               <View style={styles.successDetails}>
@@ -395,23 +395,23 @@ export default function HomeScreen() {
                   </Text>
                 )}
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Amount</Text>
+                  <Text style={styles.successLabel}>{t('home.fieldAmount') || 'Amount'}</Text>
                   <Text style={styles.successValue}>
                     {formatAmount(successTransaction.amount, successTransaction.currency)}
                   </Text>
                 </View>
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Category</Text>
+                  <Text style={styles.successLabel}>{t('home.fieldCategory') || 'Category'}</Text>
                   <Text style={styles.successValue}>{successTransaction.category}</Text>
                 </View>
                 {successTransaction.merchant && (
                   <View style={styles.successRow}>
-                    <Text style={styles.successLabel}>Merchant</Text>
+                    <Text style={styles.successLabel}>{t('home.fieldMerchant') || 'Merchant'}</Text>
                     <Text style={styles.successValue}>{successTransaction.merchant}</Text>
                   </View>
                 )}
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Type</Text>
+                  <Text style={styles.successLabel}>{t('home.fieldType') || 'Type'}</Text>
                   <Text style={[
                     styles.successValue,
                     successTransaction.transaction_type === "income" ? styles.incomeText : styles.expenseText
@@ -429,7 +429,7 @@ export default function HomeScreen() {
                 setSuccessTransaction(null);
               }}
             >
-              <Text style={styles.successButtonText}>Done</Text>
+              <Text style={styles.successButtonText}>{t('common.done') || 'Done'}</Text>
             </TouchableOpacity>
           </View>
         </View>
