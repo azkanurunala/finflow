@@ -1,0 +1,325 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`CouponRedeemModal — visual baseline hidden state 1`] = `
+<modal
+  animationType="fade"
+  ref={null}
+  transparent={true}
+  visible={false}
+>
+  <keyboard-avoiding-view
+    behavior="padding"
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(0, 0, 0, 0.5)",
+        "flex": 1,
+        "justifyContent": "center",
+        "padding": 24,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#fff",
+          "borderRadius": 20,
+          "maxWidth": 360,
+          "padding": 24,
+          "width": "100%",
+        }
+      }
+    >
+      <touchable
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "padding": 4,
+            "position": "absolute",
+            "right": 12,
+            "top": 12,
+          }
+        }
+      >
+        <Ionicons
+          color="#6B7280"
+          name="close"
+          size={24}
+        />
+      </touchable>
+      <view
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#F5F3FF",
+            "borderRadius": 44,
+            "height": 88,
+            "justifyContent": "center",
+            "marginBottom": 20,
+            "width": 88,
+          }
+        }
+      >
+        <Ionicons
+          color="#6366F1"
+          name="gift"
+          size={56}
+        />
+      </view>
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#1F2937",
+            "fontSize": 22,
+            "fontWeight": "bold",
+            "marginBottom": 8,
+          }
+        }
+      >
+        subscription.redeemCoupon
+      </text>
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#6B7280",
+            "fontSize": 14,
+            "lineHeight": 20,
+            "marginBottom": 24,
+            "textAlign": "center",
+          }
+        }
+      >
+        subscription.redeemCouponDesc
+      </text>
+      <text-input
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={true}
+        onChangeText={[Function]}
+        placeholder="FINFLOW-XXXX-XXXX"
+        placeholderTextColor="#9CA3AF"
+        ref={null}
+        style={
+          [
+            {
+              "borderColor": "#E5E7EB",
+              "borderRadius": 12,
+              "borderWidth": 2,
+              "color": "#1F2937",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "letterSpacing": 1,
+              "paddingHorizontal": 16,
+              "paddingVertical": 14,
+              "textAlign": "center",
+              "width": "100%",
+            },
+            null,
+          ]
+        }
+        value=""
+      />
+      <touchable
+        disabled={false}
+        onPress={[Function]}
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#6366F1",
+              "borderRadius": 12,
+              "marginTop": 20,
+              "paddingVertical": 16,
+              "width": "100%",
+            },
+            false,
+          ]
+        }
+      >
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#fff",
+              "fontSize": 16,
+              "fontWeight": "bold",
+            }
+          }
+        >
+          subscription.redeemCode
+        </text>
+      </touchable>
+    </view>
+  </keyboard-avoiding-view>
+</modal>
+`;
+
+exports[`CouponRedeemModal — visual baseline visible state 1`] = `
+<modal
+  animationType="fade"
+  ref={null}
+  transparent={true}
+  visible={true}
+>
+  <keyboard-avoiding-view
+    behavior="padding"
+    ref={null}
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(0, 0, 0, 0.5)",
+        "flex": 1,
+        "justifyContent": "center",
+        "padding": 24,
+      }
+    }
+  >
+    <view
+      ref={null}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#fff",
+          "borderRadius": 20,
+          "maxWidth": 360,
+          "padding": 24,
+          "width": "100%",
+        }
+      }
+    >
+      <touchable
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "padding": 4,
+            "position": "absolute",
+            "right": 12,
+            "top": 12,
+          }
+        }
+      >
+        <Ionicons
+          color="#6B7280"
+          name="close"
+          size={24}
+        />
+      </touchable>
+      <view
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#F5F3FF",
+            "borderRadius": 44,
+            "height": 88,
+            "justifyContent": "center",
+            "marginBottom": 20,
+            "width": 88,
+          }
+        }
+      >
+        <Ionicons
+          color="#6366F1"
+          name="gift"
+          size={56}
+        />
+      </view>
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#1F2937",
+            "fontSize": 22,
+            "fontWeight": "bold",
+            "marginBottom": 8,
+          }
+        }
+      >
+        subscription.redeemCoupon
+      </text>
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#6B7280",
+            "fontSize": 14,
+            "lineHeight": 20,
+            "marginBottom": 24,
+            "textAlign": "center",
+          }
+        }
+      >
+        subscription.redeemCouponDesc
+      </text>
+      <text-input
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={true}
+        onChangeText={[Function]}
+        placeholder="FINFLOW-XXXX-XXXX"
+        placeholderTextColor="#9CA3AF"
+        ref={null}
+        style={
+          [
+            {
+              "borderColor": "#E5E7EB",
+              "borderRadius": 12,
+              "borderWidth": 2,
+              "color": "#1F2937",
+              "fontSize": 18,
+              "fontWeight": "600",
+              "letterSpacing": 1,
+              "paddingHorizontal": 16,
+              "paddingVertical": 14,
+              "textAlign": "center",
+              "width": "100%",
+            },
+            null,
+          ]
+        }
+        value=""
+      />
+      <touchable
+        disabled={false}
+        onPress={[Function]}
+        ref={null}
+        style={
+          [
+            {
+              "alignItems": "center",
+              "backgroundColor": "#6366F1",
+              "borderRadius": 12,
+              "marginTop": 20,
+              "paddingVertical": 16,
+              "width": "100%",
+            },
+            false,
+          ]
+        }
+      >
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#fff",
+              "fontSize": 16,
+              "fontWeight": "bold",
+            }
+          }
+        >
+          subscription.redeemCode
+        </text>
+      </touchable>
+    </view>
+  </keyboard-avoiding-view>
+</modal>
+`;

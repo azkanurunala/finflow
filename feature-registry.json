@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/feature-registry.schema.json",
-  "version": "0.4.0-iteration-3-in-progress",
-  "iteration_cursor": 3,
+  "version": "0.5.0-iteration-4-in-progress",
+  "iteration_cursor": 4,
   "iteration_0_summary": {
     "shipped": [
       "G1",
@@ -1175,6 +1175,20 @@
       "type": "service",
       "ref": "frontend/__tests__/CouponInput.snapshot.test.tsx",
       "added_in": "iteration-3"
+    },
+    {
+      "id": "fe.test.coupon-redeem-modal-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/CouponRedeemModal.snapshot.test.tsx",
+      "added_in": "iteration-4"
+    },
+    {
+      "id": "fe.test.receipt-picker-baseline",
+      "layer": "frontend",
+      "type": "service",
+      "ref": "frontend/__tests__/ReceiptSourcePicker.snapshot.test.tsx",
+      "added_in": "iteration-4"
     }
   ],
   "evolving": [
@@ -1410,14 +1424,22 @@
     "next": "i18n batch 2; more snapshots as needed",
     "tag": "iteration-2-complete"
   },
-  "iteration_3_progress": {
+  "snapshot_replacements_iteration_3": [],
+  "iteration_3_summary": {
     "shipped_so_far": [
       "promote-iter1-to-protected",
       "couponinput-bugfix+snapshot",
       "i18n-batch-3"
     ],
     "promotion_note": "4 iteration-1 capabilities promoted: receipt-picker-rollout, chat-screen-hydration, g11.sub-layout, g12.home-fontsize. iteration_2 added no new capability-level entries, only file-level (snapshots).",
-    "next": "more snapshots; i18n batch 3"
+    "next": "more snapshots; i18n batch 3",
+    "tag": "iteration-3-complete"
   },
-  "snapshot_replacements_iteration_3": []
+  "iteration_4_progress": {
+    "shipped_so_far": [
+      "snapshot-coverage-expansion-3"
+    ],
+    "next": "i18n batch 4 (home-screen action labels)"
+  },
+  "snapshot_replacements_iteration_4": []
 }

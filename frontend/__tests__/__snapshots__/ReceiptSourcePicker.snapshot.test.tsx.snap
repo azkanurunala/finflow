@@ -1,0 +1,454 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`ReceiptSourcePicker — visual baseline hidden 1`] = `
+<modal
+  animationType="fade"
+  onRequestClose={[Function]}
+  ref={null}
+  testID="receipt-source-picker-modal"
+  transparent={true}
+  visible={false}
+>
+  <touchable
+    activeOpacity={1}
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "backgroundColor": "rgba(0,0,0,0.4)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      }
+    }
+    testID="receipt-source-picker-backdrop"
+  >
+    <view
+      onStartShouldSetResponder={[Function]}
+      ref={null}
+      style={
+        [
+          {
+            "backgroundColor": "#fff",
+            "paddingBottom": 24,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          },
+          {
+            "borderTopLeftRadius": 16,
+            "borderTopRightRadius": 16,
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#6B7280",
+            "fontSize": 14,
+            "paddingVertical": 8,
+            "textAlign": "center",
+          }
+        }
+      >
+        Add a receipt
+      </text>
+      <touchable
+        accessibilityLabel="Scan receipt with camera"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-camera"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="camera"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Camera
+        </text>
+      </touchable>
+      <touchable
+        accessibilityLabel="Pick receipt from gallery"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-gallery"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="images"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Gallery
+        </text>
+      </touchable>
+      <touchable
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "marginTop": 4,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-cancel"
+      >
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#EF4444",
+              "fontSize": 16,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Cancel
+        </text>
+      </touchable>
+    </view>
+  </touchable>
+</modal>
+`;
+
+exports[`ReceiptSourcePicker — visual baseline visible with custom title 1`] = `
+<modal
+  animationType="fade"
+  onRequestClose={[Function]}
+  ref={null}
+  testID="receipt-source-picker-modal"
+  transparent={true}
+  visible={true}
+>
+  <touchable
+    activeOpacity={1}
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "backgroundColor": "rgba(0,0,0,0.4)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      }
+    }
+    testID="receipt-source-picker-backdrop"
+  >
+    <view
+      onStartShouldSetResponder={[Function]}
+      ref={null}
+      style={
+        [
+          {
+            "backgroundColor": "#fff",
+            "paddingBottom": 24,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          },
+          {
+            "borderTopLeftRadius": 16,
+            "borderTopRightRadius": 16,
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#6B7280",
+            "fontSize": 14,
+            "paddingVertical": 8,
+            "textAlign": "center",
+          }
+        }
+      >
+        Attach a receipt
+      </text>
+      <touchable
+        accessibilityLabel="Scan receipt with camera"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-camera"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="camera"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Camera
+        </text>
+      </touchable>
+      <touchable
+        accessibilityLabel="Pick receipt from gallery"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-gallery"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="images"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Gallery
+        </text>
+      </touchable>
+      <touchable
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "marginTop": 4,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-cancel"
+      >
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#EF4444",
+              "fontSize": 16,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Cancel
+        </text>
+      </touchable>
+    </view>
+  </touchable>
+</modal>
+`;
+
+exports[`ReceiptSourcePicker — visual baseline visible with default title 1`] = `
+<modal
+  animationType="fade"
+  onRequestClose={[Function]}
+  ref={null}
+  testID="receipt-source-picker-modal"
+  transparent={true}
+  visible={true}
+>
+  <touchable
+    activeOpacity={1}
+    onPress={[Function]}
+    ref={null}
+    style={
+      {
+        "backgroundColor": "rgba(0,0,0,0.4)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      }
+    }
+    testID="receipt-source-picker-backdrop"
+  >
+    <view
+      onStartShouldSetResponder={[Function]}
+      ref={null}
+      style={
+        [
+          {
+            "backgroundColor": "#fff",
+            "paddingBottom": 24,
+            "paddingHorizontal": 16,
+            "paddingTop": 12,
+          },
+          {
+            "borderTopLeftRadius": 16,
+            "borderTopRightRadius": 16,
+          },
+        ]
+      }
+    >
+      <text
+        ref={null}
+        style={
+          {
+            "color": "#6B7280",
+            "fontSize": 14,
+            "paddingVertical": 8,
+            "textAlign": "center",
+          }
+        }
+      >
+        Add a receipt
+      </text>
+      <touchable
+        accessibilityLabel="Scan receipt with camera"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-camera"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="camera"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Camera
+        </text>
+      </touchable>
+      <touchable
+        accessibilityLabel="Pick receipt from gallery"
+        accessibilityRole="button"
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "gap": 14,
+            "paddingHorizontal": 8,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-gallery"
+      >
+        <Ionicons
+          color="#4DB6AC"
+          name="images"
+          size={22}
+        />
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#1F2937",
+              "fontSize": 16,
+              "fontWeight": "500",
+            }
+          }
+        >
+          Gallery
+        </text>
+      </touchable>
+      <touchable
+        onPress={[Function]}
+        ref={null}
+        style={
+          {
+            "alignItems": "center",
+            "marginTop": 4,
+            "paddingVertical": 14,
+          }
+        }
+        testID="receipt-source-picker-cancel"
+      >
+        <text
+          ref={null}
+          style={
+            {
+              "color": "#EF4444",
+              "fontSize": 16,
+              "fontWeight": "600",
+            }
+          }
+        >
+          Cancel
+        </text>
+      </touchable>
+    </view>
+  </touchable>
+</modal>
+`;
