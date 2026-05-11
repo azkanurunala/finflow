@@ -1,7 +1,7 @@
 # FinFlow — Living PRD
 
 > Evolutionary, additive-only product spec. Every iteration adds; nothing protected is removed or behaviorally changed.
-> Iteration cursor: **Iterations 0 + 1 + 2 + 3 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-3-complete`. Latest run: 25 suites / 237 tests / 0 fail. i18n audit: 89 findings (down from 108).
+> Iteration cursor: **Iterations 0–4 — SHIPPED.** Tags: `iteration-0-complete` … `iteration-4-complete`. Latest run: 27 suites / 242 tests / 0 fail. i18n audit: 76 findings (down from 108 — 29.6% reduction).
 
 ---
 
@@ -70,6 +70,30 @@ The dev-frontend baseline arrived with **35 failing tests across 4 suites**. Roo
 
 - `pre-iteration-0` — rollback anchor
 - `iteration-0-complete` — milestone
+
+---
+
+## Iteration 4 — Outcome (retrospective)
+
+Tag: `iteration-4-complete`. Two slices.
+
+| Slice | Surface | Commit |
+|---|---|---|
+| 1 | CouponRedeemModal (2 prop variants) + ReceiptSourcePicker UI (3 variants) snapshot baselines | `d0275461` |
+| 2 | i18n batch 4: 13 home-screen labels migrated (Total Balance, FAB action labels, Recent Activity, View All, success-modal field labels, Done, Tap to edit); audit 89 → 76 | `928a3bf6` |
+
+End state: **27 suites / 242 pass / 1 skipped** under `--ci`. Backend pytest 3/3. i18n audit: **76 findings** (108 → 76 cumulative, ~30% reduction).
+
+### Cumulative snapshot coverage (8 components, 25 prop variants)
+
+PricingDisplay · OfflineBanner · SubscriptionStatusCard · SubscriptionTierCard · BottomNavigation · CouponInput · CouponRedeemModal · ReceiptSourcePicker. All 10 components in the original registry now have at least one snapshot baseline except 2: **BottomNavWithAddModal** and **TransactionFilter** (the latter pulls in `@react-native-community/datetimepicker` and `date-fns` and is more involved).
+
+### Iteration 5 candidates
+
+- The last two component snapshots (BottomNavWithAddModal, TransactionFilter — non-trivial due to native deps).
+- Begin route-level snapshot baselines (24 screens). Start with the simpler ones: `login.tsx`, `signup.tsx`, `onboarding-language.tsx`.
+- i18n batch 5: chat screen interior labels (`AI Assistant`, `Selected Package`, `Initiating`, `Processing`, `Validating`, `Retry`, `Cancel`).
+- G8 / G9 / profile-security — still blocked on external prerequisites.
 
 ---
 
