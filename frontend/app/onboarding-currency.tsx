@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCurrency } from "../utils/currency";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // Curated short list for onboarding, sourced from the canonical currency list
 // so symbols/names stay consistent with the rest of the app.
@@ -20,6 +21,7 @@ const CURRENCIES = ["USD", "EUR", "GBP", "IDR", "JPY", "SGD"].map(
 
 export default function OnboardingCurrencyScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   const handleContinue = async () => {
@@ -43,7 +45,7 @@ export default function OnboardingCurrencyScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "66%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 2 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 2, total: 3 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -51,9 +53,9 @@ export default function OnboardingCurrencyScreen() {
           <Ionicons name="cash" size={48} color="#4DB6AC" />
         </View>
         
-        <Text style={styles.title}>Choose Your Currency</Text>
+        <Text style={styles.title}>{t('onboarding.chooseCurrency')}</Text>
         <Text style={styles.subtitle}>
-          Select your preferred currency for tracking expenses. All amounts will be displayed in this currency.
+          {t('onboarding.chooseCurrencySubtitle')}
         </Text>
 
         <View style={styles.currencyList}>
@@ -93,7 +95,7 @@ export default function OnboardingCurrencyScreen() {
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>{t('onboarding.continue')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>

@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { I18nManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import i18n, { changeLocale } from '../utils/i18n';
+import i18n, { changeLocale, isRTL, isSupported } from '../utils/i18n';
 
 interface LanguageContextType {
   language: string;
-  setLanguage: (code: string) => Promise<void>;
+  isRTL: boolean;
+  // Returns whether the app must restart (RTL direction changed).
+  setLanguage: (code: string) => Promise<{ needsRestart: boolean }>;
   t: (key: string, options?: any) => string;
 }
 
@@ -21,7 +24,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const loadLanguage = async () => {
     try {
       const saved = await AsyncStorage.getItem('user_locale');
-      if (saved) {
+      if (saved && isSupported(saved)) {
         setLanguageState(saved);
         i18n.locale = saved;
       }
@@ -30,11 +33,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const setLanguage = async (code: string) => {
-    setLanguageState(code);
-    await changeLocale(code);
-    // Force re-render to update translations
+  const setLanguage = async (code: string): Promise<{ needsRestart: boolean }> => {
+    const safeCode = isSupported(code) ? code : 'en';
+    const directionChanged = I18nManager.isRTL !== isRTL(safeCode);
+
+    setLanguageState(safeCode);
+    await changeLocale(safeCode);
+
+    // Mirror the whole layout for RTL languages. This only takes effect after a
+    // reload, so signal the caller to restart the app when the direction flips.
+    if (directionChanged) {
+      I18nManager.allowRTL(isRTL(safeCode));
+      I18nManager.forceRTL(isRTL(safeCode));
+    }
+
+    // Re-render the tree so every t() call picks up the new locale immediately.
     forceUpdate({});
+    return { needsRestart: directionChanged };
   };
 
   const t = (key: string, options?: any): string => {
@@ -45,6 +60,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     <LanguageContext.Provider
       value={{
         language,
+        isRTL: isRTL(language),
         setLanguage,
         t,
       }}

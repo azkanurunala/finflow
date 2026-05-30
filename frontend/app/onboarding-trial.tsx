@@ -10,19 +10,21 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 
+// Feature/period labels are translation keys resolved with t() at render time.
 const PLANS = [
   {
     id: "free_trial",
     name: "Free Trial",
     price: "$0",
-    period: "3 days",
+    periodKey: "onboarding.period3Days",
     features: [
-      "10 actions per day",
-      "Basic AI chat",
-      "Receipt scanning",
-      "Try all features",
+      "onboarding.featActionsPerDay",
+      "onboarding.featBasicAiChat",
+      "onboarding.featReceiptScanning",
+      "onboarding.featTryAllFeatures",
     ],
     isRecommended: false,
   },
@@ -30,12 +32,12 @@ const PLANS = [
     id: "basic",
     name: "Basic",
     price: "$1.99",
-    period: "/month",
+    periodKey: "onboarding.periodPerMonth",
     features: [
-      "30 AI chat messages",
-      "20 uploads/recordings",
-      "Full analytics",
-      "Priority support",
+      "subscription.featChat30",
+      "subscription.featUploads20",
+      "subscription.featFullAnalytics",
+      "subscription.featPrioritySupport",
     ],
     isRecommended: false,
   },
@@ -43,12 +45,12 @@ const PLANS = [
     id: "pro",
     name: "Pro",
     price: "$4.99",
-    period: "/month",
+    periodKey: "onboarding.periodPerMonth",
     features: [
-      "100 AI chat messages",
-      "100 uploads/recordings",
-      "Advanced analytics",
-      "Priority support",
+      "subscription.featChat100",
+      "subscription.featUploads100",
+      "subscription.featAdvancedAnalytics",
+      "subscription.featPrioritySupport",
     ],
     isRecommended: true,
   },
@@ -56,12 +58,12 @@ const PLANS = [
     id: "power",
     name: "Power",
     price: "$9.99",
-    period: "/month",
+    periodKey: "onboarding.periodPerMonth",
     features: [
-      "Unlimited chat",
-      "Unlimited uploads",
-      "All features",
-      "VIP support",
+      "subscription.featUnlimitedChat",
+      "subscription.featUnlimitedUploads",
+      "subscription.featAllFeatures",
+      "subscription.featVipSupport",
     ],
     isRecommended: false,
   },
@@ -70,6 +72,7 @@ const PLANS = [
 export default function OnboardingTrialScreen() {
   const router = useRouter();
   const { startTrial, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const [selectedPlan, setSelectedPlan] = useState("free_trial");
   const [loading, setLoading] = useState(false);
 
@@ -91,7 +94,7 @@ export default function OnboardingTrialScreen() {
     if (planId !== "free_trial") {
       // TODO: Implement in-app purchase
       // For now, just show a message
-      alert("In-App Purchase coming soon! Starting free trial instead.");
+      alert(t('onboarding.iapComingSoon'));
     }
   };
 
@@ -105,7 +108,7 @@ export default function OnboardingTrialScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "100%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 3 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 3, total: 3 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -113,9 +116,9 @@ export default function OnboardingTrialScreen() {
           <Ionicons name="rocket" size={48} color="#4DB6AC" />
         </View>
         
-        <Text style={styles.title}>Choose Your Plan</Text>
+        <Text style={styles.title}>{t('onboarding.choosePlan')}</Text>
         <Text style={styles.subtitle}>
-          Start with a free trial or subscribe to unlock all features.
+          {t('onboarding.choosePlanSubtitle')}
         </Text>
 
         <View style={styles.planList}>
@@ -131,21 +134,23 @@ export default function OnboardingTrialScreen() {
             >
               {plan.isRecommended && (
                 <View style={styles.recommendedBadge}>
-                  <Text style={styles.recommendedText}>RECOMMENDED</Text>
+                  <Text style={styles.recommendedText}>{t('onboarding.recommended')}</Text>
                 </View>
               )}
               <View style={styles.planHeader}>
-                <Text style={styles.planName}>{plan.name}</Text>
+                <Text style={styles.planName}>
+                  {plan.id === "free_trial" ? t('onboarding.planFreeTrial') : plan.name}
+                </Text>
                 <View style={styles.priceRow}>
                   <Text style={styles.planPrice}>{plan.price}</Text>
-                  <Text style={styles.planPeriod}>{plan.period}</Text>
+                  <Text style={styles.planPeriod}>{t(plan.periodKey)}</Text>
                 </View>
               </View>
               <View style={styles.planFeatures}>
                 {plan.features.map((feature, index) => (
                   <View key={index} style={styles.featureRow}>
                     <Ionicons name="checkmark-circle" size={18} color="#4DB6AC" />
-                    <Text style={styles.featureText}>{feature}</Text>
+                    <Text style={styles.featureText}>{t(feature)}</Text>
                   </View>
                 ))}
               </View>
@@ -177,7 +182,7 @@ export default function OnboardingTrialScreen() {
           disabled={loading}
         >
           <Text style={styles.startButtonText}>
-            {loading ? "Starting..." : selectedPlan === "free_trial" ? "Start Free Trial" : "Subscribe"}
+            {loading ? t('onboarding.starting') : selectedPlan === "free_trial" ? t('onboarding.startFreeTrial') : t('onboarding.subscribe')}
           </Text>
         </TouchableOpacity>
       </View>

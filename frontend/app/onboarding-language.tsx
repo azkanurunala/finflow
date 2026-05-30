@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "../utils/i18n";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const LANGUAGES = [
   { code: "en", name: "English", native: "English", flag: "🇺🇸" },
@@ -35,6 +36,7 @@ const LANGUAGES = [
 
 export default function OnboardingLanguageScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
 
   const handleContinue = async () => {
@@ -52,7 +54,7 @@ export default function OnboardingLanguageScreen() {
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: "33%" }]} />
         </View>
-        <Text style={styles.stepText}>Step 1 of 3</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 1, total: 3 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
@@ -60,9 +62,9 @@ export default function OnboardingLanguageScreen() {
           <Ionicons name="language" size={48} color="#4DB6AC" />
         </View>
         
-        <Text style={styles.title}>Choose Your Language</Text>
+        <Text style={styles.title}>{t('onboarding.chooseLanguage')}</Text>
         <Text style={styles.subtitle}>
-          Select your preferred language. You can change this later in settings.
+          {t('onboarding.chooseLanguageSubtitle')}
         </Text>
 
         <View style={styles.languageList}>
@@ -100,7 +102,7 @@ export default function OnboardingLanguageScreen() {
           onPress={handleContinue}
           activeOpacity={0.8}
         >
-          <Text style={styles.continueButtonText}>Continue</Text>
+          <Text style={styles.continueButtonText}>{t('onboarding.continue')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
       </View>

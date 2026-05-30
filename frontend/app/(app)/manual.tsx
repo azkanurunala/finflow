@@ -18,6 +18,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { translateCategory } from "../../utils/i18n";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -67,7 +68,7 @@ export default function ManualInputScreen() {
 
   const handleSave = async () => {
     if (!amount || parseFloat(formatInputAmount(amount)) <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert(t('common.error'), t('form.enterValidAmount'));
       return;
     }
 
@@ -90,12 +91,12 @@ export default function ManualInputScreen() {
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
 
-      Alert.alert("Success", "Transaction saved!", [
-        { text: "Add Another", onPress: () => resetForm() },
-        { text: "Go Home", onPress: () => router.replace("/(app)") },
+      Alert.alert(t('common.success'), t('manual.transactionSaved'), [
+        { text: t('manual.addAnother'), onPress: () => resetForm() },
+        { text: t('manual.goHome'), onPress: () => router.replace("/(app)") },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Failed to save transaction");
+      Alert.alert(t('common.error'), error.response?.data?.detail || t('form.failSave'));
     } finally {
       setLoading(false);
     }
@@ -120,7 +121,7 @@ export default function ManualInputScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add Transaction</Text>
+          <Text style={styles.headerTitle}>{t('manual.addTransaction')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -133,7 +134,7 @@ export default function ManualInputScreen() {
             >
               <Ionicons name="arrow-up" size={20} color={transactionType === "expense" ? "#fff" : "#EF4444"} />
               <Text style={[styles.typeButtonText, transactionType === "expense" && styles.typeButtonTextActive]}>
-                Expense
+                {t('form.expense')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -142,7 +143,7 @@ export default function ManualInputScreen() {
             >
               <Ionicons name="arrow-down" size={20} color={transactionType === "income" ? "#fff" : "#10B981"} />
               <Text style={[styles.typeButtonText, transactionType === "income" && styles.typeButtonTextActive]}>
-                Income
+                {t('form.income')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -162,10 +163,10 @@ export default function ManualInputScreen() {
 
           {/* Merchant Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Merchant / Description</Text>
+            <Text style={styles.inputLabel}>{t('form.merchantDescription')}</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g., Starbucks, Salary, etc."
+              placeholder={t('form.merchantPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={merchant}
               onChangeText={setMerchant}
@@ -174,7 +175,7 @@ export default function ManualInputScreen() {
 
           {/* Date Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date</Text>
+            <Text style={styles.inputLabel}>{t('form.date')}</Text>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowDatePicker(true)}
@@ -206,7 +207,7 @@ export default function ManualInputScreen() {
           {/* Category Selection (only for expenses) */}
           {transactionType === "expense" && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Category</Text>
+              <Text style={styles.inputLabel}>{t('form.category')}</Text>
               <View style={styles.categoriesGrid}>
                 {CATEGORIES.filter(c => c.id !== "Income").map((cat) => (
                   <TouchableOpacity
@@ -228,7 +229,7 @@ export default function ManualInputScreen() {
                         category === cat.id && { color: cat.color },
                       ]}
                     >
-                      {cat.id}
+                      {translateCategory(cat.id)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -238,10 +239,10 @@ export default function ManualInputScreen() {
 
           {/* Notes */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Notes (optional)</Text>
+            <Text style={styles.inputLabel}>{t('form.notesOptional')}</Text>
             <TextInput
               style={[styles.textInput, styles.notesInput]}
-              placeholder="Add any additional notes..."
+              placeholder={t('form.notesPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={notes}
               onChangeText={setNotes}
@@ -261,7 +262,7 @@ export default function ManualInputScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Transaction</Text>
+                <Text style={styles.saveButtonText}>{t('manual.saveTransaction')}</Text>
               </>
             )}
           </TouchableOpacity>

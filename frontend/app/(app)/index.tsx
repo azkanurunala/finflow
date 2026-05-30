@@ -18,6 +18,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { translateCategory } from "../../utils/i18n";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { format } from "date-fns";
@@ -42,8 +43,8 @@ interface Transaction {
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { t, language } = useLanguage();
-  const { formatAmount, currency } = useCurrency();
+  const { t } = useLanguage();
+  const { formatAmount, currency, convert } = useCurrency();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [insights, setInsights] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -219,10 +220,10 @@ export default function HomeScreen() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
     
-    if (diffHours < 1) return "Just now";
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffHours < 1) return t('home.justNow');
+    if (diffHours < 24) return t('home.hoursAgo', { count: diffHours });
+    if (diffDays === 1) return t('home.yesterday');
+    if (diffDays < 7) return t('home.daysAgo', { count: diffDays });
     return format(date, "MMM dd");
   };
 
@@ -247,7 +248,7 @@ export default function HomeScreen() {
         setSelectedImage(result.assets[0].base64);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to take photo");
+      Alert.alert(t('common.error'), t('receipt.failTakePhoto'));
     }
   };
 
@@ -265,7 +266,7 @@ export default function HomeScreen() {
         setSelectedImage(result.assets[0].base64);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t('common.error'), t('receipt.failPickImage'));
     }
   };
 
@@ -296,8 +297,8 @@ export default function HomeScreen() {
       
     } catch (error: any) {
       Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process receipt"
+        t('common.error'),
+        error.response?.data?.detail || t('receipt.failProcess')
       );
     } finally {
       setProcessingReceipt(false);
@@ -319,7 +320,7 @@ export default function HomeScreen() {
       setRecording(recording);
       setIsRecording(true);
     } catch (error) {
-      Alert.alert("Error", "Failed to start recording");
+      Alert.alert(t('common.error'), t('voice.failStartRecording'));
     }
   };
 
@@ -376,17 +377,36 @@ export default function HomeScreen() {
     } catch (error: any) {
       console.error("Voice transcription error:", error);
       Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process voice recording"
+        t('common.error'),
+        error.response?.data?.detail || t('voice.failProcess')
       );
     } finally {
       setProcessingVoice(false);
     }
   };
 
-  const totalBalance = insights 
-    ? insights.total_income - insights.total_expenses 
-    : 0;
+  // Sum each currency group converted into the selected currency (live mode);
+  // in off mode `convert` is a no-op so this equals the raw backend totals.
+  const sumConverted = (
+    byCurrency: { [c: string]: number } | undefined,
+    fallback: number
+  ) =>
+    byCurrency
+      ? Object.entries(byCurrency).reduce(
+          (sum, [cur, amt]) => sum + convert(amt, cur),
+          0
+        )
+      : fallback;
+
+  const totalIncome = sumConverted(
+    insights?.income_by_currency,
+    insights?.total_income || 0
+  );
+  const totalExpenses = sumConverted(
+    insights?.expense_by_currency,
+    insights?.total_expenses || 0
+  );
+  const totalBalance = totalIncome - totalExpenses;
 
   if (loading) {
     return (
@@ -433,7 +453,7 @@ export default function HomeScreen() {
 
         {/* Total Balance */}
         <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>Total Balance</Text>
+          <Text style={styles.balanceLabel}>{t('home.totalBalance')}</Text>
           <Text style={styles.balanceAmount}>
             {formatAmount(totalBalance)}
           </Text>
@@ -446,10 +466,10 @@ export default function HomeScreen() {
               <View style={styles.statIconDown}>
                 <Ionicons name="arrow-down" size={14} color="#10B981" />
               </View>
-              <Text style={styles.statLabel}>Income</Text>
+              <Text style={styles.statLabel}>{t('home.income')}</Text>
             </View>
             <Text style={styles.incomeAmount}>
-              +{formatAmount(insights?.total_income || 0)}
+              +{formatAmount(totalIncome)}
             </Text>
           </View>
 
@@ -458,10 +478,10 @@ export default function HomeScreen() {
               <View style={styles.statIconUp}>
                 <Ionicons name="arrow-up" size={14} color="#EF4444" />
               </View>
-              <Text style={styles.statLabel}>Expenses</Text>
+              <Text style={styles.statLabel}>{t('home.expenses')}</Text>
             </View>
             <Text style={styles.expenseAmount}>
-              -{formatAmount(insights?.total_expenses || 0)}
+              -{formatAmount(totalExpenses)}
             </Text>
           </View>
         </View>
@@ -475,7 +495,7 @@ export default function HomeScreen() {
             <View style={[styles.actionIconCircle, { backgroundColor: "#10B981" }]}>
               <Ionicons name="chatbubble-ellipses" size={26} color="#fff" />
             </View>
-            <Text style={styles.actionButtonText}>Chat</Text>
+            <Text style={styles.actionButtonText}>{t('home.chat')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -487,7 +507,7 @@ export default function HomeScreen() {
                 <Ionicons name="mic" size={44} color="#fff" />
               </View>
             </View>
-            <Text style={styles.actionButtonTextLarge}>Voice Log</Text>
+            <Text style={styles.actionButtonTextLarge}>{t('home.voiceLog')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -497,16 +517,16 @@ export default function HomeScreen() {
             <View style={[styles.actionIconCircle, { backgroundColor: "#F59E0B" }]}>
               <Ionicons name="scan" size={26} color="#fff" />
             </View>
-            <Text style={styles.actionButtonText}>Scan</Text>
+            <Text style={styles.actionButtonText}>{t('home.scan')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Recent Activity */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <Text style={styles.sectionTitle}>{t('home.recentActivity')}</Text>
             <TouchableOpacity onPress={() => router.push("/(app)/history")}>
-              <Text style={styles.viewAllText}>View All</Text>
+              <Text style={styles.viewAllText}>{t('home.viewAll')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -535,10 +555,10 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.transactionContent}>
                   <Text style={styles.transactionMerchant}>
-                    {transaction.merchant || "Unknown"}
+                    {transaction.merchant || t('home.unknown')}
                   </Text>
                   <Text style={styles.transactionMeta}>
-                    {transaction.category} • {getTimeAgo(transaction.created_at || transaction.date)}
+                    {translateCategory(transaction.category)} • {getTimeAgo(transaction.created_at || transaction.date)}
                   </Text>
                 </View>
                 <View style={styles.transactionRight}>
@@ -563,7 +583,7 @@ export default function HomeScreen() {
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color="#10B981" />
-          <Text style={[styles.navText, styles.navTextActive]}>Home</Text>
+          <Text style={[styles.navText, styles.navTextActive]}>{t('nav.home')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -571,7 +591,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(app)/history")}
         >
           <Ionicons name="swap-horizontal" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
+          <Text style={styles.navText}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -588,7 +608,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(app)/insights")}
         >
           <Ionicons name="bar-chart" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
+          <Text style={styles.navText}>{t('nav.analytics')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -596,7 +616,7 @@ export default function HomeScreen() {
           onPress={() => router.push("/(app)/profile")}
         >
           <Ionicons name="person" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Profile</Text>
+          <Text style={styles.navText}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -614,8 +634,8 @@ export default function HomeScreen() {
         >
           <View style={styles.modalContent}>
             <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Add Transaction</Text>
-            
+            <Text style={styles.modalTitle}>{t('addModal.title')}</Text>
+
             <TouchableOpacity
               style={styles.modalOption}
               onPress={() => {
@@ -627,8 +647,8 @@ export default function HomeScreen() {
                 <Ionicons name="chatbubble-ellipses" size={24} color="#10B981" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>Chat with AI</Text>
-                <Text style={styles.modalOptionDesc}>Type your expense naturally</Text>
+                <Text style={styles.modalOptionTitle}>{t('addModal.chatWithAI')}</Text>
+                <Text style={styles.modalOptionDesc}>{t('addModal.chatWithAIDesc')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -643,8 +663,8 @@ export default function HomeScreen() {
                 <Ionicons name="create" size={24} color="#3B82F6" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>Manual Input</Text>
-                <Text style={styles.modalOptionDesc}>Enter transaction details manually</Text>
+                <Text style={styles.modalOptionTitle}>{t('addModal.manualInput')}</Text>
+                <Text style={styles.modalOptionDesc}>{t('addModal.manualInputDesc')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -659,8 +679,8 @@ export default function HomeScreen() {
                 <Ionicons name="camera" size={24} color="#F59E0B" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>Scan Receipt</Text>
-                <Text style={styles.modalOptionDesc}>Take a photo of your receipt</Text>
+                <Text style={styles.modalOptionTitle}>{t('addModal.scanReceipt')}</Text>
+                <Text style={styles.modalOptionDesc}>{t('addModal.scanReceiptDesc')}</Text>
               </View>
             </TouchableOpacity>
 
@@ -675,8 +695,8 @@ export default function HomeScreen() {
                 <Ionicons name="mic" size={24} color="#8B5CF6" />
               </View>
               <View style={styles.modalOptionContent}>
-                <Text style={styles.modalOptionTitle}>Voice Log</Text>
-                <Text style={styles.modalOptionDesc}>Speak your expense</Text>
+                <Text style={styles.modalOptionTitle}>{t('addModal.voiceLog')}</Text>
+                <Text style={styles.modalOptionDesc}>{t('addModal.voiceLogDesc')}</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -704,7 +724,7 @@ export default function HomeScreen() {
           <View style={styles.bottomSheetContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHandle} />
             <View style={styles.bottomSheetHeader}>
-              <Text style={styles.bottomSheetTitle}>Scan Receipt</Text>
+              <Text style={styles.bottomSheetTitle}>{t('receipt.scanReceipt')}</Text>
               <TouchableOpacity
                 onPress={() => {
                   setShowReceiptModal(false);
@@ -730,7 +750,7 @@ export default function HomeScreen() {
                     onPress={() => setSelectedImage(null)}
                   >
                     <Ionicons name="refresh" size={18} color="#6B7280" />
-                    <Text style={styles.retakeButtonText}>Retake</Text>
+                    <Text style={styles.retakeButtonText}>{t('common.retake')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.processButtonSmall, processingReceipt && styles.buttonDisabled]}
@@ -742,7 +762,7 @@ export default function HomeScreen() {
                     ) : (
                       <>
                         <Ionicons name="checkmark" size={18} color="#fff" />
-                        <Text style={styles.processButtonText}>Process</Text>
+                        <Text style={styles.processButtonText}>{t('common.process')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -753,19 +773,19 @@ export default function HomeScreen() {
                 <View style={styles.cameraIconMedium}>
                   <Ionicons name="receipt" size={48} color="#F59E0B" />
                 </View>
-                <Text style={styles.cameraTitleSmall}>Take a photo or select from gallery</Text>
+                <Text style={styles.cameraTitleSmall}>{t('receipt.takePhotoOrGallery')}</Text>
                 <View style={styles.cameraButtonsRow}>
                   <TouchableOpacity style={styles.cameraBtnCompact} onPress={handleTakePhoto}>
                     <View style={styles.cameraBtnIcon}>
                       <Ionicons name="camera" size={24} color="#10B981" />
                     </View>
-                    <Text style={styles.cameraBtnTextSmall}>Camera</Text>
+                    <Text style={styles.cameraBtnTextSmall}>{t('receipt.camera')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.cameraBtnCompact} onPress={handlePickImage}>
                     <View style={styles.cameraBtnIcon}>
                       <Ionicons name="images" size={24} color="#10B981" />
                     </View>
-                    <Text style={styles.cameraBtnTextSmall}>Gallery</Text>
+                    <Text style={styles.cameraBtnTextSmall}>{t('receipt.gallery')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -806,7 +826,7 @@ export default function HomeScreen() {
           <View style={styles.voiceBottomSheet} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHandle} />
             <View style={styles.bottomSheetHeader}>
-              <Text style={styles.bottomSheetTitle}>Voice Log</Text>
+              <Text style={styles.bottomSheetTitle}>{t('voice.voiceLog')}</Text>
               <TouchableOpacity
                 onPress={() => {
                   if (!isRecording && !processingVoice) {
@@ -837,44 +857,42 @@ export default function HomeScreen() {
               {processingVoice ? (
                 <View style={styles.processingContainerCompact}>
                   <ActivityIndicator size="small" color="#8B5CF6" />
-                  <Text style={styles.processingTextSmall}>Processing your voice...</Text>
+                  <Text style={styles.processingTextSmall}>{t('voice.processing')}</Text>
                 </View>
               ) : isRecording ? (
                 <View style={styles.recordingInfoCompact}>
                   <Text style={styles.recordingDurationSmall}>{formatDuration(recordingDuration)}</Text>
                   <View style={styles.recordingIndicator}>
                     <View style={styles.recordingDot} />
-                    <Text style={styles.recordingLabelSmall}>Recording... Speak now!</Text>
+                    <Text style={styles.recordingLabelSmall}>{t('voice.recording')}</Text>
                   </View>
                 </View>
               ) : (
                 <Text style={styles.voiceSubtitleCompact}>
-                  Starting recorder...
+                  {t('voice.startingRecorder')}
                 </Text>
               )}
 
               <View style={styles.voiceExamplesCompact}>
                 <Text style={styles.examplesTitleSmall}>
-                  {language === 'id' 
-                    ? 'Contoh: "Beli makan 50rb" atau "Gaji masuk 5 juta"'
-                    : 'Try: "Spent $20 on lunch" or "Got paid $500"'}
+                  {t('voice.exampleHint')}
                 </Text>
               </View>
 
               <View style={styles.voiceActionsCompact}>
                 {processingVoice ? (
                   <View style={styles.waitingContainer}>
-                    <Text style={styles.waitingText}>Please wait...</Text>
+                    <Text style={styles.waitingText}>{t('common.pleaseWait')}</Text>
                   </View>
                 ) : isRecording ? (
                   <TouchableOpacity style={styles.stopButtonCompact} onPress={stopRecording}>
                     <Ionicons name="stop" size={20} color="#fff" />
-                    <Text style={styles.stopButtonTextSmall}>Stop & Process</Text>
+                    <Text style={styles.stopButtonTextSmall}>{t('voice.stopProcess')}</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.waitingContainer}>
                     <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text style={styles.waitingText}>Initializing...</Text>
+                    <Text style={styles.waitingText}>{t('voice.initializing')}</Text>
                   </View>
                 )}
               </View>
@@ -895,7 +913,7 @@ export default function HomeScreen() {
             <View style={styles.successIcon}>
               <Ionicons name="checkmark-circle" size={64} color="#10B981" />
             </View>
-            <Text style={styles.successTitle}>Transaction Saved!</Text>
+            <Text style={styles.successTitle}>{t('success.transactionSaved')}</Text>
             
             {successTransaction && (
               <View style={styles.successDetails}>
@@ -905,28 +923,28 @@ export default function HomeScreen() {
                   </Text>
                 )}
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Amount</Text>
+                  <Text style={styles.successLabel}>{t('success.amount')}</Text>
                   <Text style={styles.successValue}>
                     {formatAmount(successTransaction.amount, successTransaction.currency)}
                   </Text>
                 </View>
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Category</Text>
-                  <Text style={styles.successValue}>{successTransaction.category}</Text>
+                  <Text style={styles.successLabel}>{t('success.category')}</Text>
+                  <Text style={styles.successValue}>{translateCategory(successTransaction.category)}</Text>
                 </View>
                 {successTransaction.merchant && (
                   <View style={styles.successRow}>
-                    <Text style={styles.successLabel}>Merchant</Text>
+                    <Text style={styles.successLabel}>{t('success.merchant')}</Text>
                     <Text style={styles.successValue}>{successTransaction.merchant}</Text>
                   </View>
                 )}
                 <View style={styles.successRow}>
-                  <Text style={styles.successLabel}>Type</Text>
+                  <Text style={styles.successLabel}>{t('success.type')}</Text>
                   <Text style={[
                     styles.successValue,
                     successTransaction.transaction_type === "income" ? styles.incomeText : styles.expenseText
                   ]}>
-                    {successTransaction.transaction_type === "income" ? "Income" : "Expense"}
+                    {successTransaction.transaction_type === "income" ? t('success.income') : t('success.expense')}
                   </Text>
                 </View>
               </View>
@@ -939,7 +957,7 @@ export default function HomeScreen() {
                 setSuccessTransaction(null);
               }}
             >
-              <Text style={styles.successButtonText}>Done</Text>
+              <Text style={styles.successButtonText}>{t('common.done')}</Text>
             </TouchableOpacity>
           </View>
         </View>

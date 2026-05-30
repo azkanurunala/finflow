@@ -74,7 +74,7 @@ export default function AddScreen() {
         setSelectedImage(result.assets[0].base64);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to take photo");
+      Alert.alert(t('common.error'), t('receipt.failTakePhoto'));
     }
   };
 
@@ -92,7 +92,7 @@ export default function AddScreen() {
         setSelectedImage(result.assets[0].base64);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
+      Alert.alert(t('common.error'), t('receipt.failPickImage'));
     }
   };
 
@@ -114,20 +114,20 @@ export default function AddScreen() {
         }
       );
 
-      Alert.alert("Success", "Receipt processed successfully!", [
+      Alert.alert(t('common.success'), t('add.receiptProcessed'), [
         {
-          text: "View Transaction",
+          text: t('add.viewTransaction'),
           onPress: () => router.replace("/(app)/history"),
         },
         {
-          text: "Add Another",
+          text: t('manual.addAnother'),
           onPress: () => setSelectedImage(null),
         },
       ]);
     } catch (error: any) {
       Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process receipt"
+        t('common.error'),
+        error.response?.data?.detail || t('receipt.failProcess')
       );
     } finally {
       setLoading(false);
@@ -148,7 +148,7 @@ export default function AddScreen() {
       setRecording(recording);
       setIsRecording(true);
     } catch (error) {
-      Alert.alert("Error", "Failed to start recording");
+      Alert.alert(t('common.error'), t('voice.failStartRecording'));
     }
   };
 
@@ -199,15 +199,18 @@ export default function AddScreen() {
       );
 
       Alert.alert(
-        "Success",
-        `Transcribed: "${apiResponse.data.transcription}"\n\n${apiResponse.data.message}`,
+        t('common.success'),
+        t('add.transcribed', {
+          text: apiResponse.data.transcription,
+          message: apiResponse.data.message,
+        }),
         [
           {
-            text: "View Transactions",
+            text: t('add.viewTransactions'),
             onPress: () => router.replace("/(app)/history"),
           },
           {
-            text: "Record Another",
+            text: t('add.recordAnother'),
             style: "cancel",
           },
         ]
@@ -217,8 +220,8 @@ export default function AddScreen() {
     } catch (error: any) {
       console.error("Voice transcription error:", error);
       Alert.alert(
-        "Error",
-        error.response?.data?.detail || "Failed to process voice recording. Please try again."
+        t('common.error'),
+        error.response?.data?.detail || t('add.failVoiceRetry')
       );
     } finally {
       setLoading(false);
@@ -227,7 +230,7 @@ export default function AddScreen() {
 
   const renderModeSelection = () => (
     <View style={styles.modeSelection}>
-      <Text style={styles.sectionTitle}>Choose Input Method</Text>
+      <Text style={styles.sectionTitle}>{t('add.chooseInputMethod')}</Text>
       
       <TouchableOpacity
         style={styles.modeCard}
@@ -264,9 +267,9 @@ export default function AddScreen() {
             <Ionicons name="create" size={32} color="#3B82F6" />
           </View>
           <View style={styles.modeContent}>
-            <Text style={styles.modeTitle}>Manual Input</Text>
+            <Text style={styles.modeTitle}>{t('addModal.manualInput')}</Text>
             <Text style={styles.modeDescription}>
-              Enter transaction details manually
+              {t('addModal.manualInputDesc')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={24} color="#3B82F6" />
@@ -336,7 +339,7 @@ export default function AddScreen() {
               onPress={() => setSelectedImage(null)}
             >
               <Ionicons name="refresh" size={20} color="#6B7280" />
-              <Text style={styles.secondaryButtonText}>Retake</Text>
+              <Text style={styles.secondaryButtonText}>{t('common.retake')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.primaryButton, loading && styles.buttonDisabled]}
@@ -348,7 +351,7 @@ export default function AddScreen() {
               ) : (
                 <>
                   <Ionicons name="checkmark" size={20} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Process Receipt</Text>
+                  <Text style={styles.primaryButtonText}>{t('add.processReceipt')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -359,9 +362,9 @@ export default function AddScreen() {
           <View style={styles.cameraIconContainer}>
             <Ionicons name="receipt" size={64} color="#F59E0B" />
           </View>
-          <Text style={styles.cameraTitle}>Scan Your Receipt</Text>
+          <Text style={styles.cameraTitle}>{t('add.scanYourReceipt')}</Text>
           <Text style={styles.cameraSubtitle}>
-            Take a photo or select from gallery to automatically extract transaction details
+            {t('add.scanReceiptSubtitle')}
           </Text>
           
           <View style={styles.cameraButtons}>
@@ -372,7 +375,7 @@ export default function AddScreen() {
               <View style={styles.cameraButtonIcon}>
                 <Ionicons name="camera" size={28} color="#4DB6AC" />
               </View>
-              <Text style={styles.cameraButtonText}>Take Photo</Text>
+              <Text style={styles.cameraButtonText}>{t('add.takePhoto')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -382,7 +385,7 @@ export default function AddScreen() {
               <View style={styles.cameraButtonIcon}>
                 <Ionicons name="images" size={28} color="#4DB6AC" />
               </View>
-              <Text style={styles.cameraButtonText}>Gallery</Text>
+              <Text style={styles.cameraButtonText}>{t('receipt.gallery')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -408,25 +411,25 @@ export default function AddScreen() {
             <Text style={styles.recordingDuration}>
               {formatDuration(recordingDuration)}
             </Text>
-            <Text style={styles.recordingLabel}>Recording...</Text>
+            <Text style={styles.recordingLabel}>{t('add.recording')}</Text>
           </View>
         ) : (
           <View style={styles.voiceInstructions}>
-            <Text style={styles.voiceTitle}>Voice Recording</Text>
+            <Text style={styles.voiceTitle}>{t('add.voiceRecording')}</Text>
             <Text style={styles.voiceSubtitle}>
-              Tap the button below and speak your expense naturally
+              {t('add.voiceRecordingSubtitle')}
             </Text>
           </View>
         )}
       </View>
 
       <View style={styles.voiceExamples}>
-        <Text style={styles.examplesTitle}>Try saying:</Text>
+        <Text style={styles.examplesTitle}>{t('add.trySaying')}</Text>
         <View style={styles.exampleBubble}>
-          <Text style={styles.exampleText}>"Spent $15 on lunch at Subway"</Text>
+          <Text style={styles.exampleText}>{t('add.example1')}</Text>
         </View>
         <View style={styles.exampleBubble}>
-          <Text style={styles.exampleText}>"Paid $50 for gas yesterday"</Text>
+          <Text style={styles.exampleText}>{t('add.example2')}</Text>
         </View>
       </View>
 
@@ -442,7 +445,7 @@ export default function AddScreen() {
             ) : (
               <>
                 <Ionicons name="stop" size={24} color="#fff" />
-                <Text style={styles.stopButtonText}>Stop Recording</Text>
+                <Text style={styles.stopButtonText}>{t('add.stopRecording')}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -452,7 +455,7 @@ export default function AddScreen() {
             onPress={startRecording}
           >
             <Ionicons name="mic" size={24} color="#fff" />
-            <Text style={styles.recordButtonText}>Start Recording</Text>
+            <Text style={styles.recordButtonText}>{t('add.startRecording')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -469,7 +472,7 @@ export default function AddScreen() {
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {mode === "camera" ? "Scan Receipt" : mode === "voice" ? "Voice Log" : "Add Transaction"}
+          {mode === "camera" ? t('addModal.scanReceipt') : mode === "voice" ? t('voice.voiceLog') : t('addModal.title')}
         </Text>
         <View style={styles.placeholder} />
       </View>

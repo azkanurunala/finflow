@@ -20,14 +20,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { translateCategory } from "../../utils/i18n";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 const CATEGORY_CHIPS = [
-  { id: "groceries", label: "Groceries", icon: "cart" },
-  { id: "dining", label: "Dining", icon: "restaurant" },
-  { id: "transport", label: "Transport", icon: "car" },
-  { id: "entertainment", label: "Fun", icon: "game-controller" },
+  { id: "groceries", label: "Groceries", labelKey: "categories.groceries", icon: "cart" },
+  { id: "dining", label: "Dining", labelKey: "chat.chipDining", icon: "restaurant" },
+  { id: "transport", label: "Transport", labelKey: "chat.chipTransport", icon: "car" },
+  { id: "entertainment", label: "Fun", labelKey: "chat.chipFun", icon: "game-controller" },
 ];
 
 export default function ChatScreen() {
@@ -42,11 +43,10 @@ export default function ChatScreen() {
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Add welcome message based on language
-    const welcomeMessage = language === 'id' 
-      ? `Halo ${user?.name?.split(" ")[0] || ""}! Saya siap membantu mencatat pengeluaranmu. Coba bilang "Beli makan 50rb" atau "Gaji masuk 5 juta".`
-      : `Hi ${user?.name?.split(" ")[0] || "there"}! I'm ready to help you log your expenses. Try saying "Spent $15 on lunch" or "Got paid $500".`;
-    
+    // Add localized welcome message
+    const firstName = user?.name?.split(" ")[0] || "";
+    const welcomeMessage = t('chat.welcome', { name: firstName });
+
     setMessages([
       {
         id: "welcome",
@@ -95,25 +95,25 @@ export default function ChatScreen() {
 
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
-      const errorMsg = error.response?.data?.detail || "Failed to process transaction";
-      
+      const errorMsg = error.response?.data?.detail || t('chat.failProcess');
+
       if (error.response?.status === 403 && errorMsg.includes("Quota exceeded")) {
         Alert.alert(
-          "Quota Exceeded",
-          "You've reached your daily limit. Upgrade your plan to continue!",
+          t('chat.quotaExceeded'),
+          t('chat.quotaExceededMsg'),
           [
-            { text: "Cancel", style: "cancel" },
-            { text: "Upgrade", onPress: () => router.push("/(app)/subscription") }
+            { text: t('common.cancel'), style: "cancel" },
+            { text: t('chat.upgrade'), onPress: () => router.push("/(app)/subscription") }
           ]
         );
       } else {
-        Alert.alert("Error", errorMsg);
+        Alert.alert(t('common.error'), errorMsg);
       }
-      
+
       const errorMessage = {
         id: Date.now().toString() + "_error",
         type: "assistant",
-        text: "Sorry, I couldn't process that. Could you try rephrasing?",
+        text: t('chat.sorryRephrase'),
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -123,7 +123,7 @@ export default function ChatScreen() {
   };
 
   const handleCategoryChip = (category: string) => {
-    setChatText(`I want to log ${category}`);
+    setChatText(t('chat.logIntent', { category }));
   };
 
   return (
@@ -137,10 +137,10 @@ export default function ChatScreen() {
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>AI Assistant</Text>
+          <Text style={styles.headerTitle}>{t('chat.aiAssistant')}</Text>
           <View style={styles.onlineStatus}>
             <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>ONLINE</Text>
+            <Text style={styles.onlineText}>{t('chat.online')}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.menuButton}>
@@ -165,7 +165,7 @@ export default function ChatScreen() {
         >
           {/* Date Header */}
           <View style={styles.dateHeader}>
-            <Text style={styles.dateText}>TODAY</Text>
+            <Text style={styles.dateText}>{t('chat.today')}</Text>
           </View>
 
           {messages.map((message) => (
@@ -218,10 +218,10 @@ export default function ChatScreen() {
                       </View>
                       <View style={styles.transactionInfo}>
                         <Text style={styles.transactionCategory}>
-                          {message.transaction.category}
+                          {translateCategory(message.transaction.category)}
                         </Text>
                         <Text style={styles.transactionMerchant}>
-                          {message.transaction.merchant || "Transaction recorded"}
+                          {message.transaction.merchant || t('chat.transactionRecorded')}
                         </Text>
                       </View>
                     </View>
@@ -235,7 +235,7 @@ export default function ChatScreen() {
                       </Text>
                       <View style={styles.editHint}>
                         <Ionicons name="create-outline" size={14} color="#9CA3AF" />
-                        <Text style={styles.editHintText}>Tap to edit</Text>
+                        <Text style={styles.editHintText}>{t('chat.tapToEdit')}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -282,7 +282,7 @@ export default function ChatScreen() {
                 activeOpacity={0.7}
               >
                 <Ionicons name={chip.icon} size={16} color="#4DB6AC" />
-                <Text style={styles.chipText}>{chip.label}</Text>
+                <Text style={styles.chipText}>{t(chip.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -302,7 +302,7 @@ export default function ChatScreen() {
             style={styles.input}
             value={chatText}
             onChangeText={setChatText}
-            placeholder={language === 'id' ? "Ketik pengeluaran..." : "Type an expense..."}
+            placeholder={t('chat.typeExpense')}
             placeholderTextColor="#9CA3AF"
             multiline
             maxLength={500}

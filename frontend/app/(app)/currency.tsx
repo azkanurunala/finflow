@@ -17,11 +17,13 @@ import {
 } from "../../utils/currency";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 export default function CurrencySelectionScreen() {
   const router = useRouter();
   const { currency, setCurrency, conversionMode } = useCurrency();
   const { updateOnboarding } = useAuth();
+  const { t } = useLanguage();
   const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -42,11 +44,11 @@ export default function CurrencySelectionScreen() {
 
     const message =
       conversionMode === "live"
-        ? "Amounts will now be shown in your selected currency, converting other currencies using live exchange rates."
-        : "Amounts will now be shown in your selected currency. Enable Live conversion in Profile to convert values across currencies.";
+        ? t("currency.liveMsg")
+        : t("currency.offMsg");
 
-    Alert.alert("Currency Changed", message, [
-      { text: "OK", onPress: () => router.back() },
+    Alert.alert(t("currency.currencyChanged"), message, [
+      { text: t("common.ok"), onPress: () => router.back() },
     ]);
   };
 
@@ -65,7 +67,7 @@ export default function CurrencySelectionScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Select Currency</Text>
+        <Text style={styles.headerTitle}>{t("currency.selectCurrency")}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -75,7 +77,7 @@ export default function CurrencySelectionScreen() {
           <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search currencies..."
+            placeholder={t("currency.searchCurrencies")}
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -85,7 +87,7 @@ export default function CurrencySelectionScreen() {
         {/* Popular Currencies */}
         {!searchQuery && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Popular Currencies</Text>
+            <Text style={styles.sectionTitle}>{t("currency.popularCurrencies")}</Text>
             {POPULAR_CURRENCIES.map((currency) => (
               <TouchableOpacity
                 key={currency.code}
@@ -116,7 +118,7 @@ export default function CurrencySelectionScreen() {
         {/* Others */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>
-            {searchQuery ? "Results" : "Others"}
+            {searchQuery ? t("currency.results") : t("currency.others")}
           </Text>
           {(searchQuery ? filteredCurrencies : OTHER_CURRENCIES).map((currency) => (
             <TouchableOpacity
@@ -152,7 +154,7 @@ export default function CurrencySelectionScreen() {
           onPress={handleConfirm}
           activeOpacity={0.8}
         >
-          <Text style={styles.confirmButtonText}>Confirm Selection</Text>
+          <Text style={styles.confirmButtonText}>{t("currency.confirmSelection")}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

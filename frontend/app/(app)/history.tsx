@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { translateCategory } from "../../utils/i18n";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -57,7 +58,7 @@ export default function HistoryScreen() {
       
       setTransactions(sortedTransactions);
     } catch (error) {
-      Alert.alert(t('common.error'), "Failed to fetch transactions");
+      Alert.alert(t('common.error'), t('history.failFetch'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,7 +77,7 @@ export default function HistoryScreen() {
   const handleDelete = (id: string) => {
     Alert.alert(
       t('common.delete'),
-      "Are you sure you want to delete this transaction?",
+      t('history.deleteConfirm'),
       [
         { text: t('common.cancel'), style: "cancel" },
         {
@@ -90,7 +91,7 @@ export default function HistoryScreen() {
               });
               setTransactions((prev) => prev.filter((t) => t.id !== id));
             } catch (error) {
-              Alert.alert(t('common.error'), "Failed to delete transaction");
+              Alert.alert(t('common.error'), t('history.failDelete'));
             }
           },
         },
@@ -162,10 +163,10 @@ export default function HistoryScreen() {
           </View>
           <View style={styles.transactionInfo}>
             <Text style={styles.merchantText}>
-              {item.merchant || "Unknown Merchant"}
+              {item.merchant || t('history.unknownMerchant')}
             </Text>
             <View style={styles.categoryRow}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+              <Text style={styles.categoryText}>{translateCategory(item.category)}</Text>
               <View style={styles.separator} />
               <Ionicons
                 name={getSourceIcon(item.source)}
@@ -204,7 +205,7 @@ export default function HistoryScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction History</Text>
+        <Text style={styles.headerTitle}>{t('history.transactionHistory')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -243,12 +244,12 @@ export default function HistoryScreen() {
           onPress={() => router.push("/(app)")}
         >
           <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
+          <Text style={styles.navText}>{t('nav.home')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="swap-horizontal" size={24} color="#10B981" />
-          <Text style={[styles.navText, styles.navTextActive]}>Transactions</Text>
+          <Text style={[styles.navText, styles.navTextActive]}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -265,7 +266,7 @@ export default function HistoryScreen() {
           onPress={() => router.push("/(app)/insights")}
         >
           <Ionicons name="bar-chart-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
+          <Text style={styles.navText}>{t('nav.analytics')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -273,7 +274,7 @@ export default function HistoryScreen() {
           onPress={() => router.push("/(app)/profile")}
         >
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Profile</Text>
+          <Text style={styles.navText}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -17,6 +17,8 @@ import { useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
+import { useLanguage } from "../../contexts/LanguageContext";
+import { translateCategory } from "../../utils/i18n";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
@@ -29,8 +31,18 @@ interface AIInsights {
   recommendations: string[];
   spending_trend: string;
   chart_data: {
-    by_category: { category: string; amount: number }[];
-    income_vs_expenses: { income: number; expenses: number; net: number };
+    by_category: {
+      category: string;
+      amount: number;
+      by_currency?: { [c: string]: number };
+    }[];
+    income_vs_expenses: {
+      income: number;
+      expenses: number;
+      net: number;
+      income_by_currency?: { [c: string]: number };
+      expense_by_currency?: { [c: string]: number };
+    };
   };
   period_days: number;
   currency: string;
@@ -38,7 +50,20 @@ interface AIInsights {
 
 export default function AdvancedAnalyticsScreen() {
   const router = useRouter();
-  const { formatAmount, currency } = useCurrency();
+  const { formatAmount, currency, convert } = useCurrency();
+  const { t } = useLanguage();
+
+  // Sum a per-currency map into the selected currency (live) or raw (off).
+  const sumConverted = (
+    byCurrency: { [c: string]: number } | undefined,
+    fallback: number
+  ) =>
+    byCurrency && Object.keys(byCurrency).length > 0
+      ? Object.entries(byCurrency).reduce(
+          (sum, [cur, amt]) => sum + convert(amt, cur),
+          0
+        )
+      : fallback;
   const [insights, setInsights] = useState<AIInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -116,9 +141,9 @@ export default function AdvancedAnalyticsScreen() {
         }
       }
       
-      Alert.alert("Success", "Export completed successfully!");
+      Alert.alert(t('common.success'), t('analytics.exportSuccess'));
     } catch (error) {
-      Alert.alert("Error", "Failed to export data");
+      Alert.alert(t('common.error'), t('analytics.exportFail'));
     } finally {
       setExporting(false);
     }
@@ -147,16 +172,21 @@ export default function AdvancedAnalyticsScreen() {
     return colors[index % colors.length];
   };
 
-  const renderCategoryBar = (item: { category: string; amount: number }, index: number, maxAmount: number) => {
-    const percentage = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
+  const renderCategoryBar = (
+    item: { category: string; amount: number; by_currency?: { [c: string]: number } },
+    index: number,
+    maxAmount: number
+  ) => {
+    const value = sumConverted(item.by_currency, item.amount);
+    const percentage = maxAmount > 0 ? (value / maxAmount) * 100 : 0;
     const barWidth = (percentage / 100) * (SCREEN_WIDTH - 80);
     const color = getCategoryColor(index);
 
     return (
       <View key={item.category} style={styles.categoryItem}>
         <View style={styles.categoryHeader}>
-          <Text style={styles.categoryName}>{item.category}</Text>
-          <Text style={styles.categoryAmount}>{formatAmount(item.amount)}</Text>
+          <Text style={styles.categoryName}>{translateCategory(item.category)}</Text>
+          <Text style={styles.categoryAmount}>{formatAmount(value)}</Text>
         </View>
         <View style={styles.barContainer}>
           <View style={[styles.bar, { width: barWidth, backgroundColor: color }]} />
@@ -165,22 +195,28 @@ export default function AdvancedAnalyticsScreen() {
     );
   };
 
+  // Income/Expense/Net converted into the selected currency (live) or raw (off).
+  const ive = insights?.chart_data?.income_vs_expenses;
+  const incomeValue = sumConverted(ive?.income_by_currency, ive?.income || 0);
+  const expenseValue = sumConverted(ive?.expense_by_currency, ive?.expenses || 0);
+  const netValue = incomeValue - expenseValue;
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Analytics</Text>
-        <TouchableOpacity 
+        <Text style={styles.headerTitle}>{t('analytics.aiAnalytics')}</Text>
+        <TouchableOpacity
           style={styles.exportButton}
           onPress={() => Alert.alert(
-            "Export Data",
-            "Choose export format",
+            t('analytics.exportData'),
+            t('analytics.chooseExportFormat'),
             [
               { text: "CSV", onPress: () => handleExport("csv") },
               { text: "JSON", onPress: () => handleExport("json") },
-              { text: "Cancel", style: "cancel" }
+              { text: t('common.cancel'), style: "cancel" }
             ]
           )}
           disabled={exporting}
@@ -203,7 +239,7 @@ export default function AdvancedAnalyticsScreen() {
               onPress={() => setSelectedPeriod(days)}
             >
               <Text style={[styles.periodButtonText, selectedPeriod === days && styles.periodButtonTextActive]}>
-                {days} Days
+                {t('analytics.daysLabel', { count: days })}
               </Text>
             </TouchableOpacity>
           ))}
@@ -212,7 +248,7 @@ export default function AdvancedAnalyticsScreen() {
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#10B981" />
-            <Text style={styles.loadingText}>Analyzing your finances...</Text>
+            <Text style={styles.loadingText}>{t('analytics.analyzingFinances')}</Text>
           </View>
         ) : insights ? (
           <>
@@ -226,42 +262,42 @@ export default function AdvancedAnalyticsScreen() {
                     color={getTrendColor(insights?.spending_trend || 'good')} 
                   />
                   <Text style={[styles.trendText, { color: getTrendColor(insights?.spending_trend || 'good') }]}>
-                    {(insights?.spending_trend || 'good') === "good" ? "On Track" : 
-                     (insights?.spending_trend || 'good') === "needs_attention" ? "Needs Attention" : "Review Needed"}
+                    {(insights?.spending_trend || 'good') === "good" ? t('analytics.onTrack') :
+                     (insights?.spending_trend || 'good') === "needs_attention" ? t('analytics.needsAttention') : t('analytics.reviewNeeded')}
                   </Text>
                 </View>
                 <Ionicons name="sparkles" size={24} color="#F59E0B" />
               </View>
-              <Text style={styles.summaryText}>{insights?.summary || 'No summary available'}</Text>
+              <Text style={styles.summaryText}>{insights?.summary || t('analytics.noSummary')}</Text>
             </View>
 
             {/* Income vs Expenses */}
             <View style={styles.statsCard}>
-              <Text style={styles.sectionTitle}>Overview</Text>
+              <Text style={styles.sectionTitle}>{t('analytics.overview')}</Text>
               <View style={styles.statsRow}>
                 <View style={[styles.statBox, styles.incomeBox]}>
                   <Ionicons name="arrow-down-circle" size={24} color="#10B981" />
-                  <Text style={styles.statLabel}>Income</Text>
+                  <Text style={styles.statLabel}>{t('analytics.income')}</Text>
                   <Text style={[styles.statValue, { color: "#10B981" }]}>
-                    {formatAmount(insights?.chart_data?.income_vs_expenses?.income || 0)}
+                    {formatAmount(incomeValue)}
                   </Text>
                 </View>
                 <View style={[styles.statBox, styles.expenseBox]}>
                   <Ionicons name="arrow-up-circle" size={24} color="#EF4444" />
-                  <Text style={styles.statLabel}>Expenses</Text>
+                  <Text style={styles.statLabel}>{t('analytics.expenses')}</Text>
                   <Text style={[styles.statValue, { color: "#EF4444" }]}>
-                    {formatAmount(insights?.chart_data?.income_vs_expenses?.expenses || 0)}
+                    {formatAmount(expenseValue)}
                   </Text>
                 </View>
               </View>
               <View style={styles.netRow}>
-                <Text style={styles.netLabel}>Net Balance</Text>
+                <Text style={styles.netLabel}>{t('analytics.netBalance')}</Text>
                 <Text style={[
                   styles.netValue,
-                  { color: (insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "#10B981" : "#EF4444" }
+                  { color: netValue >= 0 ? "#10B981" : "#EF4444" }
                 ]}>
-                  {(insights?.chart_data?.income_vs_expenses?.net || 0) >= 0 ? "+" : ""}
-                  {formatAmount(insights?.chart_data?.income_vs_expenses?.net || 0)}
+                  {netValue >= 0 ? "+" : ""}
+                  {formatAmount(netValue)}
                 </Text>
               </View>
             </View>
@@ -270,7 +306,7 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.insightsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="bulb" size={24} color="#F59E0B" />
-                <Text style={styles.sectionTitle}>AI Insights</Text>
+                <Text style={styles.sectionTitle}>{t('analytics.aiInsights')}</Text>
               </View>
               {(insights?.insights || []).map((insight, index) => (
                 <View key={index} style={styles.insightItem}>
@@ -284,7 +320,7 @@ export default function AdvancedAnalyticsScreen() {
             <View style={styles.recommendationsCard}>
               <View style={styles.cardHeader}>
                 <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                <Text style={styles.sectionTitle}>Recommendations</Text>
+                <Text style={styles.sectionTitle}>{t('analytics.recommendations')}</Text>
               </View>
               {(insights?.recommendations || []).map((rec, index) => (
                 <View key={index} style={styles.recommendationItem}>
@@ -299,13 +335,13 @@ export default function AdvancedAnalyticsScreen() {
             {/* Spending by Category */}
             {(insights?.chart_data?.by_category?.length || 0) > 0 && (
               <View style={styles.categoryCard}>
-                <Text style={styles.sectionTitle}>Spending by Category</Text>
+                <Text style={styles.sectionTitle}>{t('analytics.spendingByCategory')}</Text>
                 <View style={styles.categoryList}>
-                  {(insights?.chart_data?.by_category || []).map((item, index) => 
+                  {(insights?.chart_data?.by_category || []).map((item, index) =>
                     renderCategoryBar(
-                      item, 
-                      index, 
-                      Math.max(...(insights?.chart_data?.by_category || []).map(c => c.amount || 0), 1)
+                      item,
+                      index,
+                      Math.max(...(insights?.chart_data?.by_category || []).map(c => sumConverted(c.by_currency, c.amount || 0)), 1)
                     )
                   )}
                 </View>
@@ -314,7 +350,7 @@ export default function AdvancedAnalyticsScreen() {
 
             {/* Export Options */}
             <View style={styles.exportCard}>
-              <Text style={styles.sectionTitle}>Export Data</Text>
+              <Text style={styles.sectionTitle}>{t('analytics.exportData')}</Text>
               <View style={styles.exportButtons}>
                 <TouchableOpacity 
                   style={styles.exportOption}
@@ -342,11 +378,11 @@ export default function AdvancedAnalyticsScreen() {
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(app)")}>
           <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
+          <Text style={styles.navText}>{t('nav.home')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(app)/history")}>
           <Ionicons name="swap-horizontal-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
+          <Text style={styles.navText}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItemCenter} onPress={() => router.push("/(app)/manual")}>
           <View style={styles.navCenterButton}>
@@ -355,11 +391,11 @@ export default function AdvancedAnalyticsScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="bar-chart" size={24} color="#10B981" />
-          <Text style={[styles.navText, styles.navTextActive]}>Analytics</Text>
+          <Text style={[styles.navText, styles.navTextActive]}>{t('nav.analytics')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => router.push("/(app)/profile")}>
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Profile</Text>
+          <Text style={styles.navText}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

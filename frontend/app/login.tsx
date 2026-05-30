@@ -15,12 +15,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
   const { user, loading, login, loginWithEmail } = useAuth();
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -44,11 +46,11 @@ export default function LoginScreen() {
 
   const handleEmailLogin = async () => {
     if (!email.trim()) {
-      setError("Please enter your email");
+      setError(t('auth.errEnterEmail'));
       return;
     }
     if (!password.trim()) {
-      setError("Please enter your password");
+      setError(t('auth.errEnterPassword'));
       return;
     }
 
@@ -58,10 +60,10 @@ export default function LoginScreen() {
     try {
       const result = await loginWithEmail(email.trim(), password);
       if (!result.success) {
-        setError(result.error || "Login failed");
+        setError(result.error || t('auth.loginFailed'));
       }
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      setError(t('auth.genericError'));
     } finally {
       setIsLoggingIn(false);
     }
@@ -97,9 +99,9 @@ export default function LoginScreen() {
 
           {/* Welcome Section */}
           <View style={styles.welcomeSection}>
-            <Text style={styles.title}>Welcome Back!</Text>
+            <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
             <Text style={styles.subtitle}>
-              Enter your details to access your account
+              {t('auth.enterDetails')}
             </Text>
           </View>
 
@@ -113,7 +115,7 @@ export default function LoginScreen() {
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t('auth.email')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="mail-outline"
@@ -136,7 +138,7 @@ export default function LoginScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t('auth.password')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="lock-closed-outline"
@@ -146,7 +148,7 @@ export default function LoginScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your password"
+                placeholder={t('auth.enterPassword')}
                 placeholderTextColor="#CBD5E1"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -168,7 +170,7 @@ export default function LoginScreen() {
 
           {/* Forgot Password */}
           <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
           </TouchableOpacity>
 
           {/* Login Button */}
@@ -188,7 +190,7 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.loginButtonText}>Log In</Text>
+                  <Text style={styles.loginButtonText}>{t('auth.login')}</Text>
                   <Ionicons name="arrow-forward" size={20} color="#fff" />
                 </>
               )}
@@ -198,7 +200,7 @@ export default function LoginScreen() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR CONTINUE WITH</Text>
+            <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -210,7 +212,7 @@ export default function LoginScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="logo-google" size={20} color="#1F2937" />
-              <Text style={styles.socialButtonText}>Google</Text>
+              <Text style={styles.socialButtonText}>{t('auth.google')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -220,16 +222,16 @@ export default function LoginScreen() {
             >
               <Ionicons name="logo-apple" size={20} color="#9CA3AF" />
               <Text style={[styles.socialButtonText, styles.socialButtonTextDisabled]}>
-                Apple
+                {t('auth.apple')}
               </Text>
             </TouchableOpacity>
           </View>
 
           {/* Sign Up Link */}
           <View style={styles.signupLink}>
-            <Text style={styles.signupLinkText}>Don't have an account? </Text>
+            <Text style={styles.signupLinkText}>{t('auth.dontHaveAccount')} </Text>
             <TouchableOpacity onPress={() => router.push("/signup")}>
-              <Text style={styles.signupLinkTextBold}>Sign Up</Text>
+              <Text style={styles.signupLinkTextBold}>{t('auth.signup')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

@@ -1321,20 +1321,37 @@ async def get_insights(
         total_expenses = 0
         total_income = 0
         by_category = {}
-        
+        # Per-currency breakdowns so the client can convert each currency group
+        # to the user's display currency (live conversion).
+        income_by_currency = {}
+        expense_by_currency = {}
+        category_by_currency = {}
+
         for t in transactions:
+            amount = t["amount"]
+            cur = t.get("currency") or "USD"
             if t["transaction_type"] == "expense":
-                total_expenses += t["amount"]
+                total_expenses += amount
                 category = t["category"]
-                by_category[category] = by_category.get(category, 0) + t["amount"]
+                by_category[category] = by_category.get(category, 0) + amount
+                expense_by_currency[cur] = expense_by_currency.get(cur, 0) + amount
+                cc = category_by_currency.setdefault(category, {})
+                cc[cur] = cc.get(cur, 0) + amount
             else:
-                total_income += t["amount"]
-        
+                total_income += amount
+                income_by_currency[cur] = income_by_currency.get(cur, 0) + amount
+
         return {
             "total_expenses": round(total_expenses, 2),
             "total_income": round(total_income, 2),
             "net": round(total_income - total_expenses, 2),
             "by_category": {k: round(v, 2) for k, v in by_category.items()},
+            "income_by_currency": {k: round(v, 2) for k, v in income_by_currency.items()},
+            "expense_by_currency": {k: round(v, 2) for k, v in expense_by_currency.items()},
+            "category_by_currency": {
+                cat: {c: round(v, 2) for c, v in cur_map.items()}
+                for cat, cur_map in category_by_currency.items()
+            },
             "period": f"Last {days} days"
         }
     except Exception as e:
@@ -1440,13 +1457,23 @@ async def get_ai_insights(
         total_expenses = sum(t["amount"] for t in transactions if t.get("transaction_type") == "expense")
         net = total_income - total_expenses
         
-        # Get spending by category
+        # Get spending by category + per-currency breakdowns (for client conversion)
         category_spending = {}
+        income_by_currency = {}
+        expense_by_currency = {}
+        category_by_currency = {}
         for t in transactions:
+            cur = t.get("currency") or "USD"
+            amt = t["amount"]
             if t.get("transaction_type") == "expense":
                 cat = t.get("category", "Other")
-                category_spending[cat] = category_spending.get(cat, 0) + t["amount"]
-        
+                category_spending[cat] = category_spending.get(cat, 0) + amt
+                expense_by_currency[cur] = expense_by_currency.get(cur, 0) + amt
+                cc = category_by_currency.setdefault(cat, {})
+                cc[cur] = cc.get(cur, 0) + amt
+            else:
+                income_by_currency[cur] = income_by_currency.get(cur, 0) + amt
+
         # Sort categories by spending
         sorted_categories = sorted(category_spending.items(), key=lambda x: x[1], reverse=True)
         top_category = sorted_categories[0] if sorted_categories else ("None", 0)
@@ -1499,13 +1526,18 @@ Respond in JSON format:
         
         ai_insights = json.loads(response_text)
         
-        # Add chart data
+        # Add chart data (with per-currency breakdowns so the client can convert)
         ai_insights["chart_data"] = {
-            "by_category": [{"category": cat, "amount": amt} for cat, amt in sorted_categories],
+            "by_category": [
+                {"category": cat, "amount": amt, "by_currency": category_by_currency.get(cat, {})}
+                for cat, amt in sorted_categories
+            ],
             "income_vs_expenses": {
                 "income": total_income,
                 "expenses": total_expenses,
-                "net": net
+                "net": net,
+                "income_by_currency": income_by_currency,
+                "expense_by_currency": expense_by_currency
             }
         }
         ai_insights["period_days"] = days

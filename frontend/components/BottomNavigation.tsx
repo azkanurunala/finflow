@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, usePathname } from "expo-router";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface BottomNavigationProps {
   onAddPress?: () => void;
@@ -10,6 +11,7 @@ interface BottomNavigationProps {
 export default function BottomNavigation({ onAddPress }: BottomNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   const isActive = (path: string) => {
     if (path === "/(app)" || path === "/") {
@@ -38,7 +40,7 @@ export default function BottomNavigation({ onAddPress }: BottomNavigationProps) 
           color={isActive("/(app)") ? "#10B981" : "#9CA3AF"}
         />
         <Text style={[styles.navText, isActive("/(app)") && styles.navTextActive]}>
-          Home
+          {t('nav.home')}
         </Text>
       </TouchableOpacity>
 
@@ -52,7 +54,7 @@ export default function BottomNavigation({ onAddPress }: BottomNavigationProps) 
           color={isActive("/history") ? "#10B981" : "#9CA3AF"}
         />
         <Text style={[styles.navText, isActive("/history") && styles.navTextActive]}>
-          Transactions
+          {t('nav.transactions')}
         </Text>
       </TouchableOpacity>
 
@@ -72,7 +74,7 @@ export default function BottomNavigation({ onAddPress }: BottomNavigationProps) 
           color={isActive("/insights") ? "#10B981" : "#9CA3AF"}
         />
         <Text style={[styles.navText, isActive("/insights") && styles.navTextActive]}>
-          Analytics
+          {t('nav.analytics')}
         </Text>
       </TouchableOpacity>
 
@@ -86,7 +88,7 @@ export default function BottomNavigation({ onAddPress }: BottomNavigationProps) 
           color={isActive("/profile") ? "#10B981" : "#9CA3AF"}
         />
         <Text style={[styles.navText, isActive("/profile") && styles.navTextActive]}>
-          Profile
+          {t('nav.profile')}
         </Text>
       </TouchableOpacity>
     </View>

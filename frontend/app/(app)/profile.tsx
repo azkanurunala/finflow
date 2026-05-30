@@ -33,7 +33,7 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(t('auth.logout'), "Are you sure you want to logout?", [
+    Alert.alert(t('auth.logout'), t('auth.logoutConfirm'), [
       { text: t('common.cancel'), style: "cancel" },
       {
         text: t('auth.logout'),
@@ -48,10 +48,11 @@ export default function ProfileScreen() {
 
   const getLanguageName = (code: string) => {
     const names: { [key: string]: string } = {
-      en: "English (US)",
-      id: "Bahasa Indonesia",
+      en: t('languages.en'),
+      id: t('languages.id'),
+      ar: t('languages.ar'),
     };
-    return names[code] || "English (US)";
+    return names[code] || t('languages.en');
   };
 
   const menuItems = [
@@ -120,7 +121,7 @@ export default function ProfileScreen() {
         },
         {
           icon: "information-circle-outline",
-          label: "About FinFlow",
+          label: t('profile.aboutFinflow'),
           color: "#4DB6AC",
           onPress: () => {},
         },
@@ -168,7 +169,7 @@ export default function ProfileScreen() {
               <View style={styles.proBadge}>
                 <Text style={styles.proText}>PRO</Text>
               </View>
-              <Text style={styles.statLabel}>Plan</Text>
+              <Text style={styles.statLabel}>{t('profile.plan')}</Text>
             </View>
           </View>
         </View>
@@ -218,7 +219,7 @@ export default function ProfileScreen() {
 
         {/* Display preferences — currency conversion */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Display</Text>
+          <Text style={styles.sectionTitle}>{t('profile.display')}</Text>
           <View style={styles.menuCard}>
             <View style={styles.menuItem}>
               <View style={styles.menuItemLeft}>
@@ -232,11 +233,11 @@ export default function ProfileScreen() {
                   />
                 </View>
                 <View style={styles.toggleTextWrap}>
-                  <Text style={styles.menuLabel}>Live conversion</Text>
+                  <Text style={styles.menuLabel}>{t('profile.liveConversion')}</Text>
                   <Text style={styles.toggleHint}>
                     {conversionMode === "live"
-                      ? `Convert amounts to ${currency} using live rates`
-                      : `Show all amounts in ${currency} (no conversion)`}
+                      ? t('profile.liveConversionOnHint', { currency })
+                      : t('profile.liveConversionOffHint', { currency })}
                   </Text>
                 </View>
               </View>
@@ -274,7 +275,7 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(app)")}
         >
           <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
+          <Text style={styles.navText}>{t('nav.home')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -282,7 +283,7 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(app)/history")}
         >
           <Ionicons name="swap-horizontal-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
+          <Text style={styles.navText}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -299,12 +300,12 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(app)/insights")}
         >
           <Ionicons name="bar-chart-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
+          <Text style={styles.navText}>{t('nav.analytics')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="person" size={24} color="#10B981" />
-          <Text style={[styles.navText, styles.navTextActive]}>Profile</Text>
+          <Text style={[styles.navText, styles.navTextActive]}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

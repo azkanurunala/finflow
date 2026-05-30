@@ -21,6 +21,8 @@ interface CurrencyContextType {
   conversionMode: ConversionMode;
   setConversionMode: (mode: ConversionMode) => Promise<void>;
   formatAmount: (amount: number, sourceCurrency?: string) => string;
+  /** Convert a raw amount into the selected currency (live mode) or return it unchanged (off). */
+  convert: (amount: number, sourceCurrency?: string) => number;
   loading: boolean;
 }
 
@@ -90,17 +92,19 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
    *   Only used when live conversion is enabled, to convert into the selected
    *   currency. When conversion is off it is ignored (amount shown as-is).
    */
-  const formatAmount = (amount: number, sourceCurrency?: string): string => {
-    let value = amount;
+  const convert = (amount: number, sourceCurrency?: string): number => {
     if (
       conversionMode === 'live' &&
       sourceCurrency &&
       sourceCurrency !== currency
     ) {
-      value = convertWithRates(amount, sourceCurrency, currency, rates);
+      return convertWithRates(amount, sourceCurrency, currency, rates);
     }
-    return formatInCurrency(value, currency);
+    return amount;
   };
+
+  const formatAmount = (amount: number, sourceCurrency?: string): string =>
+    formatInCurrency(convert(amount, sourceCurrency), currency);
 
   return (
     <CurrencyContext.Provider
@@ -111,6 +115,7 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         conversionMode,
         setConversionMode,
         formatAmount,
+        convert,
         loading,
       }}
     >

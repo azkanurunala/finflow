@@ -10,9 +10,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function FreeTrialScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
 
   const handleStartTrial = () => {
     // Navigate to main app
@@ -39,7 +41,7 @@ export default function FreeTrialScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Free Trial</Text>
+          <Text style={styles.headerTitle}>{t('trial.header')}</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -52,9 +54,9 @@ export default function FreeTrialScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.mainTitle}>3 Days of Pro</Text>
+          <Text style={styles.mainTitle}>{t('trial.threeDaysOfPro')}</Text>
           <Text style={styles.subtitle}>
-            Experience the full potential of our AI tools with zero commitment.
+            {t('trial.subtitle')}
           </Text>
         </View>
 
@@ -66,9 +68,9 @@ export default function FreeTrialScreen() {
               <Ionicons name="calendar" size={24} color="#4DB6AC" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Full Access Period</Text>
+              <Text style={styles.featureTitle}>{t('trial.fullAccessPeriod')}</Text>
               <Text style={styles.featureDescription}>
-                Enjoy 3 days of premium features starting from today.
+                {t('trial.fullAccessDesc')}
               </Text>
             </View>
           </View>
@@ -79,22 +81,22 @@ export default function FreeTrialScreen() {
               <Ionicons name="flash" size={24} color="#4DB6AC" />
             </View>
             <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>10 Daily Actions</Text>
+              <Text style={styles.featureTitle}>{t('trial.tenDailyActions')}</Text>
               <Text style={styles.featureDescription}>
-                A combined daily limit across all our powerful AI features:
+                {t('trial.tenDailyActionsDesc')}
               </Text>
               <View style={styles.actionBadges}>
                 <View style={styles.actionBadge}>
                   <Ionicons name="chatbubble" size={16} color="#4DB6AC" />
-                  <Text style={styles.actionBadgeText}>CHAT</Text>
+                  <Text style={styles.actionBadgeText}>{t('trial.chat')}</Text>
                 </View>
                 <View style={styles.actionBadge}>
                   <Ionicons name="document-text" size={16} color="#4DB6AC" />
-                  <Text style={styles.actionBadgeText}>OCR</Text>
+                  <Text style={styles.actionBadgeText}>{t('trial.ocr')}</Text>
                 </View>
                 <View style={styles.actionBadge}>
                   <Ionicons name="mic" size={16} color="#4DB6AC" />
-                  <Text style={styles.actionBadgeText}>VOICE</Text>
+                  <Text style={styles.actionBadgeText}>{t('trial.voice')}</Text>
                 </View>
               </View>
             </View>
@@ -104,7 +106,7 @@ export default function FreeTrialScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="information-circle" size={18} color="#F59E0B" />
             <Text style={styles.infoText}>
-              Limits reset every 24 hours at midnight.
+              {t('trial.limitsReset')}
             </Text>
           </View>
         </View>
@@ -115,8 +117,8 @@ export default function FreeTrialScreen() {
             <Ionicons name="shield-checkmark" size={20} color="#4DB6AC" />
           </View>
           <View style={styles.noCostsContent}>
-            <Text style={styles.noCostsTitle}>NO HIDDEN COSTS</Text>
-            <Text style={styles.noCostsText}>Cancel anytime during the trial.</Text>
+            <Text style={styles.noCostsTitle}>{t('trial.noHiddenCosts')}</Text>
+            <Text style={styles.noCostsText}>{t('trial.cancelAnytime')}</Text>
           </View>
         </View>
 
@@ -132,7 +134,7 @@ export default function FreeTrialScreen() {
             end={{ x: 1, y: 0 }}
             style={styles.ctaGradient}
           >
-            <Text style={styles.ctaText}>Start My 3-Day Free Trial</Text>
+            <Text style={styles.ctaText}>{t('trial.startMyTrial')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
@@ -140,15 +142,13 @@ export default function FreeTrialScreen() {
         {/* View Plans Link */}
         <TouchableOpacity style={styles.viewPlansLink} onPress={handleViewPlans}>
           <Text style={styles.viewPlansText}>
-            Or view all subscription plans
+            {t('trial.viewAllPlans')}
           </Text>
         </TouchableOpacity>
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
-          After your 3-day trial ends, you will be automatically enrolled in the
-          Pro Monthly plan at $9.99/mo unless cancelled. Manage your subscription
-          in account settings.
+          {t('trial.disclaimer')}
         </Text>
       </ScrollView>
     </SafeAreaView>

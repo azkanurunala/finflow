@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { getCurrencySymbol } from "../../utils/currency";
+import { translateCategory } from "../../utils/i18n";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -71,16 +72,16 @@ export default function EditTransactionScreen() {
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
       
-      const t = response.data;
-      setAmount(t.amount.toString());
-      setMerchant(t.merchant || "");
-      setCategory(t.category);
-      setTransactionType(t.transaction_type);
-      setDate(new Date(t.date));
-      setNotes(t.notes || "");
-      setTransactionCurrency(t.currency || "USD");
+      const data = response.data;
+      setAmount(data.amount.toString());
+      setMerchant(data.merchant || "");
+      setCategory(data.category);
+      setTransactionType(data.transaction_type);
+      setDate(new Date(data.date));
+      setNotes(data.notes || "");
+      setTransactionCurrency(data.currency || "USD");
     } catch (error) {
-      Alert.alert("Error", "Failed to load transaction");
+      Alert.alert(t('common.error'), t('edit.failLoad'));
       router.back();
     } finally {
       setLoading(false);
@@ -89,7 +90,7 @@ export default function EditTransactionScreen() {
 
   const handleSave = async () => {
     if (!amount || parseFloat(amount) <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert(t('common.error'), t('form.enterValidAmount'));
       return;
     }
 
@@ -111,11 +112,11 @@ export default function EditTransactionScreen() {
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
 
-      Alert.alert("Success", "Transaction updated!", [
-        { text: "OK", onPress: () => router.back() },
+      Alert.alert(t('common.success'), t('edit.transactionUpdated'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      Alert.alert("Error", error.response?.data?.detail || "Failed to update transaction");
+      Alert.alert(t('common.error'), error.response?.data?.detail || t('edit.failUpdate'));
     } finally {
       setSaving(false);
     }
@@ -123,12 +124,12 @@ export default function EditTransactionScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      "Delete Transaction",
-      "Are you sure you want to delete this transaction?",
+      t('edit.deleteTransaction'),
+      t('history.deleteConfirm'),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('common.cancel'), style: "cancel" },
         {
-          text: "Delete",
+          text: t('common.delete'),
           style: "destructive",
           onPress: async () => {
             try {
@@ -139,7 +140,7 @@ export default function EditTransactionScreen() {
               );
               router.back();
             } catch (error) {
-              Alert.alert("Error", "Failed to delete transaction");
+              Alert.alert(t('common.error'), t('edit.failDelete'));
             }
           },
         },
@@ -166,9 +167,9 @@ export default function EditTransactionScreen() {
             <Ionicons name="arrow-back" size={24} color="#1F2937" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {isFromVoice || isFromReceipt 
-              ? (language === 'id' ? 'Periksa & Simpan' : 'Review & Save')
-              : (language === 'id' ? 'Edit Transaksi' : 'Edit Transaction')}
+            {isFromVoice || isFromReceipt
+              ? t('edit.reviewSave')
+              : t('edit.editTransaction')}
           </Text>
           <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={24} color="#EF4444" />
@@ -186,15 +187,13 @@ export default function EditTransactionScreen() {
                   color={isFromVoice ? "#8B5CF6" : "#F59E0B"} 
                 />
                 <Text style={[styles.sourceBadgeText, isFromVoice ? styles.voiceBadgeText : styles.receiptBadgeText]}>
-                  {isFromVoice 
-                    ? (language === 'id' ? 'Dari Voice' : 'From Voice')
-                    : (language === 'id' ? 'Dari Scan Receipt' : 'From Receipt Scan')}
+                  {isFromVoice
+                    ? t('edit.fromVoice')
+                    : t('edit.fromReceipt')}
                 </Text>
               </View>
               <Text style={styles.reviewNote}>
-                {language === 'id' 
-                  ? 'Periksa data di bawah dan koreksi jika perlu'
-                  : 'Review the data below and correct if needed'}
+                {t('edit.reviewNote')}
               </Text>
             </View>
           )}
@@ -205,7 +204,7 @@ export default function EditTransactionScreen() {
               <View style={styles.transcriptionHeader}>
                 <Ionicons name="text" size={18} color="#8B5CF6" />
                 <Text style={styles.transcriptionTitle}>
-                  {language === 'id' ? 'Transkripsi' : 'Transcription'}
+                  {t('edit.transcription')}
                 </Text>
               </View>
               <Text style={styles.transcriptionText}>"{decodedTranscription}"</Text>
@@ -220,7 +219,7 @@ export default function EditTransactionScreen() {
             >
               <Ionicons name="arrow-up" size={20} color={transactionType === "expense" ? "#fff" : "#EF4444"} />
               <Text style={[styles.typeButtonText, transactionType === "expense" && styles.typeButtonTextActive]}>
-                Expense
+                {t('form.expense')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -229,7 +228,7 @@ export default function EditTransactionScreen() {
             >
               <Ionicons name="arrow-down" size={20} color={transactionType === "income" ? "#fff" : "#10B981"} />
               <Text style={[styles.typeButtonText, transactionType === "income" && styles.typeButtonTextActive]}>
-                Income
+                {t('form.income')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -249,10 +248,10 @@ export default function EditTransactionScreen() {
 
           {/* Merchant Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Merchant / Description</Text>
+            <Text style={styles.inputLabel}>{t('form.merchantDescription')}</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g., Starbucks, Salary, etc."
+              placeholder={t('form.merchantPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={merchant}
               onChangeText={setMerchant}
@@ -261,7 +260,7 @@ export default function EditTransactionScreen() {
 
           {/* Date Picker */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Date</Text>
+            <Text style={styles.inputLabel}>{t('form.date')}</Text>
             <TouchableOpacity
               style={styles.dateButton}
               onPress={() => setShowDatePicker(true)}
@@ -293,7 +292,7 @@ export default function EditTransactionScreen() {
           {/* Category Selection */}
           {transactionType === "expense" && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Category</Text>
+              <Text style={styles.inputLabel}>{t('form.category')}</Text>
               <View style={styles.categoriesGrid}>
                 {CATEGORIES.filter(c => c.id !== "Income").map((cat) => (
                   <TouchableOpacity
@@ -315,7 +314,7 @@ export default function EditTransactionScreen() {
                         category === cat.id && { color: cat.color },
                       ]}
                     >
-                      {cat.id}
+                      {translateCategory(cat.id)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -325,10 +324,10 @@ export default function EditTransactionScreen() {
 
           {/* Notes */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Notes (optional)</Text>
+            <Text style={styles.inputLabel}>{t('form.notesOptional')}</Text>
             <TextInput
               style={[styles.textInput, styles.notesInput]}
-              placeholder="Add any additional notes..."
+              placeholder={t('form.notesPlaceholder')}
               placeholderTextColor="#9CA3AF"
               value={notes}
               onChangeText={setNotes}
@@ -348,7 +347,7 @@ export default function EditTransactionScreen() {
             ) : (
               <>
                 <Ionicons name="checkmark" size={20} color="#fff" />
-                <Text style={styles.saveButtonText}>Save Changes</Text>
+                <Text style={styles.saveButtonText}>{t('edit.saveChanges')}</Text>
               </>
             )}
           </TouchableOpacity>

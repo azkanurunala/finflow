@@ -14,11 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function SignupScreen() {
   const router = useRouter();
   const { user, loading, login, register } = useAuth();
+  const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [name, setName] = useState("");
@@ -49,23 +51,23 @@ export default function SignupScreen() {
   const handleEmailSignup = async () => {
     // Validate inputs
     if (!name.trim()) {
-      setError("Please enter your name");
+      setError(t('auth.errEnterName'));
       return;
     }
     if (!email.trim()) {
-      setError("Please enter your email");
+      setError(t('auth.errEnterEmail'));
       return;
     }
     if (!password.trim()) {
-      setError("Please enter a password");
+      setError(t('auth.errCreatePassword'));
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t('auth.errPasswordShort'));
       return;
     }
     if (!acceptedTerms) {
-      setError("Please accept the Terms of Service");
+      setError(t('auth.errAcceptTerms'));
       return;
     }
 
@@ -75,11 +77,11 @@ export default function SignupScreen() {
     try {
       const result = await register(name.trim(), email.trim(), password);
       if (!result.success) {
-        setError(result.error || "Registration failed");
+        setError(result.error || t('auth.registrationFailed'));
       }
       // If successful, the useEffect will handle navigation
     } catch (err) {
-      setError("An error occurred. Please try again.");
+      setError(t('auth.genericError'));
     } finally {
       setIsRegistering(false);
     }
@@ -109,9 +111,9 @@ export default function SignupScreen() {
 
           {/* Title Section */}
           <View style={styles.titleSection}>
-            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.title}>{t('auth.createAccount')}</Text>
             <Text style={styles.subtitle}>
-              Start your 3-day free trial today
+              {t('auth.startTrialToday')}
             </Text>
           </View>
 
@@ -131,7 +133,7 @@ export default function SignupScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="logo-google" size={20} color="#1F2937" />
-              <Text style={styles.socialButtonText}>Google</Text>
+              <Text style={styles.socialButtonText}>{t('auth.google')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -143,7 +145,7 @@ export default function SignupScreen() {
               <Text
                 style={[styles.socialButtonText, styles.socialButtonTextDisabled]}
               >
-                Apple
+                {t('auth.apple')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -151,13 +153,13 @@ export default function SignupScreen() {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR REGISTER WITH EMAIL</Text>
+            <Text style={styles.dividerText}>{t('auth.orRegisterWithEmail')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           {/* Full Name Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Full Name</Text>
+            <Text style={styles.inputLabel}>{t('auth.fullName')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="person-outline"
@@ -167,7 +169,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your name"
+                placeholder={t('auth.enterName')}
                 placeholderTextColor="#CBD5E1"
                 autoCapitalize="words"
                 value={name}
@@ -178,7 +180,7 @@ export default function SignupScreen() {
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>{t('auth.email')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="mail-outline"
@@ -188,7 +190,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={t('auth.enterEmail')}
                 placeholderTextColor="#CBD5E1"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -201,7 +203,7 @@ export default function SignupScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t('auth.password')}</Text>
             <View style={styles.inputWrapper}>
               <Ionicons
                 name="lock-closed-outline"
@@ -211,7 +213,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="Create a password"
+                placeholder={t('auth.createPassword')}
                 placeholderTextColor="#CBD5E1"
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
@@ -230,7 +232,7 @@ export default function SignupScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.passwordHint}>
-              Must be at least 6 characters
+              {t('auth.passwordHint')}
             </Text>
           </View>
 
@@ -251,9 +253,9 @@ export default function SignupScreen() {
               )}
             </View>
             <Text style={styles.checkboxText}>
-              I agree to the{" "}
-              <Text style={styles.checkboxLink}>Terms of Service</Text> and{" "}
-              <Text style={styles.checkboxLink}>Privacy Policy</Text>
+              {t('auth.agreeToTerms')}{" "}
+              <Text style={styles.checkboxLink}>{t('auth.termsOfService')}</Text> {t('auth.and')}{" "}
+              <Text style={styles.checkboxLink}>{t('auth.privacyPolicy')}</Text>
             </Text>
           </TouchableOpacity>
 
@@ -286,7 +288,7 @@ export default function SignupScreen() {
                     !acceptedTerms && styles.createButtonTextDisabled,
                   ]}
                 >
-                  Create Account
+                  {t('auth.createAccount')}
                 </Text>
               )}
             </LinearGradient>
@@ -295,10 +297,10 @@ export default function SignupScreen() {
           {/* Login Link */}
           <View style={styles.loginLink}>
             <Text style={styles.loginLinkText}>
-              Already have an account?{" "}
+              {t('auth.alreadyHaveAccount')}{" "}
             </Text>
             <TouchableOpacity onPress={() => router.back()}>
-              <Text style={styles.loginLinkTextBold}>Log In</Text>
+              <Text style={styles.loginLinkTextBold}>{t('auth.login')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

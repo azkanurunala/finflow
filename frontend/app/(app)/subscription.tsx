@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,18 +34,19 @@ interface SubscriptionInfo {
   };
 }
 
+// tagline/feature text are translation keys resolved with t() at render time.
 const TIERS = [
   {
     id: "basic",
     name: "Basic",
-    tagline: "Essential for beginners",
+    tagline: "subscription.tagBasic",
     monthlyPrice: 1.99,
     yearlyPrice: 19.99,
     features: [
-      { icon: "chatbubble", text: "30 AI Chat Messages" },
-      { icon: "document-text", text: "20 Uploads/Recordings" },
-      { icon: "stats-chart", text: "Full Analytics" },
-      { icon: "headset", text: "Priority Support" },
+      { icon: "chatbubble", text: "subscription.featChat30" },
+      { icon: "document-text", text: "subscription.featUploads20" },
+      { icon: "stats-chart", text: "subscription.featFullAnalytics" },
+      { icon: "headset", text: "subscription.featPrioritySupport" },
     ],
     color: "#4DB6AC",
     isFree: false,
@@ -52,14 +54,14 @@ const TIERS = [
   {
     id: "pro",
     name: "Pro",
-    tagline: "For active budgeters",
+    tagline: "subscription.tagPro",
     monthlyPrice: 4.99,
     yearlyPrice: 49.99,
     features: [
-      { icon: "chatbubble", text: "100 AI Chat Messages" },
-      { icon: "document-text", text: "100 Uploads/Recordings" },
-      { icon: "stats-chart", text: "Advanced Analytics" },
-      { icon: "headset", text: "Priority Support" },
+      { icon: "chatbubble", text: "subscription.featChat100" },
+      { icon: "document-text", text: "subscription.featUploads100" },
+      { icon: "stats-chart", text: "subscription.featAdvancedAnalytics" },
+      { icon: "headset", text: "subscription.featPrioritySupport" },
     ],
     color: "#4DB6AC",
     mostPopular: true,
@@ -67,14 +69,14 @@ const TIERS = [
   {
     id: "power",
     name: "Power",
-    tagline: "The ultimate experience",
+    tagline: "subscription.tagPower",
     monthlyPrice: 9.99,
     yearlyPrice: 99.99,
     features: [
-      { icon: "infinite", text: "Unlimited Chat" },
-      { icon: "infinite", text: "Unlimited Uploads" },
-      { icon: "stats-chart", text: "All Features" },
-      { icon: "headset", text: "VIP Support" },
+      { icon: "infinite", text: "subscription.featUnlimitedChat" },
+      { icon: "infinite", text: "subscription.featUnlimitedUploads" },
+      { icon: "stats-chart", text: "subscription.featAllFeatures" },
+      { icon: "headset", text: "subscription.featVipSupport" },
     ],
     color: "#1E3A8A",
     isDark: true,
@@ -85,6 +87,7 @@ const TIERS = [
 export default function SubscriptionScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(
     null
   );
@@ -112,19 +115,22 @@ export default function SubscriptionScreen() {
   };
 
   const handleUpgrade = (tierId: string, tierName: string) => {
-    const period = billingPeriod === "monthly" ? "month" : "year";
+    const period =
+      billingPeriod === "monthly"
+        ? t("subscription.periodMonth")
+        : t("subscription.periodYear");
     Alert.alert(
-      "Upgrade Subscription",
-      `In-app purchases will be available soon. You'll be upgraded to ${tierName} (${period}ly billing) via Google Play/App Store.`,
-      [{ text: "OK" }]
+      t("subscription.upgradeTitle"),
+      t("subscription.upgradeMsg", { plan: tierName, period }),
+      [{ text: t("common.ok") }]
     );
   };
 
   const handleLogout = async () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("auth.logout"), t("auth.logoutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Logout",
+        text: t("auth.logout"),
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -140,7 +146,10 @@ export default function SubscriptionScreen() {
       : `$${tier.yearlyPrice.toFixed(2)}`;
   };
 
-  const getPeriod = () => (billingPeriod === "monthly" ? "/mo" : "/yr");
+  const getPeriod = () =>
+    billingPeriod === "monthly"
+      ? t("subscription.perMonth")
+      : t("subscription.perYear");
 
   if (loading) {
     return (
@@ -159,7 +168,7 @@ export default function SubscriptionScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Subscription</Text>
+        <Text style={styles.headerTitle}>{t('subscription.subscription')}</Text>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color="#EF4444" />
         </TouchableOpacity>
@@ -168,9 +177,9 @@ export default function SubscriptionScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={styles.mainTitle}>Choose Your Plan</Text>
+          <Text style={styles.mainTitle}>{t('subscription.choosePlan')}</Text>
           <Text style={styles.subtitle}>
-            Select the perfect plan for your financial tracking needs
+            {t('subscription.choosePlanSubtitle')}
           </Text>
         </View>
 
@@ -190,7 +199,7 @@ export default function SubscriptionScreen() {
                 billingPeriod === "monthly" && styles.toggleTextActive,
               ]}
             >
-              Monthly
+              {t('subscription.monthly')}
             </Text>
           </TouchableOpacity>
 
@@ -208,10 +217,10 @@ export default function SubscriptionScreen() {
                 billingPeriod === "yearly" && styles.toggleTextActive,
               ]}
             >
-              Yearly
+              {t('subscription.yearly')}
             </Text>
             <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>-20%</Text>
+              <Text style={styles.discountText}>{t('subscription.save20')}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -235,17 +244,17 @@ export default function SubscriptionScreen() {
                 {/* Badges */}
                 {tier.mostPopular && (
                   <View style={styles.mostPopularBadge}>
-                    <Text style={styles.mostPopularText}>MOST POPULAR</Text>
+                    <Text style={styles.mostPopularText}>{t('subscription.mostPopular')}</Text>
                   </View>
                 )}
                 {tier.isUnlimited && (
                   <View style={styles.unlimitedBadge}>
-                    <Text style={styles.unlimitedText}>UNLIMITED</Text>
+                    <Text style={styles.unlimitedText}>{t('subscription.unlimited')}</Text>
                   </View>
                 )}
                 {isCurrentPlan && (
                   <View style={styles.currentPlanBadge}>
-                    <Text style={styles.currentPlanText}>Current Plan</Text>
+                    <Text style={styles.currentPlanText}>{t('subscription.currentPlan')}</Text>
                   </View>
                 )}
 
@@ -265,7 +274,7 @@ export default function SubscriptionScreen() {
                         tier.isDark && styles.tierTaglineDark,
                       ]}
                     >
-                      {tier.tagline}
+                      {t(tier.tagline)}
                     </Text>
                   </View>
                   <View style={styles.tierPricing}>
@@ -305,7 +314,7 @@ export default function SubscriptionScreen() {
                           tier.isDark && styles.featureTextDark,
                         ]}
                       >
-                        {feature.text}
+                        {t(feature.text)}
                       </Text>
                     </View>
                   ))}
@@ -315,7 +324,7 @@ export default function SubscriptionScreen() {
                 {isCurrentPlan ? (
                   <View style={styles.currentPlanButton}>
                     <Text style={styles.currentPlanButtonText}>
-                      Current Plan
+                      {t('subscription.currentPlan')}
                     </Text>
                   </View>
                 ) : (
@@ -326,7 +335,7 @@ export default function SubscriptionScreen() {
                     {tier.isDark ? (
                       <View style={styles.powerButton}>
                         <Text style={styles.powerButtonText}>
-                          Get {tier.name} Plan
+                          {t('subscription.getPlan', { plan: tier.name })}
                         </Text>
                       </View>
                     ) : (
@@ -337,7 +346,7 @@ export default function SubscriptionScreen() {
                         style={styles.upgradeButton}
                       >
                         <Text style={styles.upgradeButtonText}>
-                          Upgrade to {tier.name}
+                          {t('subscription.upgradeTo', { plan: tier.name })}
                         </Text>
                       </LinearGradient>
                     )}
@@ -350,21 +359,20 @@ export default function SubscriptionScreen() {
 
         {/* Account Info */}
         <View style={styles.accountCard}>
-          <Text style={styles.accountTitle}>Account Information</Text>
+          <Text style={styles.accountTitle}>{t('subscription.accountInfo')}</Text>
           <View style={styles.accountRow}>
-            <Text style={styles.accountLabel}>Name</Text>
+            <Text style={styles.accountLabel}>{t('subscription.name')}</Text>
             <Text style={styles.accountValue}>{user?.name}</Text>
           </View>
           <View style={styles.accountRow}>
-            <Text style={styles.accountLabel}>Email</Text>
+            <Text style={styles.accountLabel}>{t('subscription.email')}</Text>
             <Text style={styles.accountValue}>{user?.email}</Text>
           </View>
         </View>
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
-          By continuing, you agree to our Terms of Service and Privacy Policy.
-          Subscriptions auto-renew unless cancelled.
+          {t('subscription.disclaimer')}
         </Text>
       </ScrollView>
 
@@ -375,7 +383,7 @@ export default function SubscriptionScreen() {
           onPress={() => router.push("/(app)")}
         >
           <Ionicons name="home-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Home</Text>
+          <Text style={styles.navText}>{t('nav.home')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -383,7 +391,7 @@ export default function SubscriptionScreen() {
           onPress={() => router.push("/(app)/history")}
         >
           <Ionicons name="list-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Transactions</Text>
+          <Text style={styles.navText}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItemCenter}>
@@ -397,12 +405,12 @@ export default function SubscriptionScreen() {
           onPress={() => router.push("/(app)/insights")}
         >
           <Ionicons name="analytics-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Analytics</Text>
+          <Text style={styles.navText}>{t('nav.analytics')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="person" size={24} color="#4DB6AC" />
-          <Text style={[styles.navText, styles.navTextActive]}>Profile</Text>
+          <Text style={[styles.navText, styles.navTextActive]}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
