@@ -19,6 +19,12 @@
         "EXPO_PUBLIC_BACKEND_URL": "https://finflow-backend-fshd.onrender.com"
       }
     },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": {
+        "simulator": true
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
