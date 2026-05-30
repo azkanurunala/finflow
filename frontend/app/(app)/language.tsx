@@ -13,27 +13,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Updates from "expo-updates";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { SUPPORTED_LANGUAGES } from "../../utils/i18n";
 
-interface Language {
-  code: string;
-  name: string;
-  nativeName: string;
-  flag: string;
-}
+// Single source of truth for offered languages lives in utils/i18n.ts.
+type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
-// Only languages with a complete translation dictionary are offered, so the UI
-// never silently falls back to English. To add a language, ship its locale file
-// and register it in utils/i18n.ts (SUPPORTED_LOCALES), then list it here.
-const SUGGESTED_LANGUAGES: Language[] = [
-  { code: "en", name: "English (US)", nativeName: "English (US)", flag: "🇺🇸" },
-  { code: "id", name: "Bahasa Indonesia", nativeName: "Indonesian", flag: "🇮🇩" },
-];
-
-const OTHER_LANGUAGES: Language[] = [
-  { code: "ar", name: "العربية", nativeName: "Arabic", flag: "🇸🇦" },
-];
-
-const ALL_LANGUAGES = [...SUGGESTED_LANGUAGES, ...OTHER_LANGUAGES];
+const SUGGESTED_CODES = ["en", "id", "ar"];
+const SUGGESTED_LANGUAGES = SUPPORTED_LANGUAGES.filter((l) => SUGGESTED_CODES.includes(l.code));
+const OTHER_LANGUAGES = SUPPORTED_LANGUAGES.filter((l) => !SUGGESTED_CODES.includes(l.code));
+const ALL_LANGUAGES = SUPPORTED_LANGUAGES;
 
 export default function LanguageSelectionScreen() {
   const router = useRouter();
@@ -83,9 +71,14 @@ export default function LanguageSelectionScreen() {
     finish();
   };
 
-  const matches = (lang: Language) =>
-    lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    lang.nativeName.toLowerCase().includes(searchQuery.toLowerCase());
+  const matches = (lang: Language) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      lang.name.toLowerCase().includes(q) ||
+      lang.english.toLowerCase().includes(q) ||
+      lang.code.includes(q)
+    );
+  };
 
   const filteredLanguages = ALL_LANGUAGES.filter(matches);
 
@@ -101,7 +94,7 @@ export default function LanguageSelectionScreen() {
       </View>
       <View style={styles.languageInfo}>
         <Text style={styles.languageName}>{lang.name}</Text>
-        <Text style={styles.languageNative}>{lang.nativeName}</Text>
+        <Text style={styles.languageNative}>{lang.english}</Text>
       </View>
       {selectedLanguage === lang.code ? (
         <View style={styles.checkmark}>

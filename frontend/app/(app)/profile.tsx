@@ -18,6 +18,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SUPPORTED_LANGUAGES } from "../../utils/i18n";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -67,12 +68,8 @@ export default function ProfileScreen() {
   };
 
   const getLanguageName = (code: string) => {
-    const names: { [key: string]: string } = {
-      en: t('languages.en'),
-      id: t('languages.id'),
-      ar: t('languages.ar'),
-    };
-    return names[code] || t('languages.en');
+    const lang = SUPPORTED_LANGUAGES.find((l) => l.code === code);
+    return lang ? lang.name : "English (US)";
   };
 
   const menuItems = [

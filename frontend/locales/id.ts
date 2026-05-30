@@ -402,9 +402,4 @@ export default {
     freelance: "Lepas",
     other: "Lainnya",
   },
-  languages: {
-    en: "English (US)",
-    id: "Bahasa Indonesia",
-    ar: "العربية",
-  },
 };

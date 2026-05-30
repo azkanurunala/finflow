@@ -402,9 +402,4 @@ export default {
     freelance: "عمل حر",
     other: "أخرى",
   },
-  languages: {
-    en: "English (US)",
-    id: "Bahasa Indonesia",
-    ar: "العربية",
-  },
 };

@@ -401,9 +401,4 @@ export default {
     freelance: "Freelance",
     other: "Other",
   },
-  languages: {
-    en: "English (US)",
-    id: "Bahasa Indonesia",
-    ar: "العربية",
-  },
 };
