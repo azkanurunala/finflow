@@ -5,6 +5,7 @@ import {
   getCurrencySymbol,
   formatInCurrency,
   fetchExchangeRates,
+  loadPersistedRates,
   convertWithRates,
   FALLBACK_RATES,
 } from '../utils/currency';
@@ -39,9 +40,23 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadPreferences();
+    // 1) Show the last known real rates instantly (offline-friendly)...
+    loadPersistedRates().then((cached) => {
+      if (cached) {
+        setRates(cached);
+        forceUpdate({});
+      }
+    });
+    // 2) ...then always refresh from the live API on startup so values are current.
+    fetchExchangeRates('USD')
+      .then((r) => {
+        setRates(r);
+        forceUpdate({});
+      })
+      .catch(() => {});
   }, []);
 
-  // Refresh exchange rates whenever live conversion is active.
+  // Re-refresh when the user turns live conversion on (cache may be >1h old).
   useEffect(() => {
     if (conversionMode === 'live') {
       fetchExchangeRates('USD')

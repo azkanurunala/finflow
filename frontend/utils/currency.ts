@@ -30,6 +30,17 @@ export const CURRENCIES: Currency[] = [
   { code: 'PHP', name: 'Philippine Peso', symbol: '₱', flag: '🇵🇭' },
   { code: 'VND', name: 'Vietnamese Dong', symbol: '₫', flag: '🇻🇳' },
   { code: 'INR', name: 'Indian Rupee', symbol: '₹', flag: '🇮🇳' },
+  // Middle East / Arab currencies
+  { code: 'SAR', name: 'Saudi Riyal', symbol: 'ر.س', flag: '🇸🇦' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ', flag: '🇦🇪' },
+  { code: 'QAR', name: 'Qatari Riyal', symbol: 'ر.ق', flag: '🇶🇦' },
+  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'د.ك', flag: '🇰🇼' },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'ب.د', flag: '🇧🇭' },
+  { code: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.', flag: '🇴🇲' },
+  { code: 'EGP', name: 'Egyptian Pound', symbol: 'ج.م', flag: '🇪🇬' },
+  { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', flag: '🇯🇴' },
+  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.', flag: '🇲🇦' },
+  { code: 'DZD', name: 'Algerian Dinar', symbol: 'د.ج', flag: '🇩🇿' },
   { code: 'BTC', name: 'Bitcoin', symbol: '₿', flag: '₿' },
 ];
 
@@ -84,6 +95,15 @@ export const formatInCurrency = (amount: number, currencyCode: string): string =
     return `${symbol}${amount.toFixed(8)}`;
   }
 
+  // Gulf dinars use 3 decimal places (fils).
+  if (currencyCode === 'KWD' || currencyCode === 'BHD' || currencyCode === 'OMR') {
+    const formatted = amount.toLocaleString('en-US', {
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3,
+    });
+    return `${symbol}${formatted}`;
+  }
+
   // USD, EUR, GBP, etc. — "," thousands, "." decimals.
   const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
@@ -97,16 +117,65 @@ export const formatCurrency = formatInCurrency;
 
 let exchangeRatesCache: { [key: string]: number } | null = null;
 let lastFetchTime: number = 0;
-const CACHE_DURATION = 3600000; // 1 hour
+const CACHE_DURATION = 3600000; // 1 hour (in-memory)
+const RATES_CACHE_KEY = 'exchange_rates_cache_v2';
 
-/** Fallback USD-based rates used when the network/API is unavailable. */
+/**
+ * Last-resort USD-based rates, used only when there's no network AND no
+ * persisted cache yet. Kept roughly current; the live API overrides these.
+ */
 export const FALLBACK_RATES: { [key: string]: number } = {
-  USD: 1, EUR: 0.92, GBP: 0.79, JPY: 149.5, IDR: 15650, SGD: 1.34,
-  AUD: 1.52, CAD: 1.36, CHF: 0.88, CNY: 7.24, HKD: 7.81, KRW: 1330,
-  MYR: 4.72, THB: 35.8, PHP: 56.5, VND: 24500, INR: 83.2, BTC: 0.0000095,
+  USD: 1, EUR: 0.92, GBP: 0.79, JPY: 157, IDR: 17820, SGD: 1.35,
+  AUD: 1.53, CAD: 1.41, CHF: 0.9, CNY: 7.25, HKD: 7.8, KRW: 1380,
+  MYR: 4.45, THB: 35.5, PHP: 58.5, VND: 25400, INR: 85,
+  // Middle East / Arab (several are USD-pegged)
+  SAR: 3.75, AED: 3.67, QAR: 3.64, KWD: 0.307, BHD: 0.376, OMR: 0.384,
+  EGP: 50, JOD: 0.709, MAD: 9.9, DZD: 134,
+  BTC: 0.0000095,
 };
 
-/** Fetch USD-based exchange rates (cached 1h). Falls back to static rates. */
+/** Persist the latest fetched rates so offline sessions use real recent rates. */
+const persistRates = async (rates: { [key: string]: number }) => {
+  try {
+    await AsyncStorage.setItem(
+      RATES_CACHE_KEY,
+      JSON.stringify({ rates, ts: Date.now() })
+    );
+  } catch {
+    // ignore storage errors
+  }
+};
+
+/** Load the last persisted rates (if any) into the in-memory cache. */
+export const loadPersistedRates = async (): Promise<
+  { [key: string]: number } | null
+> => {
+  try {
+    const raw = await AsyncStorage.getItem(RATES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.rates && parsed.rates.USD) {
+      exchangeRatesCache = parsed.rates;
+      lastFetchTime = parsed.ts || 0;
+      return parsed.rates;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return null;
+};
+
+// Free, no-API-key endpoints (160+ currencies incl. IDR, SAR, AED, …).
+// Tried in order; first success wins.
+const RATE_ENDPOINTS = (base: string) => [
+  `https://open.er-api.com/v6/latest/${base}`,
+  `https://api.exchangerate-api.com/v4/latest/${base}`,
+];
+
+/**
+ * Fetch USD-based exchange rates from a live API (in-memory cached 1h).
+ * On network failure, returns the persisted cache, then the static fallback.
+ */
 export const fetchExchangeRates = async (
   baseCurrency: string = 'USD'
 ): Promise<{ [key: string]: number }> => {
@@ -114,18 +183,24 @@ export const fetchExchangeRates = async (
   if (exchangeRatesCache && now - lastFetchTime < CACHE_DURATION) {
     return exchangeRatesCache;
   }
-  try {
-    const response = await fetch(
-      `https://api.exchangerate-api.com/v4/latest/${baseCurrency}`
-    );
-    const data = await response.json();
-    exchangeRatesCache = data.rates;
-    lastFetchTime = now;
-    return data.rates;
-  } catch (error) {
-    console.error('Error fetching exchange rates:', error);
-    return FALLBACK_RATES;
+  for (const url of RATE_ENDPOINTS(baseCurrency)) {
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      const rates = data?.rates;
+      // Sanity-check we got a real, non-trivial rate table.
+      if (rates && typeof rates === 'object' && rates.USD && rates.IDR) {
+        exchangeRatesCache = rates;
+        lastFetchTime = now;
+        persistRates(rates);
+        return rates;
+      }
+    } catch {
+      // try the next endpoint
+    }
   }
+  console.warn('Exchange rate APIs unreachable; using cached/fallback rates.');
+  return exchangeRatesCache || FALLBACK_RATES;
 };
 
 /**
