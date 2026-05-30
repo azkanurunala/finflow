@@ -26,9 +26,12 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'test_database')]
 
-# Emergent LLM Key
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '')
+# LLM keys. LlmChat (chat/receipt/insights) runs on litellm: an "sk-emergent-"
+# key routes through the Emergent proxy, any other key (e.g. a real OpenAI key)
+# goes directly to OpenAI. Fall back to OPENAI_API_KEY when no Emergent key is
+# set so the app runs on a plain OpenAI key.
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '') or OPENAI_API_KEY
 
 # Create the main app
 app = FastAPI()
