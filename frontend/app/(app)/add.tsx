@@ -17,6 +17,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useCurrency } from "../../contexts/CurrencyContext";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -24,6 +25,7 @@ export default function AddScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams();
   const { t } = useLanguage();
+  const { currency } = useCurrency();
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -103,7 +105,7 @@ export default function AddScreen() {
       
       const response = await axios.post(
         `${BACKEND_URL}/api/transactions/receipt`,
-        { image_base64: selectedImage },
+        { image_base64: selectedImage, currency },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -186,7 +188,7 @@ export default function AddScreen() {
       // Send to backend for transcription
       const apiResponse = await axios.post(
         `${BACKEND_URL}/api/transactions/voice`,
-        { audio_base64: audioBase64 },
+        { audio_base64: audioBase64, currency },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,

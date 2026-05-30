@@ -81,7 +81,7 @@ export default function ChatScreen() {
       const sessionToken = await AsyncStorage.getItem("session_token");
       const response = await axios.post(
         `${BACKEND_URL}/api/transactions/chat`,
-        { text: messageText },
+        { text: messageText, currency },
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
 

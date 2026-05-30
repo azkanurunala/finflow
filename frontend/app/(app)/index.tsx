@@ -278,7 +278,7 @@ export default function HomeScreen() {
       
       const response = await axios.post(
         `${BACKEND_URL}/api/transactions/receipt`,
-        { image_base64: selectedImage },
+        { image_base64: selectedImage, currency },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
@@ -356,7 +356,7 @@ export default function HomeScreen() {
 
       const apiResponse = await axios.post(
         `${BACKEND_URL}/api/transactions/voice`,
-        { audio_base64: audioBase64 },
+        { audio_base64: audioBase64, currency },
         {
           headers: {
             Authorization: `Bearer ${sessionToken}`,
