@@ -16,14 +16,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://finflow-backend.onrender.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://finflow-backend-fshd.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://finflow-backend.onrender.com"
+        "EXPO_PUBLIC_BACKEND_URL": "https://finflow-backend-fshd.onrender.com"
       }
     }
   },
