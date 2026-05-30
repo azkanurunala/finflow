@@ -1,0 +1,17 @@
+# Static web hosting for the Expo web export (Netlify).
+# Netlify builds with `expo export -p web` and publishes the static `dist/` folder.
+# Vercel/Render Static work too — just use the same build command + publish dir.
+[build]
+  command = "npx expo export -p web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # Point the web app at the deployed backend (update if your Render URL differs).
+  EXPO_PUBLIC_BACKEND_URL = "https://finflow-backend.onrender.com"
+
+# Serve unknown paths through the static export's 404 page (client-side routing).
+[[redirects]]
+  from = "/*"
+  to = "/+not-found.html"
+  status = 404

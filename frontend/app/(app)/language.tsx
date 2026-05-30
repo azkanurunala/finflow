@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as Updates from "expo-updates";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 interface Language {
@@ -55,7 +56,14 @@ export default function LanguageSelectionScreen() {
 
   // Reload the whole app so every already-mounted screen (home, bottom nav,
   // etc.) re-renders in the new language — and so Arabic's RTL layout applies.
-  const reloadApp = () => {
+  const reloadApp = async () => {
+    // Production builds reload via expo-updates; dev/Expo Go uses DevSettings.
+    try {
+      await Updates.reloadAsync();
+      return;
+    } catch {
+      // expo-updates not available (e.g. running in Expo Go) — fall through.
+    }
     if (DevSettings && typeof DevSettings.reload === "function") {
       DevSettings.reload();
     } else {

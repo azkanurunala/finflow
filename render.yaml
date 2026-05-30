@@ -1,0 +1,26 @@
+# Render Blueprint for the FinFlow FastAPI backend.
+# Deploy: Render Dashboard → New → Blueprint → pick the GitHub repo (azkanurunala/finflow).
+# Render reads this file, creates the service, then prompts for the secret env vars
+# marked `sync: false` (MONGO_URL, OPENAI_API_KEY, EMERGENT_LLM_KEY).
+services:
+  - type: web
+    name: finflow-backend
+    runtime: python
+    plan: free          # 512MB RAM; bump to "starter" if it OOMs on boot (heavy deps).
+    rootDir: backend
+    region: singapore   # closest to Indonesia; change if you prefer.
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.4"
+      - key: DB_NAME
+        value: finflow
+      # Secrets — set these in the Render dashboard (kept out of git).
+      - key: MONGO_URL
+        sync: false        # mongodb+srv://...  (from MongoDB Atlas)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: EMERGENT_LLM_KEY
+        sync: false        # optional; leave blank to use OPENAI_API_KEY
