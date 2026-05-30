@@ -84,17 +84,43 @@ cd "$FRONTEND"
 # Fail early with a clear message if not authenticated.
 npx eas whoami >/dev/null 2>&1 || die "Not logged in to EAS. Run: cd frontend && npx eas login   (or export EXPO_TOKEN)."
 
-# Android submit needs a Play Console account + service-account key. Warn early
-# so an iOS-ready user isn't surprised by an Android failure.
-if [ "$PLATFORM" != "ios" ] && [ ! -f "$FRONTEND/play-service-account.json" ]; then
-  echo "⚠️  PLATFORM=$PLATFORM but frontend/play-service-account.json is missing."
-  echo "    Android submit will fail until you have a Google Play Console account"
-  echo "    + service-account JSON. To ship iOS only for now, run: PLATFORM=ios ./deploy.sh"
-fi
+HAS_PLAY_KEY=0
+[ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
 
-step "Frontend → EAS build ($PLATFORM, production) + auto-submit to store(s)"
-# shellcheck disable=SC2086
-npx eas build --platform "$PLATFORM" --profile production --auto-submit $EAS_FLAGS
+build_ios() {
+  step "iOS → build (production) + auto-submit to App Store"
+  # shellcheck disable=SC2086
+  npx eas build -p ios --profile production --auto-submit $EAS_FLAGS
+}
+
+build_android() {
+  if [ "$HAS_PLAY_KEY" = "1" ]; then
+    step "Android → build (production) + auto-submit to Play Store"
+    # shellcheck disable=SC2086
+    npx eas build -p android --profile production --auto-submit $EAS_FLAGS
+  else
+    step "Android → build ONLY (no Play key yet → submit skipped, won't prompt)"
+    echo "    No frontend/play-service-account.json found. Google requires the FIRST"
+    echo "    Play release to be uploaded manually anyway — use the .aab this produces."
+    # shellcheck disable=SC2086
+    npx eas build -p android --profile production $EAS_FLAGS
+  fi
+}
+
+case "$PLATFORM" in
+  ios)     build_ios ;;
+  android) build_android ;;
+  all)
+    build_ios
+    if [ "$HAS_PLAY_KEY" = "1" ]; then
+      build_android
+    else
+      printf "\n\033[1;33m⏭  Skipping Android: no Play Console key yet.\033[0m\n"
+      echo "   When ready: PLATFORM=android ./deploy.sh  (builds an .aab for the first"
+      echo "   manual Play upload), or add play-service-account.json for auto-submit."
+    fi
+    ;;
+esac
 
 # ----------------------------------------------------------------------------
 # 3) (optional) OTA update for users already on a matching build.
