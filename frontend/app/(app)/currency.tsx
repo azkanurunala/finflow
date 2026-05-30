@@ -14,42 +14,40 @@ import { useRouter } from "expo-router";
 import {
   POPULAR_CURRENCIES,
   OTHER_CURRENCIES,
-  Currency,
-  getUserCurrency,
-  setUserCurrency,
 } from "../../utils/currency";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function CurrencySelectionScreen() {
   const router = useRouter();
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const { currency, setCurrency, conversionMode } = useCurrency();
+  const { updateOnboarding } = useAuth();
+  const [selectedCurrency, setSelectedCurrency] = useState(currency);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Keep the highlighted option in sync with the live selected currency.
   useEffect(() => {
-    loadSelectedCurrency();
-  }, []);
-
-  const loadSelectedCurrency = async () => {
-    const saved = await getUserCurrency();
-    setSelectedCurrency(saved);
-  };
+    setSelectedCurrency(currency);
+  }, [currency]);
 
   const handleSelectCurrency = (code: string) => {
     setSelectedCurrency(code);
   };
 
   const handleConfirm = async () => {
-    await setUserCurrency(selectedCurrency);
-    
-    Alert.alert(
-      "Currency Changed",
-      "All amounts will be converted to your selected currency using real-time exchange rates.",
-      [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]
-    );
+    // Update the app-wide currency immediately (also persists locally)...
+    await setCurrency(selectedCurrency);
+    // ...and sync the preference to the backend (best-effort).
+    updateOnboarding({ currency: selectedCurrency }).catch(() => {});
+
+    const message =
+      conversionMode === "live"
+        ? "Amounts will now be shown in your selected currency, converting other currencies using live exchange rates."
+        : "Amounts will now be shown in your selected currency. Enable Live conversion in Profile to convert values across currencies.";
+
+    Alert.alert("Currency Changed", message, [
+      { text: "OK", onPress: () => router.back() },
+    ]);
   };
 
   const allCurrencies = [...POPULAR_CURRENCIES, ...OTHER_CURRENCIES];

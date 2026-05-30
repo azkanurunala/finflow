@@ -115,6 +115,8 @@ class User(BaseModel):
     subscription_tier: Optional[str] = None
     subscription_expires_at: Optional[datetime] = None
     subscription_started_at: Optional[datetime] = None
+    currency: Optional[str] = None
+    language: Optional[str] = None
     created_at: datetime
 
 class UserSession(BaseModel):
@@ -149,9 +151,11 @@ class Transaction(BaseModel):
 
 class ChatTransactionRequest(BaseModel):
     text: str
+    currency: Optional[str] = None
 
 class ReceiptTransactionRequest(BaseModel):
     image_base64: str
+    currency: Optional[str] = None
 
 class ManualTransactionRequest(BaseModel):
     amount: float
@@ -173,6 +177,7 @@ class UpdateTransactionRequest(BaseModel):
 
 class VoiceTransactionRequest(BaseModel):
     audio_base64: str
+    currency: Optional[str] = None
 
 class UsageStats(BaseModel):
     user_id: str
@@ -362,20 +367,21 @@ async def increment_usage(user_id: str, action_type: str, amount: float = 1.0):
     )
 
 # Helper function to parse transaction via GPT
-async def parse_transaction_text(text: str, source: str = "chat") -> Transaction:
+async def parse_transaction_text(text: str, source: str = "chat", user_currency: str = "USD") -> Transaction:
     """Use GPT to parse natural language transaction input"""
     try:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        
+
         system_prompt = f"""You are a multilingual financial transaction parser that understands both English and Indonesian (Bahasa Indonesia).
 Your task is to extract transaction details from natural language input.
 
 TODAY'S DATE: {today}
+THE USER'S ACCOUNT CURRENCY IS: {user_currency}
 
 Respond ONLY with this exact JSON format (no other text):
 {{
-    "amount": <number in original currency>,
-    "currency": "USD" or "IDR",
+    "amount": <numeric amount as a plain number>,
+    "currency": "{user_currency}",
     "merchant": "<merchant name or null>",
     "category": "<one of: {', '.join(US_CATEGORIES)}>",
     "date": "<YYYY-MM-DD>",
@@ -392,13 +398,17 @@ INDONESIAN AMOUNT PARSING (VERY IMPORTANT):
 - "rb" or "ribu" = thousand (1.000). Example: "50rb" = 50000, "150rb" = 150000  
 - "k" = thousand. Example: "50k" = 50000
 - Indonesian uses comma for decimals: "2,5jt" = 2.5 million = 2500000
-- If amount seems Indonesian (jt, rb, ribu, juta, or context is Indonesian), use currency: "IDR"
 
-INDONESIAN CONTEXT EXAMPLES:
-- "lembur dapat 5jt" → amount: 5000000, currency: "IDR", transaction_type: "income", category: "Income"
-- "beli makan 50rb" → amount: 50000, currency: "IDR", transaction_type: "expense", category: "Dining & Coffee"
-- "gaji masuk 10jt" → amount: 10000000, currency: "IDR", transaction_type: "income", category: "Income"
-- "bayar listrik 500rb" → amount: 500000, currency: "IDR", transaction_type: "expense", category: "Rent & Utilities"
+CURRENCY (VERY IMPORTANT):
+- The notation above (jt/rb/k) only tells you the NUMERIC amount, NOT the currency.
+- ALWAYS set "currency" to "{user_currency}" — the user's account currency — no matter what language or notation the input uses. Never infer a different currency.
+- Strip any currency symbol from the amount and return only the number.
+
+INDONESIAN CONTEXT EXAMPLES (currency is always {user_currency}):
+- "lembur dapat 5jt" → amount: 5000000, transaction_type: "income", category: "Income"
+- "beli makan 50rb" → amount: 50000, transaction_type: "expense", category: "Dining & Coffee"
+- "gaji masuk 10jt" → amount: 10000000, transaction_type: "income", category: "Income"
+- "bayar listrik 500rb" → amount: 500000, transaction_type: "expense", category: "Rent & Utilities"
 
 ENGLISH EXAMPLES:
 - "earned $500 from freelance" → amount: 500, currency: "USD", transaction_type: "income"
@@ -429,10 +439,11 @@ DATE PARSING:
         
         data = json.loads(response_text)
         
-        # Create transaction (without user_id, will be added by caller)
+        # Create transaction (without user_id, will be added by caller).
+        # Force the user's account currency — the model only extracts the amount.
         transaction_data = {
             "amount": float(data["amount"]),
-            "currency": data.get("currency", "USD"),
+            "currency": user_currency,
             "merchant": data.get("merchant"),
             "category": data["category"],
             "date": datetime.fromisoformat(data["date"]),
@@ -448,11 +459,12 @@ DATE PARSING:
         raise HTTPException(status_code=400, detail=f"Could not parse transaction: {str(e)}")
 
 # Helper function to parse receipt image
-async def parse_receipt_image(image_base64: str) -> dict:
+async def parse_receipt_image(image_base64: str, user_currency: str = "USD") -> dict:
     """Use GPT Vision to parse receipt image"""
     try:
-        system_prompt = f"""You are a receipt scanner for US transactions.
+        system_prompt = f"""You are a receipt scanner.
 Extract transaction details from the receipt image.
+The user's account currency is {user_currency}; return the amount as a plain number.
 
 Respond in this exact JSON format:
 {{
@@ -504,9 +516,10 @@ Rules:
         if data.get("tip"):
             metadata["tip"] = data["tip"]
         
-        # Create transaction data
+        # Create transaction data (force the user's account currency)
         transaction_data = {
             "amount": float(data["amount"]),
+            "currency": user_currency,
             "merchant": data.get("merchant"),
             "category": data["category"],
             "date": datetime.fromisoformat(data["date"]),
@@ -919,7 +932,10 @@ async def create_chat_transaction(
             )
         
         # Parse transaction using GPT
-        transaction_data = await parse_transaction_text(request.text, source="chat")
+        transaction_data = await parse_transaction_text(
+            request.text, source="chat",
+            user_currency=(request.currency or current_user.currency or "USD"),
+        )
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
         transaction_data["created_at"] = datetime.now(timezone.utc)
@@ -957,7 +973,10 @@ async def create_receipt_transaction(
             )
         
         # Parse receipt using GPT Vision
-        transaction_data = await parse_receipt_image(request.image_base64)
+        transaction_data = await parse_receipt_image(
+            request.image_base64,
+            user_currency=(request.currency or current_user.currency or "USD"),
+        )
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
         transaction_data["created_at"] = datetime.now(timezone.utc)
@@ -1065,7 +1084,10 @@ async def create_voice_transaction(
             )
         
         # Parse transaction using GPT
-        transaction_data = await parse_transaction_text(transcribed_text, source="voice")
+        transaction_data = await parse_transaction_text(
+            transcribed_text, source="voice",
+            user_currency=(request.currency or current_user.currency or "USD"),
+        )
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
         transaction_data["created_at"] = datetime.now(timezone.utc)
@@ -1104,7 +1126,10 @@ async def create_voice_text_transaction(
             )
         
         # Parse transaction using GPT
-        transaction_data = await parse_transaction_text(request.text, source="voice")
+        transaction_data = await parse_transaction_text(
+            request.text, source="voice",
+            user_currency=(request.currency or current_user.currency or "USD"),
+        )
         transaction_data["user_id"] = current_user.user_id
         transaction_data["id"] = str(uuid.uuid4())
         transaction_data["created_at"] = datetime.now(timezone.utc)

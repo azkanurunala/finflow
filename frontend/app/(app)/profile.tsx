@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,25 +15,21 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getUserCurrency } from "../../utils/currency";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { t, language } = useLanguage();
-  const { currency } = useCurrency();
+  const { currency, conversionMode, setConversionMode } = useCurrency();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
-  const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   useEffect(() => {
     loadPreferences();
-  }, [language, currency]);
+  }, [language]);
 
   const loadPreferences = async () => {
     const locale = await AsyncStorage.getItem("user_locale");
-    const curr = await getUserCurrency();
     if (locale) setSelectedLanguage(locale);
-    if (curr) setSelectedCurrency(curr);
   };
 
   const handleLogout = () => {
@@ -100,7 +97,7 @@ export default function ProfileScreen() {
         {
           icon: "cash-outline",
           label: t('profile.currency'),
-          value: selectedCurrency,
+          value: currency,
           color: "#10B981",
           onPress: () => router.push("/(app)/currency"),
         },
@@ -218,6 +215,40 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
+
+        {/* Display preferences — currency conversion */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Display</Text>
+          <View style={styles.menuCard}>
+            <View style={styles.menuItem}>
+              <View style={styles.menuItemLeft}>
+                <View
+                  style={[styles.menuIcon, { backgroundColor: "#3B82F620" }]}
+                >
+                  <Ionicons
+                    name="swap-horizontal-outline"
+                    size={22}
+                    color="#3B82F6"
+                  />
+                </View>
+                <View style={styles.toggleTextWrap}>
+                  <Text style={styles.menuLabel}>Live conversion</Text>
+                  <Text style={styles.toggleHint}>
+                    {conversionMode === "live"
+                      ? `Convert amounts to ${currency} using live rates`
+                      : `Show all amounts in ${currency} (no conversion)`}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={conversionMode === "live"}
+                onValueChange={(v) => setConversionMode(v ? "live" : "off")}
+                trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
+                thumbColor="#fff"
+              />
+            </View>
+          </View>
+        </View>
 
         {/* Logout Button */}
         <TouchableOpacity
@@ -427,6 +458,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "#1F2937",
+  },
+  toggleTextWrap: {
+    flex: 1,
+    flexShrink: 1,
+  },
+  toggleHint: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 2,
   },
   menuItemRight: {
     flexDirection: "row",

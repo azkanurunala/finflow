@@ -10,15 +10,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getCurrency } from "../utils/currency";
 
-const CURRENCIES = [
-  { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
-  { code: "EUR", name: "Euro", symbol: "€", flag: "🇪🇺" },
-  { code: "GBP", name: "British Pound", symbol: "£", flag: "🇬🇧" },
-  { code: "IDR", name: "Indonesian Rupiah", symbol: "Rp", flag: "🇮🇩" },
-  { code: "JPY", name: "Japanese Yen", symbol: "¥", flag: "🇯🇵" },
-  { code: "SGD", name: "Singapore Dollar", symbol: "S$", flag: "🇸🇬" },
-];
+// Curated short list for onboarding, sourced from the canonical currency list
+// so symbols/names stay consistent with the rest of the app.
+const CURRENCIES = ["USD", "EUR", "GBP", "IDR", "JPY", "SGD"].map(
+  (code) => getCurrency(code)!
+);
 
 export default function OnboardingCurrencyScreen() {
   const router = useRouter();

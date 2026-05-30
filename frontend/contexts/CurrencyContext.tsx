@@ -1,52 +1,66 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  CURRENCY_SYMBOLS,
+  getCurrencySymbol,
+  formatInCurrency,
+  fetchExchangeRates,
+  convertWithRates,
+  FALLBACK_RATES,
+} from '../utils/currency';
+
+// 'off'  → show every amount with the selected currency's symbol, no conversion.
+// 'live' → convert each amount from its own currency into the selected currency
+//          using live exchange rates before displaying.
+export type ConversionMode = 'off' | 'live';
 
 interface CurrencyContextType {
   currency: string;
   currencySymbol: string;
   setCurrency: (code: string) => Promise<void>;
+  conversionMode: ConversionMode;
+  setConversionMode: (mode: ConversionMode) => Promise<void>;
   formatAmount: (amount: number, sourceCurrency?: string) => string;
   loading: boolean;
 }
 
-const CURRENCY_SYMBOLS: { [key: string]: string } = {
-  USD: '$',
-  EUR: '€',
-  GBP: '£',
-  JPY: '¥',
-  IDR: 'Rp',
-  SGD: 'S$',
-  AUD: 'A$',
-  CAD: 'C$',
-  CHF: 'CHF',
-  CNY: '¥',
-  HKD: 'HK$',
-  KRW: '₩',
-  MYR: 'RM',
-  THB: '฿',
-  PHP: '₱',
-  VND: '₫',
-};
+const CONVERSION_MODE_KEY = 'currency_conversion_mode';
 
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState('USD');
+  const [conversionMode, setConversionModeState] = useState<ConversionMode>('off');
+  const [rates, setRates] = useState<{ [key: string]: number }>(FALLBACK_RATES);
   const [loading, setLoading] = useState(true);
   const [, forceUpdate] = useState({});
 
   useEffect(() => {
-    loadCurrency();
+    loadPreferences();
   }, []);
 
-  const loadCurrency = async () => {
+  // Refresh exchange rates whenever live conversion is active.
+  useEffect(() => {
+    if (conversionMode === 'live') {
+      fetchExchangeRates('USD')
+        .then((r) => {
+          setRates(r);
+          forceUpdate({});
+        })
+        .catch(() => {});
+    }
+  }, [conversionMode]);
+
+  const loadPreferences = async () => {
     try {
-      const saved = await AsyncStorage.getItem('user_currency');
-      if (saved) {
-        setCurrencyState(saved);
-      }
+      const [savedCurrency, savedMode] = await Promise.all([
+        AsyncStorage.getItem('user_currency'),
+        AsyncStorage.getItem(CONVERSION_MODE_KEY),
+      ]);
+      if (savedCurrency) setCurrencyState(savedCurrency);
+      if (savedMode === 'live' || savedMode === 'off') setConversionModeState(savedMode);
     } catch (error) {
-      console.error('Error loading currency:', error);
+      console.error('Error loading currency preferences:', error);
     } finally {
       setLoading(false);
     }
@@ -55,47 +69,37 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   const setCurrency = async (code: string) => {
     setCurrencyState(code);
     await AsyncStorage.setItem('user_currency', code);
-    // Force re-render to update all currency displays
+    // Force re-render so every currency display updates immediately.
     forceUpdate({});
   };
 
-  const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
+  const setConversionMode = async (mode: ConversionMode) => {
+    setConversionModeState(mode);
+    await AsyncStorage.setItem(CONVERSION_MODE_KEY, mode);
+    forceUpdate({});
+  };
+
+  const currencySymbol = getCurrencySymbol(currency);
 
   /**
-   * Format amount with proper thousand separators and decimal places
-   * Uses the sourceCurrency if provided, otherwise uses user's selected currency
-   * 
-   * @param amount - The amount to format
-   * @param sourceCurrency - The currency of the amount (optional, will use this for symbol if provided)
+   * Format an amount for display. The result ALWAYS uses the user's selected
+   * currency symbol/format so the selected currency matches what is shown.
+   *
+   * @param amount         - the numeric amount
+   * @param sourceCurrency - the currency the amount is stored in (optional).
+   *   Only used when live conversion is enabled, to convert into the selected
+   *   currency. When conversion is off it is ignored (amount shown as-is).
    */
   const formatAmount = (amount: number, sourceCurrency?: string): string => {
-    // Use sourceCurrency if provided, otherwise use user's selected currency
-    const displayCurrency = sourceCurrency || currency;
-    const symbol = CURRENCY_SYMBOLS[displayCurrency] || '$';
-    
-    // Indonesian Rupiah - uses . for thousands and , for decimals (Rp50.000,53)
-    if (displayCurrency === 'IDR') {
-      // For IDR, typically no decimal places for whole numbers
-      const hasDecimals = amount % 1 !== 0;
-      const formatted = amount.toLocaleString('id-ID', {
-        minimumFractionDigits: hasDecimals ? 2 : 0,
-        maximumFractionDigits: 2,
-      });
-      return `${symbol}${formatted}`;
+    let value = amount;
+    if (
+      conversionMode === 'live' &&
+      sourceCurrency &&
+      sourceCurrency !== currency
+    ) {
+      value = convertWithRates(amount, sourceCurrency, currency, rates);
     }
-    
-    // Japanese Yen - no decimals
-    if (displayCurrency === 'JPY' || displayCurrency === 'KRW') {
-      const formatted = Math.round(amount).toLocaleString('ja-JP');
-      return `${symbol}${formatted}`;
-    }
-    
-    // USD, EUR, GBP, etc. - uses , for thousands and . for decimals ($1,300.50)
-    const formatted = amount.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `${symbol}${formatted}`;
+    return formatInCurrency(value, currency);
   };
 
   return (
@@ -104,6 +108,8 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
         currency,
         currencySymbol,
         setCurrency,
+        conversionMode,
+        setConversionMode,
         formatAmount,
         loading,
       }}
@@ -120,3 +126,5 @@ export function useCurrency() {
   }
   return context;
 }
+
+export { CURRENCY_SYMBOLS };

@@ -18,6 +18,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { getCurrencySymbol } from "../../utils/currency";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -144,13 +145,6 @@ export default function EditTransactionScreen() {
         },
       ]
     );
-  };
-
-  const getCurrencySymbol = (code: string) => {
-    const symbols: { [key: string]: string } = {
-      USD: "$", EUR: "€", GBP: "£", JPY: "¥", IDR: "Rp", SGD: "S$"
-    };
-    return symbols[code] || "$";
   };
 
   if (loading) {
