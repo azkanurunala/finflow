@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,10 +21,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, redeemCode } = useAuth();
   const { t, language } = useLanguage();
   const { currency, conversionMode, setConversionMode } = useCurrency();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const [showRedeem, setShowRedeem] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -44,6 +50,20 @@ export default function ProfileScreen() {
         },
       },
     ]);
+  };
+
+  const handleRedeem = async () => {
+    if (!codeInput.trim()) return;
+    setRedeeming(true);
+    const r = await redeemCode(codeInput.trim());
+    setRedeeming(false);
+    if (r.success) {
+      setShowRedeem(false);
+      setCodeInput("");
+      Alert.alert(t('common.success'), t('redeem.success'));
+    } else {
+      Alert.alert(t('common.error'), r.error || "");
+    }
   };
 
   const getLanguageName = (code: string) => {
@@ -101,6 +121,12 @@ export default function ProfileScreen() {
           value: currency,
           color: "#10B981",
           onPress: () => router.push("/(app)/currency"),
+        },
+        {
+          icon: "gift-outline",
+          label: t('redeem.menuLabel'),
+          color: "#8B5CF6",
+          onPress: () => setShowRedeem(true),
         },
       ],
     },
@@ -308,6 +334,47 @@ export default function ProfileScreen() {
           <Text style={[styles.navText, styles.navTextActive]}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
+      {/* Redeem code modal */}
+      <Modal
+        visible={showRedeem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRedeem(false)}
+      >
+        <View style={styles.redeemOverlay}>
+          <View style={styles.redeemCard}>
+            <Text style={styles.redeemTitle}>{t('redeem.title')}</Text>
+            <TextInput
+              style={styles.redeemInput}
+              placeholder={t('redeem.placeholder')}
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="characters"
+              autoCorrect={false}
+              value={codeInput}
+              onChangeText={setCodeInput}
+            />
+            <View style={styles.redeemActions}>
+              <TouchableOpacity
+                style={styles.redeemCancel}
+                onPress={() => setShowRedeem(false)}
+              >
+                <Text style={styles.redeemCancelText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.redeemConfirm}
+                onPress={handleRedeem}
+                disabled={redeeming}
+              >
+                {redeeming ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.redeemConfirmText}>{t('redeem.button')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -555,5 +622,64 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: "#10B981",
     fontWeight: "600",
+  },
+  redeemOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  redeemCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+  },
+  redeemTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  redeemInput: {
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: "#1F2937",
+    marginBottom: 16,
+  },
+  redeemActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  redeemCancel: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+  },
+  redeemCancelText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  redeemConfirm: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: "#4DB6AC",
+    alignItems: "center",
+  },
+  redeemConfirmText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
   },
 });

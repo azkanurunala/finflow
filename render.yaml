@@ -22,5 +22,17 @@ services:
         sync: false        # mongodb+srv://...  (from MongoDB Atlas)
       - key: OPENAI_API_KEY
         sync: false
-      - key: EMERGENT_LLM_KEY
-        sync: false        # optional; leave blank to use OPENAI_API_KEY
+      - key: OPENAI_MODEL
+        value: gpt-5.2
+      - key: OPENAI_TRANSCRIBE_MODEL
+        value: whisper-1
+      - key: GOOGLE_CLIENT_IDS
+        sync: false        # comma-separated Google OAuth client IDs (iOS,Android,Web)
+      - key: APPLE_BUNDLE_ID
+        value: com.azkanura.finflow
+      - key: ADMIN_TOKEN
+        sync: false        # for POST /api/admin/codes (redeem code generation)
+      - key: REVENUECAT_SECRET_KEY
+        sync: false        # RevenueCat REST secret key (entitlement sync)
+      - key: REVENUECAT_WEBHOOK_AUTH
+        sync: false        # Authorization header value set on the RC webhook

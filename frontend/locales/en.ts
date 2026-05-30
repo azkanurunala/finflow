@@ -283,6 +283,11 @@ export default {
     featAllFeatures: "All Features",
     featPrioritySupport: "Priority Support",
     featVipSupport: "VIP Support",
+    restore: "Restore Purchases",
+    purchaseSuccess: "You're all set! Your subscription is active.",
+    purchaseFailed: "Purchase failed. Please try again.",
+    billingUnavailable: "Subscriptions aren't available right now.",
+    restored: "Purchases restored.",
   },
   analytics: {
     aiAnalytics: "AI Analytics",
@@ -373,6 +378,13 @@ export default {
     stopRecording: "Stop Recording",
     transcribed: 'Transcribed: "%{text}"\n\n%{message}',
     failVoiceRetry: "Failed to process voice recording. Please try again.",
+  },
+  redeem: {
+    menuLabel: "Redeem code",
+    title: "Redeem a code",
+    placeholder: "Enter your code",
+    button: "Redeem",
+    success: "Code applied! Enjoy your free trial.",
   },
   categories: {
     groceries: "Groceries",

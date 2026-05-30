@@ -83,6 +83,9 @@ agenthub/agents/youtube/db
 .env.development.local
 .env.test.local
 .env.production.local
+# ...but DO track the example templates.
+!.env.example
+!**/.env.example
 
 # Store submit credentials (NEVER commit these)
 *.p8

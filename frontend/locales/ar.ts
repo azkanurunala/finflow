@@ -284,6 +284,11 @@ export default {
     featAllFeatures: "جميع الميزات",
     featPrioritySupport: "دعم ذو أولوية",
     featVipSupport: "دعم VIP",
+    restore: "استعادة المشتريات",
+    purchaseSuccess: "تم! اشتراكك مفعّل.",
+    purchaseFailed: "فشل الشراء. حاول مرة أخرى.",
+    billingUnavailable: "الاشتراكات غير متاحة حالياً.",
+    restored: "تمت استعادة المشتريات.",
   },
   analytics: {
     aiAnalytics: "تحليلات الذكاء الاصطناعي",
@@ -374,6 +379,13 @@ export default {
     stopRecording: "إيقاف التسجيل",
     transcribed: 'النص: "%{text}"\n\n%{message}',
     failVoiceRetry: "فشل معالجة التسجيل الصوتي. يرجى المحاولة مرة أخرى.",
+  },
+  redeem: {
+    menuLabel: "استخدام رمز",
+    title: "استخدام رمز",
+    placeholder: "أدخل الرمز",
+    button: "تطبيق",
+    success: "تم تطبيق الرمز! استمتع بتجربتك المجانية.",
   },
   categories: {
     groceries: "بقالة",

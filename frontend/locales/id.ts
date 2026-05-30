@@ -284,6 +284,11 @@ export default {
     featAllFeatures: "Semua Fitur",
     featPrioritySupport: "Dukungan Prioritas",
     featVipSupport: "Dukungan VIP",
+    restore: "Pulihkan Pembelian",
+    purchaseSuccess: "Berhasil! Langganan kamu aktif.",
+    purchaseFailed: "Pembelian gagal. Silakan coba lagi.",
+    billingUnavailable: "Langganan belum tersedia saat ini.",
+    restored: "Pembelian dipulihkan.",
   },
   analytics: {
     aiAnalytics: "Analitik AI",
@@ -374,6 +379,13 @@ export default {
     stopRecording: "Hentikan Rekaman",
     transcribed: 'Transkripsi: "%{text}"\n\n%{message}',
     failVoiceRetry: "Gagal memproses rekaman suara. Silakan coba lagi.",
+  },
+  redeem: {
+    menuLabel: "Tukar kode",
+    title: "Tukar kode",
+    placeholder: "Masukkan kode kamu",
+    button: "Tukar",
+    success: "Kode diterapkan! Selamat menikmati uji coba gratis.",
   },
   categories: {
     groceries: "Belanja",

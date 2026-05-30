@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Depends, Request, Response, Cookie
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Form, Depends, Request, Response, Cookie, Header
 from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -16,7 +16,7 @@ import io
 import httpx
 import hashlib
 import secrets
-from emergentintegrations.llm.chat import LlmChat, UserMessage, ImageContent
+from openai import AsyncOpenAI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -26,12 +26,35 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'test_database')]
 
-# LLM keys. LlmChat (chat/receipt/insights) runs on litellm: an "sk-emergent-"
-# key routes through the Emergent proxy, any other key (e.g. a real OpenAI key)
-# goes directly to OpenAI. Fall back to OPENAI_API_KEY when no Emergent key is
-# set so the app runs on a plain OpenAI key.
+# LLM config — chat parsing, receipt OCR, and insights run directly on the
+# OpenAI API (no Emergent proxy). Model is overridable via OPENAI_MODEL.
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-EMERGENT_LLM_KEY = os.environ.get('EMERGENT_LLM_KEY', '') or OPENAI_API_KEY
+# Chat parsing + receipt OCR (vision). Use a cheaper model (e.g. gpt-4o-mini /
+# gpt-5-mini) to save tokens — both support vision for OCR.
+LLM_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5.2')
+# Voice transcription. whisper-1 or the cheaper gpt-4o-mini-transcribe.
+TRANSCRIBE_MODEL = os.environ.get('OPENAI_TRANSCRIBE_MODEL', 'whisper-1')
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+
+async def llm_complete(system_prompt: str, user_text: str,
+                       image_base64: Optional[str] = None) -> str:
+    """Single-turn OpenAI chat completion. Pass image_base64 for vision
+    (receipt scanning). Returns the assistant's text."""
+    content: List[Dict[str, Any]] = [{"type": "text", "text": user_text}]
+    if image_base64:
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"},
+        })
+    resp = await openai_client.chat.completions.create(
+        model=LLM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": content},
+        ],
+    )
+    return resp.choices[0].message.content or ""
 
 # Create the main app
 app = FastAPI()
@@ -125,15 +148,6 @@ class UserSession(BaseModel):
     expires_at: datetime
     created_at: datetime
 
-class SessionDataRequest(BaseModel):
-    session_id: str
-
-class SessionDataResponse(BaseModel):
-    user_id: str
-    email: str
-    name: str
-    picture: Optional[str] = None
-    session_token: str
 
 class Transaction(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -420,14 +434,7 @@ DATE PARSING:
 - "minggu lalu" / "last week" = 7 days ago
 - If no date mentioned, use today: {today}"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"transaction_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        user_message = UserMessage(text=f"Parse this transaction: {text}")
-        response = await chat.send_message(user_message)
+        response = await llm_complete(system_prompt, f"Parse this transaction: {text}")
         
         # Parse GPT response
         import json
@@ -485,19 +492,11 @@ Rules:
 - Note any tip or tax separately
 - If receipt shows multiple items, mention key items in notes"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"receipt_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        image_content = ImageContent(image_base64=image_base64)
-        user_message = UserMessage(
-            text="Extract transaction details from this receipt.",
-            file_contents=[image_content]
+        response = await llm_complete(
+            system_prompt,
+            "Extract transaction details from this receipt.",
+            image_base64=image_base64,
         )
-        
-        response = await chat.send_message(user_message)
         
         # Parse response
         import json
@@ -536,87 +535,369 @@ Rules:
         raise HTTPException(status_code=400, detail=f"Could not parse receipt: {str(e)}")
 
 # Auth Routes
-@api_router.post("/auth/session")
-async def create_session(request: SessionDataRequest, response: Response):
-    """Exchange session_id for user data and session_token"""
-    try:
-        # Call Emergent Auth API
-        async with httpx.AsyncClient() as client:
-            auth_response = await client.get(
-                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-                headers={"X-Session-ID": request.session_id}
+# ---------------------------------------------------------------------------
+# OAuth (Sign in with Google / Apple). Replaces the old Emergent auth proxy.
+# The client obtains an ID token from the native SDK and posts it here; we
+# verify it server-side, then create/link a user and issue our session token.
+# ---------------------------------------------------------------------------
+GOOGLE_CLIENT_IDS = [c.strip() for c in os.environ.get("GOOGLE_CLIENT_IDS", "").split(",") if c.strip()]
+APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID", "com.azkanura.finflow")
+APPLE_SERVICES_ID = os.environ.get("APPLE_SERVICES_ID", "")
+APPLE_VALID_AUDS = [a for a in [APPLE_BUNDLE_ID, APPLE_SERVICES_ID] if a]
+
+
+class OAuthRequest(BaseModel):
+    id_token: str
+    full_name: Optional[str] = None
+
+
+async def _issue_session(user_id: str, response: Response) -> str:
+    """Create a 7-day session token (DB + httpOnly cookie) and return it."""
+    session_token = secrets.token_urlsafe(32)
+    await db.user_sessions.insert_one({
+        "user_id": user_id,
+        "session_token": session_token,
+        "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+        "created_at": datetime.now(timezone.utc),
+    })
+    response.set_cookie(
+        key="session_token", value=session_token, httponly=True,
+        secure=True, samesite="none", max_age=7 * 24 * 60 * 60, path="/",
+    )
+    return session_token
+
+
+async def _upsert_oauth_user(provider: str, sub: str, email: str, name: str,
+                             picture: Optional[str]) -> dict:
+    """Find the user by email and link the provider, or create a new one
+    (new users get the same 3-day auto free trial as before)."""
+    email = (email or "").lower()
+    existing = await db.users.find_one({"email": email}, {"_id": 0}) if email else None
+    if existing:
+        providers = existing.get("auth_providers", [])
+        if not any(p.get("provider") == provider for p in providers):
+            providers.append({"provider": provider, "sub": sub,
+                              "linked_at": datetime.now(timezone.utc)})
+            await db.users.update_one(
+                {"user_id": existing["user_id"]},
+                {"$set": {"auth_providers": providers, "email_verified": True}},
             )
-        
-        if auth_response.status_code != 200:
-            raise HTTPException(status_code=400, detail="Invalid session ID")
-        
-        user_data = auth_response.json()
-        
-        # Check if user exists
-        existing_user = await db.users.find_one(
-            {"email": user_data["email"]},
-            {"_id": 0}
+            existing["auth_providers"] = providers
+        return existing
+
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    new_user = {
+        "user_id": user_id,
+        "email": email,
+        "name": name or (email.split("@")[0] if email else "User"),
+        "picture": picture,
+        "auth_provider": provider,
+        "auth_providers": [{"provider": provider, "sub": sub,
+                            "linked_at": datetime.now(timezone.utc)}],
+        "email_verified": True,
+        "subscription_tier": "free_trial",
+        "subscription_started_at": datetime.now(timezone.utc),
+        "subscription_expires_at": datetime.now(timezone.utc) + timedelta(days=3),
+        "subscription_source": "auto_trial",
+        "onboarding_completed": False,
+        "language": None,
+        "currency": None,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.users.insert_one(new_user)
+    return new_user
+
+
+def _auth_response(user: dict, session_token: str) -> dict:
+    return {
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "name": user["name"],
+        "picture": user.get("picture"),
+        "session_token": session_token,
+        "onboarding_completed": user.get("onboarding_completed", False),
+        "subscription_tier": user.get("subscription_tier"),
+        "is_subscription_active": user.get("subscription_tier") not in (None, "free"),
+    }
+
+
+@api_router.post("/auth/oauth/google")
+async def oauth_google(req: OAuthRequest, response: Response):
+    """Verify a Google ID token and sign the user in."""
+    try:
+        from google.oauth2 import id_token as g_id_token
+        from google.auth.transport import requests as g_requests
+
+        info = g_id_token.verify_oauth2_token(req.id_token, g_requests.Request())
+        if info.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
+            raise HTTPException(status_code=401, detail="Invalid Google token issuer")
+        if GOOGLE_CLIENT_IDS and info.get("aud") not in GOOGLE_CLIENT_IDS:
+            raise HTTPException(status_code=401, detail="Google token audience mismatch")
+        if not info.get("email") or not info.get("email_verified", False):
+            raise HTTPException(status_code=401, detail="Google email not verified")
+
+        user = await _upsert_oauth_user(
+            "google", info["sub"], info["email"],
+            info.get("name") or req.full_name or "", info.get("picture"),
         )
-        
-        if existing_user:
-            user_id = existing_user["user_id"]
-        else:
-            # Create new user
-            user_id = f"user_{uuid.uuid4().hex[:12]}"
-            
-            # Free trial expires in 3 days
-            trial_expires = datetime.now(timezone.utc) + timedelta(days=3)
-            
-            new_user = {
-                "user_id": user_id,
-                "email": user_data["email"],
-                "name": user_data["name"],
-                "picture": user_data.get("picture"),
-                "subscription_tier": "free_trial",
-                "subscription_started_at": datetime.now(timezone.utc),
-                "subscription_expires_at": trial_expires,
-                "created_at": datetime.now(timezone.utc)
-            }
-            
-            await db.users.insert_one(new_user)
-        
-        # Create session
-        session_token = user_data["session_token"]
-        session_expires = datetime.now(timezone.utc) + timedelta(days=7)
-        
-        session_doc = {
-            "user_id": user_id,
-            "session_token": session_token,
-            "expires_at": session_expires,
-            "created_at": datetime.now(timezone.utc)
-        }
-        
-        await db.user_sessions.insert_one(session_doc)
-        
-        # Set httpOnly cookie
-        response.set_cookie(
-            key="session_token",
-            value=session_token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            max_age=7 * 24 * 60 * 60,  # 7 days
-            path="/"
+        token = await _issue_session(user["user_id"], response)
+        return _auth_response(user, token)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {e}")
+    except Exception as e:
+        logger.error(f"Google OAuth error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/auth/oauth/apple")
+async def oauth_apple(req: OAuthRequest, response: Response):
+    """Verify an Apple identity token (JWT) and sign the user in."""
+    try:
+        import jwt
+        from jwt import PyJWKClient
+
+        signing_key = PyJWKClient("https://appleid.apple.com/auth/keys").get_signing_key_from_jwt(req.id_token)
+        claims = jwt.decode(
+            req.id_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=APPLE_VALID_AUDS or None,
+            issuer="https://appleid.apple.com",
+            options={"require": ["exp", "iss", "sub"]},
         )
-        
-        return SessionDataResponse(
-            user_id=user_id,
-            email=user_data["email"],
-            name=user_data["name"],
-            picture=user_data.get("picture"),
-            session_token=session_token
+
+        sub = claims["sub"]
+        email = (claims.get("email") or "").lower()
+
+        # Apple omits email after the first sign-in: match by provider sub.
+        if not email:
+            existing = await db.users.find_one(
+                {"auth_providers": {"$elemMatch": {"provider": "apple", "sub": sub}}},
+                {"_id": 0},
+            )
+            if existing:
+                token = await _issue_session(existing["user_id"], response)
+                return _auth_response(existing, token)
+            email = f"{sub}@privaterelay.appleid.local"
+
+        user = await _upsert_oauth_user(
+            "apple", sub, email, req.full_name or email.split("@")[0], None,
         )
-        
+        token = await _issue_session(user["user_id"], response)
+        return _auth_response(user, token)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Apple OAuth error: {str(e)}")
+        raise HTTPException(status_code=401, detail=f"Invalid Apple token: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Redeem codes — internal promo codes that grant a free trial (default: Pro,
+# 3 days). Separate from App Store/Play promo codes (those are for IAP).
+# ---------------------------------------------------------------------------
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
+
+def _aware(dt):
+    """Ensure a datetime is timezone-aware (UTC)."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+class RedeemRequest(BaseModel):
+    code: str
+
+
+class GenerateCodesRequest(BaseModel):
+    count: int = 1
+    prefix: str = "FINFLOW"
+    grant_tier: str = "pro"
+    duration_days: int = 3
+    max_uses: int = 1
+    per_user_once: bool = True
+    valid_days: Optional[int] = None  # how long the code itself stays valid
+
+
+@api_router.post("/codes/redeem")
+async def redeem_code(req: RedeemRequest, current_user: User = Depends(require_auth)):
+    """Redeem a trial code → grant the configured tier for N days."""
+    code = req.code.strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+
+    doc = await db.redeem_codes.find_one({"code": code})
+    if not doc or not doc.get("active", True):
+        raise HTTPException(status_code=404, detail="Invalid or inactive code")
+
+    now = datetime.now(timezone.utc)
+    if _aware(doc.get("valid_from")) and now < _aware(doc["valid_from"]):
+        raise HTTPException(status_code=400, detail="Code is not active yet")
+    if _aware(doc.get("valid_until")) and now > _aware(doc["valid_until"]):
+        raise HTTPException(status_code=400, detail="Code has expired")
+    if doc.get("max_uses") is not None and doc.get("used_count", 0) >= doc["max_uses"]:
+        raise HTTPException(status_code=409, detail="Code has reached its usage limit")
+
+    if doc.get("per_user_once", True):
+        used = await db.redemptions.find_one({"code": code, "user_id": current_user.user_id})
+        if used:
+            raise HTTPException(status_code=409, detail="You have already used this code")
+
+    # Don't downgrade an active PAID subscription.
+    exp = _aware(current_user.subscription_expires_at)
+    if current_user.subscription_tier in ("basic", "pro", "power") and exp and exp > now:
+        raise HTTPException(status_code=409, detail="You already have an active subscription")
+
+    grant_tier = doc.get("grant_tier", "pro")
+    duration_days = int(doc.get("duration_days", 3))
+    new_expiry = now + timedelta(days=duration_days)
+
+    await db.users.update_one(
+        {"user_id": current_user.user_id},
+        {"$set": {
+            "subscription_tier": grant_tier,
+            "subscription_started_at": now,
+            "subscription_expires_at": new_expiry,
+            "subscription_source": "trial_code",
+        }},
+    )
+    await db.redeem_codes.update_one({"code": code}, {"$inc": {"used_count": 1}})
+    await db.redemptions.insert_one({
+        "code": code,
+        "user_id": current_user.user_id,
+        "redeemed_at": now,
+        "expires_at": new_expiry,
+    })
+
+    return {
+        "success": True,
+        "subscription_tier": grant_tier,
+        "subscription_expires_at": new_expiry.isoformat(),
+        "days": duration_days,
+    }
+
+
+@api_router.post("/admin/codes")
+async def generate_codes(req: GenerateCodesRequest, x_admin_token: Optional[str] = Header(None)):
+    """Generate a batch of redeem codes (admin only, via X-Admin-Token header)."""
+    if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    now = datetime.now(timezone.utc)
+    valid_until = now + timedelta(days=req.valid_days) if req.valid_days else None
+    codes = []
+    for _ in range(max(1, min(req.count, 1000))):
+        code = f"{req.prefix.upper()}-{secrets.token_hex(3).upper()}"
+        await db.redeem_codes.insert_one({
+            "code": code,
+            "type": "trial",
+            "grant_tier": req.grant_tier,
+            "duration_days": req.duration_days,
+            "max_uses": req.max_uses,
+            "used_count": 0,
+            "per_user_once": req.per_user_once,
+            "active": True,
+            "valid_from": now,
+            "valid_until": valid_until,
+            "created_at": now,
+        })
+        codes.append(code)
+    return {"codes": codes, "count": len(codes)}
+
+
+# ---------------------------------------------------------------------------
+# Billing / paywall — RevenueCat is the source of IAP truth. We mirror the
+# active entitlement onto the user (subscription_tier/expires) so the paywall
+# and quota checks stay server-authoritative.
+# ---------------------------------------------------------------------------
+REVENUECAT_SECRET_KEY = os.environ.get("REVENUECAT_SECRET_KEY", "")
+REVENUECAT_WEBHOOK_AUTH = os.environ.get("REVENUECAT_WEBHOOK_AUTH", "")
+
+# Map store product identifiers → our subscription tier.
+PRODUCT_TIER_MAP = {
+    "basic_monthly": "basic", "basic_yearly": "basic",
+    "pro_monthly": "pro", "pro_yearly": "pro",
+    "power_monthly": "power", "power_yearly": "power",
+}
+
+
+def _parse_rc_date(s: Optional[str]):
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+async def _sync_user_entitlement(user_id: str) -> dict:
+    """Query RevenueCat for a user's active entitlements and mirror the best one
+    onto our user record. Returns the resulting entitlement summary."""
+    if not REVENUECAT_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Billing not configured")
+
+    async with httpx.AsyncClient(timeout=20.0) as c:
+        r = await c.get(
+            f"https://api.revenuecat.com/v1/subscribers/{user_id}",
+            headers={"Authorization": f"Bearer {REVENUECAT_SECRET_KEY}"},
+        )
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not reach billing provider")
+
+    entitlements = (r.json().get("subscriber", {}) or {}).get("entitlements", {}) or {}
+    now = datetime.now(timezone.utc)
+    far = datetime.max.replace(tzinfo=timezone.utc)
+    best = None  # (effective_expiry, real_expiry, tier)
+    for ent in entitlements.values():
+        exp = _parse_rc_date(ent.get("expires_date"))
+        if not (exp is None or exp > now):
+            continue  # expired
+        eff = exp or far  # null expires_date = lifetime/non-expiring
+        tier = PRODUCT_TIER_MAP.get(ent.get("product_identifier", ""), "pro")
+        if best is None or eff > best[0]:
+            best = (eff, exp, tier)
+
+    if best:
+        _, real_exp, tier = best
+        await db.users.update_one({"user_id": user_id}, {"$set": {
+            "subscription_tier": tier,
+            "subscription_expires_at": real_exp,
+            "subscription_source": "iap",
+        }})
+        return {"tier": tier, "expires_at": real_exp.isoformat() if real_exp else None, "active": True}
+
+    # No active paid entitlement — if the user was on IAP, drop to free.
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if user and user.get("subscription_source") == "iap":
+        await db.users.update_one({"user_id": user_id}, {"$set": {
+            "subscription_tier": "free",
+            "subscription_source": "none",
+        }})
+    return {"tier": "free", "active": False}
+
+
+@api_router.post("/billing/sync")
+async def billing_sync(current_user: User = Depends(require_auth)):
+    """Client calls this after a purchase/restore to refresh entitlement."""
+    return await _sync_user_entitlement(current_user.user_id)
+
+
+@api_router.post("/billing/webhook")
+async def billing_webhook(request: Request, authorization: Optional[str] = Header(None)):
+    """RevenueCat webhook — re-syncs the affected user on any subscription event."""
+    if REVENUECAT_WEBHOOK_AUTH and authorization != REVENUECAT_WEBHOOK_AUTH:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    body = await request.json()
+    app_user_id = (body.get("event", {}) or {}).get("app_user_id")
+    if app_user_id:
+        try:
+            await _sync_user_entitlement(app_user_id)
+        except Exception as e:
+            logger.error(f"Webhook sync error for {app_user_id}: {str(e)}")
+    return {"received": True}
 
 @api_router.get("/auth/me")
 async def get_me(request: Request):
@@ -1062,7 +1343,7 @@ async def create_voice_transaction(
                     "file": (f"audio.{audio_format}", audio_data, mime_type)
                 },
                 data={
-                    "model": "whisper-1",
+                    "model": TRANSCRIBE_MODEL,
                     "language": "id"  # Indonesian
                 }
             )
@@ -1507,14 +1788,7 @@ Respond in JSON format:
     "spending_trend": "good|needs_attention|concerning"
 }"""
 
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=f"insights_{uuid.uuid4()}",
-            system_message=system_prompt
-        ).with_model("openai", "gpt-5.2")
-
-        user_message = UserMessage(text=f"Analyze this financial data and provide insights:\n{context}")
-        response = await chat.send_message(user_message)
+        response = await llm_complete(system_prompt, f"Analyze this financial data and provide insights:\n{context}")
         
         # Parse response
         import json

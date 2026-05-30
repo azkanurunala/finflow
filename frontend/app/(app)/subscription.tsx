@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { findPackage, purchasePackage, restorePurchases, billingAvailable } from "../../utils/purchases";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
@@ -86,12 +87,13 @@ const TIERS = [
 
 export default function SubscriptionScreen() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, syncBilling } = useAuth();
   const { t } = useLanguage();
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(
     null
   );
   const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "yearly">(
     "monthly"
   );
@@ -114,16 +116,51 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleUpgrade = (tierId: string, tierName: string) => {
-    const period =
-      billingPeriod === "monthly"
-        ? t("subscription.periodMonth")
-        : t("subscription.periodYear");
-    Alert.alert(
-      t("subscription.upgradeTitle"),
-      t("subscription.upgradeMsg", { plan: tierName, period }),
-      [{ text: t("common.ok") }]
-    );
+  const handleUpgrade = async (tierId: string, tierName: string) => {
+    if (!billingAvailable()) {
+      Alert.alert(t("subscription.subscription"), t("subscription.billingUnavailable"));
+      return;
+    }
+    const productId = `${tierId}_${billingPeriod === "monthly" ? "monthly" : "yearly"}`;
+    setPurchasing(true);
+    try {
+      const pkg = await findPackage(productId);
+      if (!pkg) {
+        Alert.alert(t("subscription.subscription"), t("subscription.billingUnavailable"));
+        return;
+      }
+      const r = await purchasePackage(pkg);
+      if (r.cancelled) return;
+      if (!r.success) {
+        Alert.alert(t("common.error"), r.error || t("subscription.purchaseFailed"));
+        return;
+      }
+      await syncBilling();
+      await fetchSubscription();
+      Alert.alert(t("common.success"), t("subscription.purchaseSuccess"));
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!billingAvailable()) {
+      Alert.alert(t("subscription.subscription"), t("subscription.billingUnavailable"));
+      return;
+    }
+    setPurchasing(true);
+    try {
+      const r = await restorePurchases();
+      if (!r.success) {
+        Alert.alert(t("common.error"), r.error || t("subscription.purchaseFailed"));
+        return;
+      }
+      await syncBilling();
+      await fetchSubscription();
+      Alert.alert(t("common.success"), t("subscription.restored"));
+    } finally {
+      setPurchasing(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -371,6 +408,14 @@ export default function SubscriptionScreen() {
         </View>
 
         {/* Disclaimer */}
+        <TouchableOpacity
+          style={styles.restoreButton}
+          onPress={handleRestore}
+          disabled={purchasing}
+        >
+          <Text style={styles.restoreText}>{t('subscription.restore')}</Text>
+        </TouchableOpacity>
+
         <Text style={styles.disclaimer}>
           {t('subscription.disclaimer')}
         </Text>
@@ -708,6 +753,16 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     paddingHorizontal: 32,
     marginBottom: 24,
+  },
+  restoreButton: {
+    alignItems: "center",
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  restoreText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4DB6AC",
   },
   bottomNav: {
     flexDirection: "row",

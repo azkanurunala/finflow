@@ -15,19 +15,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useSocialAuth } from "../hooks/useSocialAuth";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { user, loading, login, loginWithEmail } = useAuth();
+  const { user, loading, loginWithEmail } = useAuth();
   const { t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState("");
+  const { signInGoogle, signInApple, googleReady, appleAvailable, busy } = useSocialAuth((r) => {
+    if (!r.success && r.error) setError(r.error);
+  });
 
   useEffect(() => {
     const handleUserRedirect = async () => {
@@ -207,24 +211,26 @@ export default function LoginScreen() {
           {/* Social Login Buttons */}
           <View style={styles.socialButtons}>
             <TouchableOpacity
-              style={styles.socialButton}
-              onPress={login}
+              style={[styles.socialButton, (!googleReady || busy) && styles.socialButtonDisabled]}
+              onPress={signInGoogle}
+              disabled={!googleReady || busy}
               activeOpacity={0.7}
             >
               <Ionicons name="logo-google" size={20} color="#1F2937" />
               <Text style={styles.socialButtonText}>{t('auth.google')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.socialButton, styles.socialButtonDisabled]}
-              disabled
-              activeOpacity={0.7}
-            >
-              <Ionicons name="logo-apple" size={20} color="#9CA3AF" />
-              <Text style={[styles.socialButtonText, styles.socialButtonTextDisabled]}>
-                {t('auth.apple')}
-              </Text>
-            </TouchableOpacity>
+            {appleAvailable && (
+              <TouchableOpacity
+                style={[styles.socialButton, busy && styles.socialButtonDisabled]}
+                onPress={signInApple}
+                disabled={busy}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="logo-apple" size={20} color="#1F2937" />
+                <Text style={styles.socialButtonText}>{t('auth.apple')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Sign Up Link */}
