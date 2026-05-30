@@ -84,6 +84,12 @@ agenthub/agents/youtube/db
 .env.test.local
 .env.production.local
 
+# Store submit credentials (NEVER commit these)
+*.p8
+play-service-account.json
+**/play-service-account.json
+*service-account*.json
+
 # Expo/Metro
 .expo/
 .metro-cache/
