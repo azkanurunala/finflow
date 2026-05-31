@@ -87,6 +87,59 @@ def register_admin(app, db, admin_token: str):
             "top_users": top_users,
         }
 
+    @app.get("/api/admin/codes")
+    async def admin_codes(limit: int = 1000, x_admin_token: Optional[str] = Header(None)):
+        _check(x_admin_token)
+        codes = await db.redeem_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+        names = [c["code"] for c in codes]
+        reds = await db.redemptions.find(
+            {"code": {"$in": names}}, {"_id": 0}
+        ).to_list(20000)
+        by_code = {}
+        uids = set()
+        for r in reds:
+            by_code.setdefault(r["code"], []).append(r)
+            uids.add(r.get("user_id"))
+        ulist = await db.users.find(
+            {"user_id": {"$in": list(uids)}}, {"_id": 0, "user_id": 1, "email": 1, "name": 1}
+        ).to_list(20000)
+        umap = {u["user_id"]: u for u in ulist}
+
+        def _iso(dt):
+            try:
+                return dt.isoformat()
+            except Exception:
+                return None
+
+        out = []
+        for c in codes:
+            redeemers = [
+                {
+                    "email": umap.get(r.get("user_id"), {}).get("email"),
+                    "name": umap.get(r.get("user_id"), {}).get("name"),
+                    "redeemed_at": _iso(r.get("redeemed_at")),
+                }
+                for r in by_code.get(c["code"], [])
+            ]
+            used = c.get("used_count", 0) or 0
+            max_uses = c.get("max_uses", 1)
+            if not c.get("active", True):
+                status = "inactive"
+            elif max_uses is not None and used >= max_uses:
+                status = "used"
+            else:
+                status = "available"
+            out.append({
+                "code": c["code"],
+                "grant_tier": c.get("grant_tier"),
+                "duration_days": c.get("duration_days"),
+                "used_count": used,
+                "max_uses": max_uses,
+                "status": status,
+                "redeemers": redeemers,
+            })
+        return {"total": len(out), "codes": out}
+
     @app.get("/admin", response_class=HTMLResponse)
     async def admin_page():
         return _DASHBOARD_HTML
@@ -125,6 +178,19 @@ _DASHBOARD_HTML = r"""<!doctype html>
   td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
   .err { color:#EF4444; font-size:13px; margin-top:8px; }
   .muted { color:var(--gray); }
+  .genrow { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .genrow input, .genrow select { background:#fff; color:var(--dark); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; }
+  .genrow input[type=number]{ width:90px; }
+  .genrow button { background:var(--teal); border:none; color:#fff; font-weight:600; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .genout { background:#F9FAFB; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:12px; font-family:ui-monospace,Menlo,monospace; font-size:13px; max-height:150px; overflow:auto; white-space:pre-wrap; }
+  .badge { padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; }
+  .b-available { background:#DCFCE7; color:#166534; }
+  .b-used { background:#FEE2E2; color:#991B1B; }
+  .b-inactive { background:#F3F4F6; color:#6B7280; }
+  .filters { display:flex; gap:8px; margin-bottom:10px; }
+  .filters button { background:#fff; color:var(--gray); border:1px solid var(--line); padding:6px 12px; }
+  .filters button.active { background:var(--teal); color:#fff; border-color:var(--teal); }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media (max-width:760px){ .row2 { grid-template-columns:1fr; } }
 </style>
@@ -158,6 +224,24 @@ _DASHBOARD_HTML = r"""<!doctype html>
       <div class="panel"><h3>By model</h3><div id="models"></div></div>
     </div>
     <div class="panel"><h3>Top users by cost</h3><div id="topUsers"></div></div>
+    <div class="panel">
+      <h3>Redeem codes</h3>
+      <div class="genrow">
+        <span class="muted">Generate</span>
+        <input id="genCount" type="number" value="10" min="1" max="1000" title="count"/>
+        <select id="genTier"><option value="pro">pro</option><option value="basic">basic</option><option value="power">power</option></select>
+        <input id="genDays" type="number" value="7" min="1" title="days"/>
+        <button onclick="generateCodes()">Generate</button>
+        <span id="genMsg" class="muted"></span>
+      </div>
+      <div id="genOut" class="genout" style="display:none"></div>
+      <div class="filters">
+        <button data-f="all" class="active" onclick="setCodeFilter('all')">All</button>
+        <button data-f="available" onclick="setCodeFilter('available')">Available</button>
+        <button data-f="used" onclick="setCodeFilter('used')">Used</button>
+      </div>
+      <div id="codesTable" style="max-height:380px; overflow:auto"></div>
+    </div>
     <div id="err" class="err"></div>
   </div>
 </div>
@@ -189,6 +273,7 @@ async function load(){
   if(!res.ok){ document.getElementById("err").textContent = "Error "+res.status; return; }
   const d = await res.json();
   render(d);
+  loadCodes();
 }
 
 function render(d){
@@ -228,6 +313,54 @@ function render(d){
   document.getElementById("topUsers").innerHTML = tu.length ? `<table><tr><th>User</th><th class="num">Calls</th><th class="num">Tokens</th><th class="num">Cost</th></tr>`+
     tu.map(u=>`<tr><td>${(u.name||"—")} <span class="muted">${u.email||u.user_id}</span></td><td class="num">${fmtNum(u.calls)}</td><td class="num">${fmtNum(u.tokens)}</td><td class="num">${fmtCost(u.cost_usd)}</td></tr>`).join("")+`</table>`
     : `<p class="muted">No usage yet.</p>`;
+}
+
+let CODES = [], CODE_FILTER = "all";
+async function loadCodes(){
+  let res;
+  try { res = await fetch("/api/admin/codes?limit=1000", { headers:{ "X-Admin-Token": TOKEN } }); }
+  catch(e){ return; }
+  if(!res.ok) return;
+  const d = await res.json();
+  CODES = d.codes || [];
+  renderCodes();
+}
+function setCodeFilter(f){
+  CODE_FILTER = f;
+  document.querySelectorAll(".filters button").forEach(b => b.classList.toggle("active", b.dataset.f === f));
+  renderCodes();
+}
+function renderCodes(){
+  const rows = CODES.filter(c => CODE_FILTER === "all" || c.status === CODE_FILTER);
+  const badge = s => `<span class="badge b-${s}">${s}</span>`;
+  document.getElementById("codesTable").innerHTML =
+    `<table><tr><th>Code</th><th>Tier</th><th class="num">Days</th><th>Status</th><th>Redeemed by</th></tr>` +
+    rows.map(c => {
+      const r = (c.redeemers && c.redeemers[0]) || null;
+      const by = r ? `${r.name || ""} <span class="muted">${r.email || ""}</span>` : `<span class="muted">—</span>`;
+      return `<tr><td class="mono">${c.code}</td><td>${c.grant_tier}</td><td class="num">${c.duration_days}</td><td>${badge(c.status)}</td><td>${by}</td></tr>`;
+    }).join("") + `</table>` + (rows.length ? "" : `<p class="muted">No codes.</p>`);
+}
+async function generateCodes(){
+  const count = parseInt(document.getElementById("genCount").value) || 1;
+  const grant_tier = document.getElementById("genTier").value;
+  const duration_days = parseInt(document.getElementById("genDays").value) || 7;
+  document.getElementById("genMsg").textContent = "Generating…";
+  let res;
+  try {
+    res = await fetch("/api/admin/codes", {
+      method:"POST",
+      headers:{ "X-Admin-Token": TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify({ count, grant_tier, duration_days }),
+    });
+  } catch(e){ document.getElementById("genMsg").textContent = "Network error"; return; }
+  if(!res.ok){ document.getElementById("genMsg").textContent = "Error " + res.status; return; }
+  const d = await res.json();
+  document.getElementById("genMsg").textContent = `Generated ${d.count} code(s).`;
+  const out = document.getElementById("genOut");
+  out.style.display = "block";
+  out.textContent = (d.codes || []).join("\n");
+  load();
 }
 
 if(TOKEN){ showApp(); load(); }
