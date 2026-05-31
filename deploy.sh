@@ -16,7 +16,7 @@
 #        - Expo (free)
 #        - Apple Developer Program  ($99/yr)   ← required for App Store/TestFlight
 #        - Google Play Console      ($25 once) ← required for Play Store
-#   2. Expo auth: `npx eas login` once  (or `export EXPO_TOKEN=...` for CI).
+#   2. Expo auth: `npx --yes eas-cli@latest login` once  (or `export EXPO_TOKEN=...` for CI).
 #   3. Store submit credentials:
 #        Android: download a Google Play service-account JSON and save it as
 #                 frontend/play-service-account.json  (gitignored).
@@ -82,7 +82,7 @@ fi
 cd "$FRONTEND"
 
 # Fail early with a clear message if not authenticated.
-npx eas whoami >/dev/null 2>&1 || die "Not logged in to EAS. Run: cd frontend && npx eas login   (or export EXPO_TOKEN)."
+npx --yes eas-cli@latest whoami >/dev/null 2>&1 || die "Not logged in to EAS. Run: cd frontend && npx --yes eas-cli@latest login   (or export EXPO_TOKEN)."
 
 HAS_PLAY_KEY=0
 [ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
@@ -90,20 +90,20 @@ HAS_PLAY_KEY=0
 build_ios() {
   step "iOS → build (production) + auto-submit to App Store"
   # shellcheck disable=SC2086
-  npx eas build -p ios --profile production --auto-submit $EAS_FLAGS
+  npx --yes eas-cli@latest build -p ios --profile production --auto-submit $EAS_FLAGS
 }
 
 build_android() {
   if [ "$HAS_PLAY_KEY" = "1" ]; then
     step "Android → build (production) + auto-submit to Play Store"
     # shellcheck disable=SC2086
-    npx eas build -p android --profile production --auto-submit $EAS_FLAGS
+    npx --yes eas-cli@latest build -p android --profile production --auto-submit $EAS_FLAGS
   else
     step "Android → build ONLY (no Play key yet → submit skipped, won't prompt)"
     echo "    No frontend/play-service-account.json found. Google requires the FIRST"
     echo "    Play release to be uploaded manually anyway — use the .aab this produces."
     # shellcheck disable=SC2086
-    npx eas build -p android --profile production $EAS_FLAGS
+    npx --yes eas-cli@latest build -p android --profile production $EAS_FLAGS
   fi
 }
 
@@ -127,7 +127,7 @@ esac
 #    Uncomment if you also want to push JS-only updates over-the-air.
 # ----------------------------------------------------------------------------
 # step "Frontend → EAS Update (OTA) on the production channel"
-# npx eas update --branch production -m "$MSG" $EAS_FLAGS
+# npx --yes eas-cli@latest update --branch production -m "$MSG" $EAS_FLAGS
 
 step "Done."
 echo "• Backend: redeploying on Render (watch the Render dashboard)."
