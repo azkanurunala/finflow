@@ -101,8 +101,10 @@ export function useSocialAuth(onResult?: (r: Result) => void) {
       const r = await signInWithProvider("apple", cred.identityToken, fullName);
       onResult?.(r);
     } catch (e: any) {
+      // ERR_REQUEST_CANCELED = user dismissed the sheet; ignore.
       if (e?.code !== "ERR_REQUEST_CANCELED") {
-        onResult?.({ success: false, error: "Apple sign-in failed" });
+        const detail = [e?.code, e?.message].filter(Boolean).join(" — ");
+        onResult?.({ success: false, error: detail ? `Apple: ${detail}` : "Apple sign-in failed" });
       }
     } finally {
       setBusy(false);
