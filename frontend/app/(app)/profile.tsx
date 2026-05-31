@@ -19,6 +19,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SUPPORTED_LANGUAGES } from "../../utils/i18n";
+import { AddTransactionModal } from "../../components/AddTransactionModal";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function ProfileScreen() {
   const [showRedeem, setShowRedeem] = useState(false);
   const [codeInput, setCodeInput] = useState("");
   const [redeeming, setRedeeming] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     loadPreferences();
@@ -307,7 +309,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.navItemCenter}
-          onPress={() => router.push("/(app)/manual")}
+          onPress={() => setShowAddModal(true)}
         >
           <View style={styles.navCenterButton}>
             <Ionicons name="add" size={28} color="#fff" />
@@ -368,6 +370,8 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }

@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { translateCategory } from "../../utils/i18n";
+import { AddTransactionModal } from "../../components/AddTransactionModal";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
@@ -68,6 +69,7 @@ export default function AdvancedAnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(30);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     fetchAIInsights();
@@ -384,7 +386,7 @@ export default function AdvancedAnalyticsScreen() {
           <Ionicons name="swap-horizontal-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>{t('nav.transactions')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItemCenter} onPress={() => router.push("/(app)/manual")}>
+        <TouchableOpacity style={styles.navItemCenter} onPress={() => setShowAddModal(true)}>
           <View style={styles.navCenterButton}>
             <Ionicons name="add" size={28} color="#fff" />
           </View>
@@ -398,6 +400,8 @@ export default function AdvancedAnalyticsScreen() {
           <Text style={styles.navText}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
+
+      <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }

@@ -18,6 +18,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
 import { translateCategory } from "../../utils/i18n";
+import { AddTransactionModal } from "../../components/AddTransactionModal";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -41,6 +42,7 @@ export default function HistoryScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -254,7 +256,7 @@ export default function HistoryScreen() {
 
         <TouchableOpacity
           style={styles.navItemCenter}
-          onPress={() => router.push("/(app)/manual")}
+          onPress={() => setShowAddModal(true)}
         >
           <View style={styles.navCenterButton}>
             <Ionicons name="add" size={28} color="#fff" />
@@ -277,6 +279,8 @@ export default function HistoryScreen() {
           <Text style={styles.navText}>{t('nav.profile')}</Text>
         </TouchableOpacity>
       </View>
+
+      <AddTransactionModal visible={showAddModal} onClose={() => setShowAddModal(false)} />
     </SafeAreaView>
   );
 }

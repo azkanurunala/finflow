@@ -8,10 +8,23 @@
 #               (sideload / direct download) in addition to the .aab.
 #
 # USAGE
-#   ./deploy.sh ["commit message"]                  # both platforms (default)
-#   PLATFORM=ios     ./deploy.sh ["commit message"] # iOS only  → App Store
-#   PLATFORM=android ./deploy.sh ["commit message"] # Android only → Play Store
-#   CI=1 ./deploy.sh                                 # non-interactive (EXPO_TOKEN + creds)
+#   ./deploy.sh ["commit message"]                       # = TARGET=all (backend + iOS + Android)
+#
+#   Choose what to deploy with TARGET — components joined by '+' ( ',' also works):
+#     TARGET=all              ./deploy.sh   # backend + iOS + Android   (default)
+#     TARGET=backend          ./deploy.sh   # backend only
+#     TARGET=backend+ios      ./deploy.sh   # backend + iOS
+#     TARGET=backend+android  ./deploy.sh   # backend + Android
+#     TARGET=ios+android      ./deploy.sh   # iOS + Android (no backend)
+#     TARGET=ios              ./deploy.sh   # iOS only
+#     TARGET=android          ./deploy.sh   # Android only
+#   (Legacy PLATFORM=ios|android|all still works → implies backend + that platform.)
+#
+#   "backend" = commit + push to `main` (Render auto-deploys). When 'backend' is
+#   NOT selected, the working tree is still committed (so EAS builds your current
+#   code) but is NOT pushed — the live API is left untouched.
+#
+#   CI=1 ./deploy.sh                                      # non-interactive (EXPO_TOKEN + creds)
 #
 # ONE-TIME PREREQUISITES (read this before first run)
 #   1. Accounts:
@@ -39,7 +52,6 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND="$ROOT/frontend"
 BRANCH="main"
 MSG="${1:-deploy: $(date -u +%Y-%m-%dT%H:%M:%SZ)}"
-PLATFORM="${PLATFORM:-all}"   # ios | android | all
 EAS_FLAGS=""
 [ "${CI:-0}" = "1" ] && EAS_FLAGS="--non-interactive"
 
@@ -47,7 +59,40 @@ step() { printf "\n\033[1;36m▶ %s\033[0m\n" "$1"; }
 die()  { printf "\n\033[1;31m✖ %s\033[0m\n" "$1" >&2; exit 1; }
 
 command -v git >/dev/null || die "git not found."
-case "$PLATFORM" in ios|android|all) ;; *) die "PLATFORM must be: ios | android | all (got '$PLATFORM')";; esac
+
+# ----------------------------------------------------------------------------
+# Resolve TARGET → which parts to deploy (backend / iOS / Android).
+# ----------------------------------------------------------------------------
+TARGET="${TARGET:-}"
+# Back-compat: PLATFORM=ios|android|all implies backend + that platform.
+if [ -z "$TARGET" ]; then
+  case "${PLATFORM:-all}" in
+    all)     TARGET="all" ;;
+    ios)     TARGET="backend+ios" ;;
+    android) TARGET="backend+android" ;;
+    *)       die "PLATFORM must be: ios | android | all (got '${PLATFORM:-}'). Or use TARGET=..." ;;
+  esac
+fi
+
+DEPLOY_BACKEND=0; DO_IOS=0; DO_ANDROID=0
+_OLDIFS="$IFS"; IFS='+'
+for _part in ${TARGET//,/+}; do
+  case "$_part" in
+    backend) DEPLOY_BACKEND=1 ;;
+    ios)     DO_IOS=1 ;;
+    android) DO_ANDROID=1 ;;
+    all)     DEPLOY_BACKEND=1; DO_IOS=1; DO_ANDROID=1 ;;
+    "")      ;;
+    *)       IFS="$_OLDIFS"; die "Unknown TARGET component '$_part'. Valid: backend, ios, android, all (joined by '+')." ;;
+  esac
+done
+IFS="$_OLDIFS"
+[ "$DEPLOY_BACKEND" = 1 ] || [ "$DO_IOS" = 1 ] || [ "$DO_ANDROID" = 1 ] || die "TARGET='$TARGET' selects nothing to deploy."
+
+# Store-path failure flags (referenced in the final summary; safe for backend-only runs).
+IOS_FAILED=0
+ANDROID_AAB_FAILED=0
+
 cd "$ROOT"
 
 # Use the repo's pinned Node 22 if nvm is available.
@@ -56,11 +101,14 @@ if [ -s "$HOME/.nvm/nvm.sh" ]; then
   . "$HOME/.nvm/nvm.sh"; nvm use 22 >/dev/null 2>&1 || true
 fi
 echo "Node: $(node -v 2>/dev/null || echo '??')"
+echo "Deploying → backend=$DEPLOY_BACKEND  iOS=$DO_IOS  Android=$DO_ANDROID   (TARGET=$TARGET)"
 
 # ----------------------------------------------------------------------------
-# 1) BACKEND — commit any changes and push main; Render auto-deploys.
+# 1) GIT — snapshot the working tree on `main` so EAS builds exactly this code.
+#    Pushing (which triggers the Render backend redeploy) happens ONLY when
+#    'backend' is part of TARGET.
 # ----------------------------------------------------------------------------
-step "Backend → commit & push to '$BRANCH' (Render auto-deploys the live API)"
+step "Git → commit working tree on '$BRANCH'"
 CUR="$(git rev-parse --abbrev-ref HEAD)"
 [ "$CUR" = "$BRANCH" ] || die "You are on '$CUR'. Switch to '$BRANCH' first (git checkout $BRANCH)."
 
@@ -70,80 +118,82 @@ if git diff --cached --quiet; then
 else
   git commit -m "$MSG"
 fi
-git push origin "$BRANCH"
 
-if [ -n "${RENDER_DEPLOY_HOOK_URL:-}" ]; then
-  step "Triggering Render deploy hook"
-  curl -fsS "$RENDER_DEPLOY_HOOK_URL" >/dev/null && echo "Render deploy triggered."
+if [ "$DEPLOY_BACKEND" = 1 ]; then
+  step "Backend → push to '$BRANCH' (Render auto-deploys the live API)"
+  git push origin "$BRANCH"
+  if [ -n "${RENDER_DEPLOY_HOOK_URL:-}" ]; then
+    step "Triggering Render deploy hook"
+    curl -fsS "$RENDER_DEPLOY_HOOK_URL" >/dev/null && echo "Render deploy triggered."
+  fi
+else
+  step "Backend → skipped (TARGET has no 'backend' → not pushing; Render left untouched)"
+  echo "    Any local commit stays unpushed; a later backend deploy will push it."
 fi
 
 # ----------------------------------------------------------------------------
-# 2) FRONTEND — build BOTH platforms (production) and submit to BOTH stores.
+# 2) FRONTEND — build the selected platforms (production) + submit to stores.
 #    --auto-submit uploads each build to its store right after it finishes.
+#    The Android release .apk is always built FIRST and independently of the
+#    store paths, so it survives an iOS or Play Store failure.
 # ----------------------------------------------------------------------------
-cd "$FRONTEND"
+if [ "$DO_IOS" = 1 ] || [ "$DO_ANDROID" = 1 ]; then
+  cd "$FRONTEND"
 
-# Fail early with a clear message if not authenticated.
-npx --yes eas-cli@latest whoami >/dev/null 2>&1 || die "Not logged in to EAS. Run: cd frontend && npx --yes eas-cli@latest login   (or export EXPO_TOKEN)."
+  # Fail early with a clear message if not authenticated.
+  npx --yes eas-cli@latest whoami >/dev/null 2>&1 || die "Not logged in to EAS. Run: cd frontend && npx --yes eas-cli@latest login   (or export EXPO_TOKEN)."
 
-HAS_PLAY_KEY=0
-[ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
+  HAS_PLAY_KEY=0
+  [ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
 
-# Track store-path failures. The release .apk is built independently and must
-# always be produced even if either of these is 1.
-IOS_FAILED=0           # iOS build/submit to App Store
-ANDROID_AAB_FAILED=0   # Android .aab build/submit to Play Store
-
-build_ios() {
-  step "iOS → build (production) + auto-submit to App Store"
-  # shellcheck disable=SC2086
-  npx --yes eas-cli@latest build -p ios --profile production --auto-submit $EAS_FLAGS
-}
-
-build_android() {
-  if [ "$HAS_PLAY_KEY" = "1" ]; then
-    step "Android → build .aab (production) + auto-submit to Play Store"
+  build_ios() {
+    step "iOS → build (production) + auto-submit to App Store"
     # shellcheck disable=SC2086
-    npx --yes eas-cli@latest build -p android --profile production --auto-submit $EAS_FLAGS
-  else
-    step "Android → build .aab ONLY (no Play key yet → submit skipped, won't prompt)"
-    echo "    No frontend/play-service-account.json found. Google requires the FIRST"
-    echo "    Play release to be uploaded manually anyway — use the .aab this produces."
-    # shellcheck disable=SC2086
-    npx --yes eas-cli@latest build -p android --profile production $EAS_FLAGS
-  fi
-}
+    npx --yes eas-cli@latest build -p ios --profile production --auto-submit $EAS_FLAGS
+  }
 
-build_android_apk() {
-  step "Android → build release .apk (production-apk profile — direct install / sideload)"
-  echo "    .apk can't be submitted to Play (Play requires the .aab); this build is for"
-  echo "    direct distribution. Download it from the build's page on https://expo.dev."
-  # shellcheck disable=SC2086
-  npx --yes eas-cli@latest build -p android --profile production-apk $EAS_FLAGS
-}
-
-# NOTE: the release .apk is ALWAYS built first and is independent of the iOS and
-# Play Store paths. If the iOS build/submit, the .aab build, or the Play submit
-# fails, we record it (non-fatal) and keep going so the .apk is still produced;
-# any such failure is reported at the end with a non-zero exit.
-case "$PLATFORM" in
-  ios)     build_ios ;;
-  android)
-    build_android_apk
-    build_android || ANDROID_AAB_FAILED=1
-    ;;
-  all)
-    build_android_apk                       # priority artifact — built first, always
-    build_ios || IOS_FAILED=1               # best-effort: iOS failure must not block the .apk
+  build_android() {
     if [ "$HAS_PLAY_KEY" = "1" ]; then
-      build_android || ANDROID_AAB_FAILED=1 # best-effort: .aab/Play failure must not block the .apk
+      step "Android → build .aab (production) + auto-submit to Play Store"
+      # shellcheck disable=SC2086
+      npx --yes eas-cli@latest build -p android --profile production --auto-submit $EAS_FLAGS
+    else
+      step "Android → build .aab ONLY (no Play key yet → submit skipped, won't prompt)"
+      echo "    No frontend/play-service-account.json found. Google requires the FIRST"
+      echo "    Play release to be uploaded manually anyway — use the .aab this produces."
+      # shellcheck disable=SC2086
+      npx --yes eas-cli@latest build -p android --profile production $EAS_FLAGS
+    fi
+  }
+
+  build_android_apk() {
+    step "Android → build release .apk (production-apk profile — direct install / sideload)"
+    echo "    .apk can't be submitted to Play (Play requires the .aab); this build is for"
+    echo "    direct distribution. Download it from the build's page on https://expo.dev."
+    # shellcheck disable=SC2086
+    npx --yes eas-cli@latest build -p android --profile production-apk $EAS_FLAGS
+  }
+
+  # Order matters: build the Android release .apk FIRST so it is always produced,
+  # then the best-effort store paths (iOS, then Android .aab) which are non-fatal.
+  if [ "$DO_ANDROID" = 1 ]; then
+    build_android_apk
+  fi
+  if [ "$DO_IOS" = 1 ]; then
+    build_ios || IOS_FAILED=1
+  fi
+  if [ "$DO_ANDROID" = 1 ]; then
+    if [ "$HAS_PLAY_KEY" = "1" ]; then
+      build_android || ANDROID_AAB_FAILED=1
     else
       printf "\n\033[1;33m⏭  Skipping Android .aab submit: no Play Console key yet.\033[0m\n"
       echo "   The release .apk above is built for direct distribution. When ready for Play,"
-      echo "   add frontend/play-service-account.json (auto-submit), or run PLATFORM=android."
+      echo "   add frontend/play-service-account.json (auto-submit), or run TARGET=android."
     fi
-    ;;
-esac
+  fi
+else
+  step "Frontend → skipped (TARGET has no iOS/Android; backend-only deploy)."
+fi
 
 # ----------------------------------------------------------------------------
 # 3) (optional) OTA update for users already on a matching build.
@@ -153,9 +203,9 @@ esac
 # npx --yes eas-cli@latest update --branch production -m "$MSG" $EAS_FLAGS
 
 step "Done."
-echo "• Backend: redeploying on Render (watch the Render dashboard)."
-echo "• Frontend: builds + store submissions are running on EAS — track at https://expo.dev"
-echo "• Android release .apk: download it from its build page on https://expo.dev once done."
+[ "$DEPLOY_BACKEND" = 1 ] && echo "• Backend: redeploying on Render (watch the Render dashboard)."
+{ [ "$DO_IOS" = 1 ] || [ "$DO_ANDROID" = 1 ]; } && echo "• Frontend: builds + store submissions are running on EAS — track at https://expo.dev"
+[ "$DO_ANDROID" = 1 ] && echo "• Android release .apk: download it from its build page on https://expo.dev once done."
 
 # The release .apk has already been built above. If only the store paths (iOS
 # App Store and/or Android .aab→Play) failed, surface them as a non-zero exit
