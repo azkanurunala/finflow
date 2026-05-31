@@ -200,6 +200,9 @@ export default {
     chipTransport: "Vervoer",
     chipFun: "Plezier",
     logIntent: "Ik wil %{category} vastleggen",
+    logged: "%{amount} bij %{merchant} onder %{category} geregistreerd.",
+    loggedIncome: "Inkomsten van %{amount} geregistreerd.",
+    unknownMerchant: "onbekende verkoper",
   },
   profile: {
     profile: "Profiel",

@@ -1346,7 +1346,7 @@ async def create_chat_transaction(
         
         return {
             "transaction": transaction,
-            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+            "message": f"Logged {transaction.currency} {transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
         }
     except HTTPException:
         raise
@@ -1390,11 +1390,11 @@ async def create_receipt_transaction(
         
         tip_info = ""
         if transaction.metadata and transaction.metadata.get("tip"):
-            tip_info = f" (includes ${transaction.metadata['tip']:.2f} tip)"
-        
+            tip_info = f" (includes {transaction.currency} {transaction.metadata['tip']:,.2f} tip)"
+
         return {
             "transaction": transaction,
-            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
+            "message": f"Logged {transaction.currency} {transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}{tip_info}."
         }
     except HTTPException:
         raise
@@ -1563,7 +1563,7 @@ async def create_voice_text_transaction(
         return {
             "transaction": transaction,
             "transcription": request.text,
-            "message": f"Logged ${transaction.amount:.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
+            "message": f"Logged {transaction.currency} {transaction.amount:,.2f} at {transaction.merchant or 'unknown merchant'} under {transaction.category}."
         }
     except HTTPException:
         raise

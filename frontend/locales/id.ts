@@ -200,6 +200,9 @@ export default {
     chipTransport: "Transport",
     chipFun: "Hiburan",
     logIntent: "Saya ingin mencatat %{category}",
+    logged: "Tercatat %{amount} di %{merchant} pada kategori %{category}.",
+    loggedIncome: "Tercatat pemasukan %{amount}.",
+    unknownMerchant: "merchant tak dikenal",
   },
   profile: {
     profile: "Profil",

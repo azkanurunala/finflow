@@ -199,6 +199,9 @@ export default {
     chipTransport: "교통",
     chipFun: "여가",
     logIntent: "%{category} 기록하고 싶어요",
+    logged: "%{merchant}에서 %{amount}을(를) %{category}(으)로 기록했습니다.",
+    loggedIncome: "%{amount} 수입을 기록했습니다.",
+    unknownMerchant: "알 수 없는 가맹점",
   },
   profile: {
     profile: "프로필",

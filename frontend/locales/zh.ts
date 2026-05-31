@@ -199,6 +199,9 @@ export default {
     chipTransport: "交通",
     chipFun: "娱乐",
     logIntent: "我想记录%{category}",
+    logged: "已记录在%{merchant}的%{amount}，归类为%{category}。",
+    loggedIncome: "已记录%{amount}的收入。",
+    unknownMerchant: "未知商家",
   },
   profile: {
     profile: "我的",

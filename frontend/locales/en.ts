@@ -199,6 +199,9 @@ export default {
     chipTransport: "Transport",
     chipFun: "Fun",
     logIntent: "I want to log %{category}",
+    logged: "Logged %{amount} at %{merchant} under %{category}.",
+    loggedIncome: "Logged %{amount} income.",
+    unknownMerchant: "unknown merchant",
   },
   profile: {
     profile: "Profile",

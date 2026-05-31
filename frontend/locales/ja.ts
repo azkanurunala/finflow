@@ -199,6 +199,9 @@ export default {
     chipTransport: "交通",
     chipFun: "娯楽",
     logIntent: "%{category}を記録したい",
+    logged: "%{merchant}での%{amount}を%{category}として記録しました。",
+    loggedIncome: "%{amount}の収入を記録しました。",
+    unknownMerchant: "不明な店舗",
   },
   profile: {
     profile: "プロフィール",

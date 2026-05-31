@@ -85,11 +85,24 @@ export default function ChatScreen() {
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
 
+      // Build the confirmation locally so it uses the selected currency symbol
+      // and the user's language (the backend message is plain English with "$").
+      const txn = response.data.transaction;
+      const confirmation = txn
+        ? txn.transaction_type === "income"
+          ? t('chat.loggedIncome', { amount: formatAmount(txn.amount, txn.currency) })
+          : t('chat.logged', {
+              amount: formatAmount(txn.amount, txn.currency),
+              merchant: txn.merchant || t('chat.unknownMerchant'),
+              category: translateCategory(txn.category),
+            })
+        : response.data.message;
+
       const assistantMessage = {
         id: Date.now().toString() + "_assistant",
         type: "assistant",
-        text: response.data.message,
-        transaction: response.data.transaction,
+        text: confirmation,
+        transaction: txn,
         timestamp: new Date(),
       };
 

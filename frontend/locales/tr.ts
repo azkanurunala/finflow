@@ -199,6 +199,9 @@ export default {
     chipTransport: "Ulaşım",
     chipFun: "Eğlence",
     logIntent: "%{category} kaydetmek istiyorum",
+    logged: "%{merchant} işyerinde %{category} kategorisinde %{amount} kaydedildi.",
+    loggedIncome: "%{amount} gelir kaydedildi.",
+    unknownMerchant: "bilinmeyen satıcı",
   },
   profile: {
     profile: "Profil",

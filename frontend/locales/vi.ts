@@ -200,6 +200,9 @@ export default {
     chipTransport: "Di chuyển",
     chipFun: "Giải trí",
     logIntent: "Tôi muốn ghi lại %{category}",
+    logged: "Đã ghi %{amount} tại %{merchant} trong %{category}.",
+    loggedIncome: "Đã ghi thu nhập %{amount}.",
+    unknownMerchant: "người bán không xác định",
   },
   profile: {
     profile: "Hồ sơ",

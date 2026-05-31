@@ -199,6 +199,9 @@ export default {
     chipTransport: "เดินทาง",
     chipFun: "บันเทิง",
     logIntent: "ฉันต้องการบันทึก %{category}",
+    logged: "บันทึก %{amount} ที่ %{merchant} ในหมวด %{category} แล้ว",
+    loggedIncome: "บันทึกรายรับ %{amount} แล้ว",
+    unknownMerchant: "ร้านค้าที่ไม่ทราบ",
   },
   profile: {
     profile: "โปรไฟล์",

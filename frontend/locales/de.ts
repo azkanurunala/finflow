@@ -200,6 +200,9 @@ export default {
     chipTransport: "Transport",
     chipFun: "Freizeit",
     logIntent: "Ich möchte %{category} erfassen",
+    logged: "%{amount} bei %{merchant} unter %{category} erfasst.",
+    loggedIncome: "Einnahme von %{amount} erfasst.",
+    unknownMerchant: "unbekannter Händler",
   },
   profile: {
     profile: "Profil",

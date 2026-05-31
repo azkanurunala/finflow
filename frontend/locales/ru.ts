@@ -199,6 +199,9 @@ export default {
     chipTransport: "Транспорт",
     chipFun: "Развлечения",
     logIntent: "Я хочу записать %{category}",
+    logged: "Записано %{amount} в %{merchant} в категории %{category}.",
+    loggedIncome: "Записан доход %{amount}.",
+    unknownMerchant: "неизвестный продавец",
   },
   profile: {
     profile: "Профиль",

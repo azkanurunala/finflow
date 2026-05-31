@@ -200,6 +200,9 @@ export default {
     chipTransport: "مواصلات",
     chipFun: "ترفيه",
     logIntent: "أريد تسجيل %{category}",
+    logged: "تم تسجيل %{amount} لدى %{merchant} ضمن %{category}.",
+    loggedIncome: "تم تسجيل دخل %{amount}.",
+    unknownMerchant: "تاجر غير معروف",
   },
   profile: {
     profile: "الملف الشخصي",

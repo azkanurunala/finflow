@@ -200,6 +200,9 @@ export default {
     chipTransport: "परिवहन",
     chipFun: "मनोरंजन",
     logIntent: "मैं %{category} दर्ज करना चाहता हूं",
+    logged: "%{merchant} पर %{category} में %{amount} दर्ज किया गया।",
+    loggedIncome: "%{amount} की आय दर्ज की गई।",
+    unknownMerchant: "अज्ञात विक्रेता",
   },
   profile: {
     profile: "प्रोफ़ाइल",
