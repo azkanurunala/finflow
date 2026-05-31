@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Chat AI dasar",
     featReceiptScanning: "Pindai struk",
     featTryAllFeatures: "Coba semua fitur",
+    initialBalance: "Saldo Awal",
+    initialBalanceSubtitle: "Masukkan saldo kamu saat ini agar total sesuai kenyataan. Opsional — bisa diubah kapan saja.",
+    initialBalanceHint: "Biarkan kosong atau 0 untuk mulai dari nol.",
+    openingBalanceNote: "Saldo awal",
+    finish: "Mulai",
+    skip: "Lewati dulu",
   },
   trial: {
     header: "Uji Coba Gratis",

@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "دردشة ذكية أساسية",
     featReceiptScanning: "مسح الإيصالات",
     featTryAllFeatures: "جرّب كل الميزات",
+    initialBalance: "الرصيد الابتدائي",
+    initialBalanceSubtitle: "أضف رصيدك الحالي ليعكس إجماليك الواقع. اختياري — يمكنك تغييره في أي وقت.",
+    initialBalanceHint: "اتركه فارغًا أو 0 للبدء من الصفر.",
+    openingBalanceNote: "الرصيد الافتتاحي",
+    finish: "ابدأ",
+    skip: "تخطَّ الآن",
   },
   trial: {
     header: "تجربة مجانية",

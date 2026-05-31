@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Sembang AI asas",
     featReceiptScanning: "Imbasan resit",
     featTryAllFeatures: "Cuba semua ciri",
+    initialBalance: "Baki Permulaan",
+    initialBalanceSubtitle: "Tambah baki semasa anda supaya jumlah mencerminkan keadaan sebenar. Pilihan — boleh diubah bila-bila masa.",
+    initialBalanceHint: "Biarkan kosong atau 0 untuk bermula dari awal.",
+    openingBalanceNote: "Baki permulaan",
+    finish: "Mula",
+    skip: "Langkau dahulu",
   },
   trial: {
     header: "Percubaan Percuma",

@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Einfacher KI-Chat",
     featReceiptScanning: "Belegerfassung",
     featTryAllFeatures: "Alle Funktionen testen",
+    initialBalance: "Startguthaben",
+    initialBalanceSubtitle: "Füge dein aktuelles Guthaben hinzu, damit deine Summen der Realität entsprechen. Optional — jederzeit änderbar.",
+    initialBalanceHint: "Leer lassen oder 0, um bei null zu starten.",
+    openingBalanceNote: "Anfangssaldo",
+    finish: "Los geht's",
+    skip: "Vorerst überspringen",
   },
   trial: {
     header: "Kostenlose Testphase",

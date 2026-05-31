@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "基础 AI 对话",
     featReceiptScanning: "扫描小票",
     featTryAllFeatures: "体验全部功能",
+    initialBalance: "初始余额",
+    initialBalanceSubtitle: "输入你当前的余额，让总额贴近实际。可选 — 随时可以修改。",
+    initialBalanceHint: "留空或填 0 即可从零开始。",
+    openingBalanceNote: "初始余额",
+    finish: "开始使用",
+    skip: "暂时跳过",
   },
   trial: {
     header: "免费试用",

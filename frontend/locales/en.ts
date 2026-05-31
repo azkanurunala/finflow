@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "Basic AI chat",
     featReceiptScanning: "Receipt scanning",
     featTryAllFeatures: "Try all features",
+    initialBalance: "Starting Balance",
+    initialBalanceSubtitle: "Add your current balance so your totals reflect reality. Optional — you can change it anytime.",
+    initialBalanceHint: "Leave it empty or 0 to start fresh.",
+    openingBalanceNote: "Opening balance",
+    finish: "Get Started",
+    skip: "Skip for now",
   },
   trial: {
     header: "Free Trial",

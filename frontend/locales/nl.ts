@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Basis AI-chat",
     featReceiptScanning: "Bonnetjes scannen",
     featTryAllFeatures: "Probeer alle functies",
+    initialBalance: "Startsaldo",
+    initialBalanceSubtitle: "Voeg je huidige saldo toe zodat je totalen kloppen. Optioneel — je kunt het altijd wijzigen.",
+    initialBalanceHint: "Laat leeg of 0 om bij nul te beginnen.",
+    openingBalanceNote: "Beginsaldo",
+    finish: "Aan de slag",
+    skip: "Nu overslaan",
   },
   trial: {
     header: "Gratis proefperiode",

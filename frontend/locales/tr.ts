@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "Temel yapay zeka sohbeti",
     featReceiptScanning: "Fiş tarama",
     featTryAllFeatures: "Tüm özellikleri deneyin",
+    initialBalance: "Başlangıç Bakiyesi",
+    initialBalanceSubtitle: "Toplamların gerçeği yansıtması için mevcut bakiyeni ekle. İsteğe bağlı — istediğin zaman değiştirebilirsin.",
+    initialBalanceHint: "Sıfırdan başlamak için boş bırak veya 0 gir.",
+    openingBalanceNote: "Açılış bakiyesi",
+    finish: "Başla",
+    skip: "Şimdilik atla",
   },
   trial: {
     header: "Ücretsiz Deneme",

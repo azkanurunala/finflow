@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "แชท AI พื้นฐาน",
     featReceiptScanning: "สแกนใบเสร็จ",
     featTryAllFeatures: "ลองใช้ฟีเจอร์ทั้งหมด",
+    initialBalance: "ยอดเงินตั้งต้น",
+    initialBalanceSubtitle: "เพิ่มยอดเงินปัจจุบันของคุณเพื่อให้ยอดรวมตรงกับความเป็นจริง ไม่บังคับ — เปลี่ยนได้ทุกเมื่อ",
+    initialBalanceHint: "เว้นว่างหรือใส่ 0 เพื่อเริ่มจากศูนย์",
+    openingBalanceNote: "ยอดเงินตั้งต้น",
+    finish: "เริ่มเลย",
+    skip: "ข้ามไปก่อน",
   },
   trial: {
     header: "ทดลองใช้ฟรี",

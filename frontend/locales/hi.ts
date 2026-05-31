@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "बेसिक AI चैट",
     featReceiptScanning: "रसीद स्कैनिंग",
     featTryAllFeatures: "सभी सुविधाएं आज़माएं",
+    initialBalance: "प्रारंभिक बैलेंस",
+    initialBalanceSubtitle: "अपना मौजूदा बैलेंस जोड़ें ताकि कुल सही दिखे। वैकल्पिक — कभी भी बदल सकते हैं।",
+    initialBalanceHint: "शून्य से शुरू करने के लिए इसे खाली या 0 छोड़ें।",
+    openingBalanceNote: "प्रारंभिक बैलेंस",
+    finish: "शुरू करें",
+    skip: "अभी छोड़ें",
   },
   trial: {
     header: "मुफ़्त ट्रायल",

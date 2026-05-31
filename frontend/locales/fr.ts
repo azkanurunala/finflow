@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Chat IA basique",
     featReceiptScanning: "Numérisation de reçus",
     featTryAllFeatures: "Essayer toutes les fonctionnalités",
+    initialBalance: "Solde de départ",
+    initialBalanceSubtitle: "Ajoute ton solde actuel pour que tes totaux reflètent la réalité. Facultatif — modifiable à tout moment.",
+    initialBalanceHint: "Laisse vide ou à 0 pour partir de zéro.",
+    openingBalanceNote: "Solde d'ouverture",
+    finish: "Commencer",
+    skip: "Ignorer pour l'instant",
   },
   trial: {
     header: "Essai gratuit",

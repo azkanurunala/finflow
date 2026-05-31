@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "Базовый ИИ-чат",
     featReceiptScanning: "Сканирование чеков",
     featTryAllFeatures: "Попробуйте все функции",
+    initialBalance: "Начальный баланс",
+    initialBalanceSubtitle: "Добавьте текущий баланс, чтобы итоги соответствовали реальности. Необязательно — можно изменить в любой момент.",
+    initialBalanceHint: "Оставьте пустым или 0, чтобы начать с нуля.",
+    openingBalanceNote: "Начальный баланс",
+    finish: "Начать",
+    skip: "Пропустить пока",
   },
   trial: {
     header: "Бесплатный период",

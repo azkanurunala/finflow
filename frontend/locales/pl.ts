@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Podstawowy czat AI",
     featReceiptScanning: "Skanowanie paragonów",
     featTryAllFeatures: "Wypróbuj wszystkie funkcje",
+    initialBalance: "Saldo początkowe",
+    initialBalanceSubtitle: "Dodaj swoje obecne saldo, aby sumy odzwierciedlały rzeczywistość. Opcjonalnie — możesz to zmienić w każdej chwili.",
+    initialBalanceHint: "Zostaw puste lub 0, aby zacząć od zera.",
+    openingBalanceNote: "Saldo początkowe",
+    finish: "Zaczynamy",
+    skip: "Pomiń na razie",
   },
   trial: {
     header: "Darmowy okres próbny",

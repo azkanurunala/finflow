@@ -93,6 +93,12 @@ export default {
     featBasicAiChat: "Chat AI cơ bản",
     featReceiptScanning: "Quét hóa đơn",
     featTryAllFeatures: "Thử mọi tính năng",
+    initialBalance: "Số dư ban đầu",
+    initialBalanceSubtitle: "Thêm số dư hiện tại để tổng phản ánh đúng thực tế. Tùy chọn — bạn có thể thay đổi bất cứ lúc nào.",
+    initialBalanceHint: "Để trống hoặc 0 nếu muốn bắt đầu từ đầu.",
+    openingBalanceNote: "Số dư ban đầu",
+    finish: "Bắt đầu",
+    skip: "Bỏ qua bây giờ",
   },
   trial: {
     header: "Dùng thử Miễn phí",

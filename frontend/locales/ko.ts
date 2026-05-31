@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "기본 AI 채팅",
     featReceiptScanning: "영수증 스캔",
     featTryAllFeatures: "모든 기능 체험",
+    initialBalance: "초기 잔액",
+    initialBalanceSubtitle: "현재 잔액을 입력하면 합계가 실제와 맞습니다. 선택 사항 — 언제든 변경할 수 있어요.",
+    initialBalanceHint: "처음부터 시작하려면 비워 두거나 0으로 두세요.",
+    openingBalanceNote: "초기 잔액",
+    finish: "시작하기",
+    skip: "나중에",
   },
   trial: {
     header: "무료 체험",

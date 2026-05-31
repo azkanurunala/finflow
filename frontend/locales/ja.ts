@@ -92,6 +92,12 @@ export default {
     featBasicAiChat: "基本的なAIチャット",
     featReceiptScanning: "レシートスキャン",
     featTryAllFeatures: "すべての機能を試す",
+    initialBalance: "初期残高",
+    initialBalanceSubtitle: "現在の残高を入力すると合計が実態に合います。任意 — いつでも変更できます。",
+    initialBalanceHint: "ゼロから始める場合は空欄または0のままにします。",
+    openingBalanceNote: "初期残高",
+    finish: "はじめる",
+    skip: "今はスキップ",
   },
   trial: {
     header: "無料トライアル",
