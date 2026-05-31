@@ -203,76 +203,68 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>{section.section}</Text>
             <View style={styles.menuCard}>
               {section.items.map((item, itemIndex) => (
-                <TouchableOpacity
-                  key={itemIndex}
-                  style={[
-                    styles.menuItem,
-                    itemIndex !== section.items.length - 1 &&
-                      styles.menuItemBorder,
-                  ]}
-                  onPress={item.onPress}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.menuItemLeft}>
-                    <View
-                      style={[
-                        styles.menuIcon,
-                        { backgroundColor: `${item.color}20` },
-                      ]}
-                    >
-                      <Ionicons name={item.icon} size={22} color={item.color} />
+                <React.Fragment key={itemIndex}>
+                  <TouchableOpacity
+                    style={[
+                      styles.menuItem,
+                      itemIndex !== section.items.length - 1 &&
+                        styles.menuItemBorder,
+                    ]}
+                    onPress={item.onPress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.menuItemLeft}>
+                      <View
+                        style={[
+                          styles.menuIcon,
+                          { backgroundColor: `${item.color}20` },
+                        ]}
+                      >
+                        <Ionicons name={item.icon} size={22} color={item.color} />
+                      </View>
+                      <Text style={styles.menuLabel}>{item.label}</Text>
                     </View>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
-                  </View>
-                  <View style={styles.menuItemRight}>
-                    {item.value && (
-                      <Text style={styles.menuValue}>{item.value}</Text>
-                    )}
-                    <Ionicons
-                      name="chevron-forward"
-                      size={20}
-                      color="#9CA3AF"
-                    />
-                  </View>
-                </TouchableOpacity>
+                    <View style={styles.menuItemRight}>
+                      {item.value && (
+                        <Text style={styles.menuValue}>{item.value}</Text>
+                      )}
+                      <Ionicons
+                        name="chevron-forward"
+                        size={20}
+                        color="#9CA3AF"
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Live conversion toggle sits directly under Currency. */}
+                  {item.label === t('profile.currency') && (
+                    <View style={[styles.menuItem, styles.menuItemBorder]}>
+                      <View style={styles.menuItemLeft}>
+                        <View style={[styles.menuIcon, { backgroundColor: "#3B82F620" }]}>
+                          <Ionicons name="swap-horizontal-outline" size={22} color="#3B82F6" />
+                        </View>
+                        <View style={styles.toggleTextWrap}>
+                          <Text style={styles.menuLabel}>{t('profile.liveConversion')}</Text>
+                          <Text style={styles.toggleHint}>
+                            {conversionMode === "live"
+                              ? t('profile.liveConversionOnHint', { currency })
+                              : t('profile.liveConversionOffHint', { currency })}
+                          </Text>
+                        </View>
+                      </View>
+                      <Switch
+                        value={conversionMode === "live"}
+                        onValueChange={(v) => setConversionMode(v ? "live" : "off")}
+                        trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
+                        thumbColor="#fff"
+                      />
+                    </View>
+                  )}
+                </React.Fragment>
               ))}
             </View>
           </View>
         ))}
-
-        {/* Display preferences — currency conversion */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('profile.display')}</Text>
-          <View style={styles.menuCard}>
-            <View style={styles.menuItem}>
-              <View style={styles.menuItemLeft}>
-                <View
-                  style={[styles.menuIcon, { backgroundColor: "#3B82F620" }]}
-                >
-                  <Ionicons
-                    name="swap-horizontal-outline"
-                    size={22}
-                    color="#3B82F6"
-                  />
-                </View>
-                <View style={styles.toggleTextWrap}>
-                  <Text style={styles.menuLabel}>{t('profile.liveConversion')}</Text>
-                  <Text style={styles.toggleHint}>
-                    {conversionMode === "live"
-                      ? t('profile.liveConversionOnHint', { currency })
-                      : t('profile.liveConversionOffHint', { currency })}
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={conversionMode === "live"}
-                onValueChange={(v) => setConversionMode(v ? "live" : "off")}
-                trackColor={{ false: "#D1D5DB", true: "#4DB6AC" }}
-                thumbColor="#fff"
-              />
-            </View>
-          </View>
-        </View>
 
         {/* Logout Button */}
         <TouchableOpacity
