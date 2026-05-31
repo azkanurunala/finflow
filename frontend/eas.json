@@ -36,10 +36,10 @@
   "submit": {
     "production": {
       "ios": {
-        "ascApiKeyPath": "./asc-api-key.p8",
-        "ascApiKeyId": "REPLACE_ASC_KEY_ID",
-        "ascApiKeyIssuerId": "REPLACE_ASC_ISSUER_ID",
-        "ascAppId": "REPLACE_APP_STORE_CONNECT_APP_ID"
+        "ascApiKeyPath": "./AuthKey_X872773RYF.p8",
+        "ascApiKeyId": "X872773RYF",
+        "ascApiKeyIssuerId": "63f66b92-c2af-4536-a684-2e45929a3154",
+        "ascAppId": "6757940485"
       },
       "android": {
         "serviceAccountKeyPath": "./play-service-account.json",
