@@ -177,7 +177,8 @@ export default function UsageScreen() {
                       />
                     </View>
                     <Text style={styles.rowSub}>
-                      {fmtNum(s.calls)} calls · {fmtNum(s.tokens)} tokens
+                      {fmtNum(s.calls)} calls · {fmtNum(s.tokens)} tokens ·{" "}
+                      {fmtCost(s.calls ? s.cost_usd / s.calls : 0)}/call
                     </Text>
                   </View>
                 </View>

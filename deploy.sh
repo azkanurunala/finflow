@@ -89,9 +89,10 @@ npx --yes eas-cli@latest whoami >/dev/null 2>&1 || die "Not logged in to EAS. Ru
 HAS_PLAY_KEY=0
 [ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
 
-# Tracks whether the Play Store path (.aab build/submit) failed. The release .apk
-# is built independently and must always be produced even if this is 1.
-ANDROID_AAB_FAILED=0
+# Track store-path failures. The release .apk is built independently and must
+# always be produced even if either of these is 1.
+IOS_FAILED=0           # iOS build/submit to App Store
+ANDROID_AAB_FAILED=0   # Android .aab build/submit to Play Store
 
 build_ios() {
   step "iOS → build (production) + auto-submit to App Store"
@@ -121,9 +122,10 @@ build_android_apk() {
   npx --yes eas-cli@latest build -p android --profile production-apk $EAS_FLAGS
 }
 
-# NOTE: the release .apk is always built first and is independent of the Play
-# Store path. If the .aab build or Play submit fails, we record it (non-fatal)
-# and keep going so the .apk is still produced; the failure is reported at the end.
+# NOTE: the release .apk is ALWAYS built first and is independent of the iOS and
+# Play Store paths. If the iOS build/submit, the .aab build, or the Play submit
+# fails, we record it (non-fatal) and keep going so the .apk is still produced;
+# any such failure is reported at the end with a non-zero exit.
 case "$PLATFORM" in
   ios)     build_ios ;;
   android)
@@ -131,10 +133,10 @@ case "$PLATFORM" in
     build_android || ANDROID_AAB_FAILED=1
     ;;
   all)
-    build_ios
-    build_android_apk
+    build_android_apk                       # priority artifact — built first, always
+    build_ios || IOS_FAILED=1               # best-effort: iOS failure must not block the .apk
     if [ "$HAS_PLAY_KEY" = "1" ]; then
-      build_android || ANDROID_AAB_FAILED=1
+      build_android || ANDROID_AAB_FAILED=1 # best-effort: .aab/Play failure must not block the .apk
     else
       printf "\n\033[1;33m⏭  Skipping Android .aab submit: no Play Console key yet.\033[0m\n"
       echo "   The release .apk above is built for direct distribution. When ready for Play,"
@@ -155,9 +157,18 @@ echo "• Backend: redeploying on Render (watch the Render dashboard)."
 echo "• Frontend: builds + store submissions are running on EAS — track at https://expo.dev"
 echo "• Android release .apk: download it from its build page on https://expo.dev once done."
 
-# The release .apk has already been built above. If only the Play Store path
-# (.aab build/submit) failed, surface it as a non-zero exit without undoing the .apk.
+# The release .apk has already been built above. If only the store paths (iOS
+# App Store and/or Android .aab→Play) failed, surface them as a non-zero exit
+# without undoing the .apk that was already produced.
+DEPLOY_FAILED=0
+if [ "$IOS_FAILED" = "1" ]; then
+  printf "\n\033[1;33m⚠  iOS build/submit to App Store FAILED — check its build logs on https://expo.dev.\033[0m\n" >&2
+  DEPLOY_FAILED=1
+fi
 if [ "$ANDROID_AAB_FAILED" = "1" ]; then
   printf "\n\033[1;33m⚠  Android .aab build/submit to Play Store FAILED — but the release .apk was\n   still generated (see its build page on https://expo.dev). Check the .aab logs there.\033[0m\n" >&2
+  DEPLOY_FAILED=1
+fi
+if [ "$DEPLOY_FAILED" = "1" ]; then
   exit 1
 fi

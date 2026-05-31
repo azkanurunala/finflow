@@ -193,6 +193,9 @@ _DASHBOARD_HTML = r"""<!doctype html>
   .filters button.active { background:var(--teal); color:#fff; border-color:var(--teal); }
   .row2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
   @media (max-width:760px){ .row2 { grid-template-columns:1fr; } }
+  .chart3 { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; }
+  @media (max-width:760px){ .chart3 { grid-template-columns:1fr; } }
+  .chartlabel { font-size:12px; font-weight:600; color:var(--gray); margin-bottom:8px; }
 </style>
 </head>
 <body>
@@ -219,10 +222,15 @@ _DASHBOARD_HTML = r"""<!doctype html>
   <div class="wrap">
     <div class="cards" id="cards"></div>
     <div class="panel"><h3>Daily cost (USD)</h3><canvas id="dayChart" height="90"></canvas></div>
-    <div class="row2">
-      <div class="panel"><h3>By feature</h3><canvas id="actionChart" height="160"></canvas></div>
-      <div class="panel"><h3>By model</h3><div id="models"></div></div>
+    <div class="panel">
+      <h3>By feature</h3>
+      <div class="chart3">
+        <div><div class="chartlabel">Cost (USD)</div><canvas id="costChart" height="220"></canvas></div>
+        <div><div class="chartlabel">Calls</div><canvas id="callsChart" height="220"></canvas></div>
+        <div><div class="chartlabel">Cost / call (USD)</div><canvas id="cpcChart" height="220"></canvas></div>
+      </div>
     </div>
+    <div class="panel"><h3>By model</h3><div id="models"></div></div>
     <div class="panel"><h3>Top users by cost</h3><div id="topUsers"></div></div>
     <div class="panel">
       <h3>Redeem codes</h3>
@@ -248,7 +256,15 @@ _DASHBOARD_HTML = r"""<!doctype html>
 
 <script>
 let TOKEN = localStorage.getItem("ff_admin_token") || "";
-let dayChart, actionChart;
+let dayChart, costChart, callsChart, cpcChart;
+function barChart(canvasId, existing, labels, data, color, fmt){
+  if(existing) existing.destroy();
+  return new Chart(document.getElementById(canvasId), {
+    type:"bar",
+    data:{ labels, datasets:[{ data, backgroundColor:color }] },
+    options:{ indexAxis:"y", plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>fmt(c.parsed.x) } } }, scales:{ x:{ ticks:{ callback:v=>fmt(v) } } } }
+  });
+}
 const fmtCost = n => !n ? "$0.00" : n < 0.01 ? "$"+n.toFixed(6) : n < 1 ? "$"+n.toFixed(4) : "$"+n.toFixed(2);
 const fmtNum = n => (n||0).toLocaleString("en-US");
 const ACTIONS = { chat:"Chat", voice:"Voice", ocr:"Receipt Scan", insights:"AI Insights", transcribe:"Transcription", other:"Other" };
@@ -294,19 +310,20 @@ function render(d){
     options:{ plugins:{legend:{display:false}}, scales:{ y:{ ticks:{ callback:v=>"$"+v.toFixed(4) } } } }
   });
 
-  // by feature chart
+  // by feature — 3 charts: cost, calls, cost/call. Same feature order across all.
   const acts = Object.entries(d.by_action).sort((a,b)=>b[1].cost_usd-a[1].cost_usd);
-  if(actionChart) actionChart.destroy();
-  actionChart = new Chart(document.getElementById("actionChart"), {
-    type:"bar",
-    data:{ labels:acts.map(([k])=>ACTIONS[k]||k), datasets:[{ data:acts.map(([,s])=>s.cost_usd), backgroundColor:"#4DB6AC" }] },
-    options:{ indexAxis:"y", plugins:{legend:{display:false}}, scales:{ x:{ ticks:{ callback:v=>"$"+v.toFixed(4) } } } }
-  });
+  const fLabels = acts.map(([k])=>ACTIONS[k]||k);
+  const usd = v => "$"+Number(v).toFixed(10);
+  const int = v => Number(v).toLocaleString("en-US");
+  costChart  = barChart("costChart",  costChart,  fLabels, acts.map(([,s])=>s.cost_usd), "#4DB6AC", usd);
+  callsChart = barChart("callsChart", callsChart, fLabels, acts.map(([,s])=>s.calls),    "#3B82F6", int);
+  cpcChart   = barChart("cpcChart",   cpcChart,   fLabels, acts.map(([,s])=> s.calls ? s.cost_usd/s.calls : 0), "#F59E0B", usd);
 
   // by model
   const models = Object.entries(d.by_model).sort((a,b)=>b[1].cost_usd-a[1].cost_usd);
-  document.getElementById("models").innerHTML = `<table><tr><th>Model</th><th class="num">Calls</th><th class="num">Tokens</th><th class="num">Cost</th></tr>`+
-    models.map(([m,s])=>`<tr><td>${m}</td><td class="num">${fmtNum(s.calls)}</td><td class="num">${fmtNum(s.tokens)}</td><td class="num">${fmtCost(s.cost_usd)}</td></tr>`).join("")+`</table>`;
+  const cpc10 = s => s.calls ? "$"+Number(s.cost_usd/s.calls).toFixed(10) : "$0.00";
+  document.getElementById("models").innerHTML = `<table><tr><th>Model</th><th class="num">Calls</th><th class="num">Tokens</th><th class="num">Cost</th><th class="num">Cost/call</th></tr>`+
+    models.map(([m,s])=>`<tr><td>${m}</td><td class="num">${fmtNum(s.calls)}</td><td class="num">${fmtNum(s.tokens)}</td><td class="num">${fmtCost(s.cost_usd)}</td><td class="num">${cpc10(s)}</td></tr>`).join("")+`</table>`;
 
   // top users
   const tu = d.top_users || [];
