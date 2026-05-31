@@ -9,8 +9,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import i18n from "../utils/i18n";
 import { useLanguage } from "../contexts/LanguageContext";
 
 const LANGUAGES = [
@@ -36,14 +34,15 @@ const LANGUAGES = [
 
 export default function OnboardingLanguageScreen() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, setLanguage } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState("en");
 
   const handleContinue = async () => {
-    // Save language preference
-    await AsyncStorage.setItem("user_locale", selectedLanguage);
-    i18n.locale = selectedLanguage;
-    
+    // Apply via the context so it updates state + AsyncStorage + i18n immediately
+    // (writing AsyncStorage directly here did NOT update the live context, so the
+    // choice only took effect after a cold restart).
+    await setLanguage(selectedLanguage);
+
     // Go to currency selection - use push to allow proper navigation
     router.push("/onboarding-currency");
   };
@@ -52,9 +51,9 @@ export default function OnboardingLanguageScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "33%" }]} />
+          <View style={[styles.progressFill, { width: "25%" }]} />
         </View>
-        <Text style={styles.stepText}>{t('onboarding.step', { current: 1, total: 3 })}</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 1, total: 4 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>

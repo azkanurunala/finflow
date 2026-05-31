@@ -683,6 +683,8 @@ def _auth_response(user: dict, session_token: str) -> dict:
         "onboarding_completed": user.get("onboarding_completed", False),
         "subscription_tier": user.get("subscription_tier"),
         "is_subscription_active": user.get("subscription_tier") not in (None, "free"),
+        "language": user.get("language"),
+        "currency": user.get("currency"),
     }
 
 
@@ -1123,7 +1125,9 @@ async def register(request: RegisterRequest, response: Response):
             "email": request.email.lower(),
             "name": request.name,
             "session_token": session_token,
-            "onboarding_completed": False
+            "onboarding_completed": False,
+            "language": None,
+            "currency": None
         }
         
     except HTTPException:
@@ -1179,7 +1183,9 @@ async def login(request: LoginRequest, response: Response):
             "picture": user.get("picture"),
             "session_token": session_token,
             "onboarding_completed": user.get("onboarding_completed", True),
-            "subscription_tier": user.get("subscription_tier")
+            "subscription_tier": user.get("subscription_tier"),
+            "language": user.get("language"),
+            "currency": user.get("currency")
         }
         
     except HTTPException:

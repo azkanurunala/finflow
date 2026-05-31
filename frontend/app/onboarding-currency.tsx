@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getCurrency } from "../utils/currency";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 // Curated short list for onboarding, sourced from the canonical currency list
 // so symbols/names stay consistent with the rest of the app.
@@ -22,14 +23,17 @@ const CURRENCIES = ["USD", "EUR", "GBP", "IDR", "JPY", "SGD"].map(
 export default function OnboardingCurrencyScreen() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { setCurrency } = useCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState("USD");
 
   const handleContinue = async () => {
-    // Save currency preference
-    await AsyncStorage.setItem("user_currency", selectedCurrency);
-    // Mark onboarding as complete
+    // Apply via the context so it updates state + AsyncStorage immediately
+    // (it's persisted to the user's account right after they log in — see
+    // AuthContext.syncPrefsAfterAuth).
+    await setCurrency(selectedCurrency);
+    // Mark local onboarding (language + currency) as complete.
     await AsyncStorage.setItem("onboarding_complete", "true");
-    
+
     // Go to login page - use replace to prevent going back to onboarding
     router.replace("/login");
   };
@@ -43,9 +47,9 @@ export default function OnboardingCurrencyScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "66%" }]} />
+          <View style={[styles.progressFill, { width: "50%" }]} />
         </View>
-        <Text style={styles.stepText}>{t('onboarding.step', { current: 2, total: 3 })}</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 2, total: 4 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>

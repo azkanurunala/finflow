@@ -2,6 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { configurePurchases } from "../utils/purchases";
+import { useCurrency } from "./CurrencyContext";
+import { useLanguage } from "./LanguageContext";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -55,6 +57,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  // AuthProvider is nested inside Language/CurrencyProvider, so we can drive
+  // those contexts to reconcile the user's saved prefs on sign-in.
+  const { setCurrency } = useCurrency();
+  const { setLanguage } = useLanguage();
 
   useEffect(() => {
     checkExistingSession();
@@ -81,6 +87,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Reconcile the device's language/currency with the signed-in account.
+  // - If the account already has saved prefs → apply them locally (so the same
+  //   choice follows the user across devices / reinstalls).
+  // - Otherwise → persist the device's onboarding choices to the account so they
+  //   are actually saved (previously onboarding only wrote AsyncStorage).
+  const syncPrefsAfterAuth = async (userData: User) => {
+    try {
+      if (userData.language) await setLanguage(userData.language);
+      if (userData.currency) await setCurrency(userData.currency);
+
+      if (!userData.language || !userData.currency) {
+        const [locale, curr] = await Promise.all([
+          AsyncStorage.getItem("user_locale"),
+          AsyncStorage.getItem("user_currency"),
+        ]);
+        const payload: { language?: string; currency?: string } = {};
+        if (!userData.language && locale) payload.language = locale;
+        if (!userData.currency && curr) payload.currency = curr;
+        if (Object.keys(payload).length) await updateOnboarding(payload);
+      }
+    } catch {
+      // Best-effort — never block sign-in on preference syncing.
+    }
+  };
+
   // Exchange a provider ID token for our own session. The token is verified
   // server-side at /api/auth/oauth/{provider}.
   const signInWithProvider = async (
@@ -96,6 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { session_token, ...userData } = response.data;
       await AsyncStorage.setItem("session_token", session_token);
       setUser(userData as User);
+      await syncPrefsAfterAuth(userData as User);
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail || "Sign-in failed";
@@ -109,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { session_token, ...userData } = response.data;
       await AsyncStorage.setItem("session_token", session_token);
       setUser(userData as User);
+      await syncPrefsAfterAuth(userData as User);
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail || "Login failed";
@@ -122,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { session_token, ...userData } = response.data;
       await AsyncStorage.setItem("session_token", session_token);
       setUser(userData as User);
+      await syncPrefsAfterAuth(userData as User);
       return { success: true };
     } catch (error: any) {
       const errorMessage = error.response?.data?.detail || "Registration failed";

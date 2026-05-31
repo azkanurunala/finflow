@@ -81,7 +81,7 @@ export default function OnboardingTrialScreen() {
     try {
       await startTrial();
       await refreshUser();
-      router.replace("/(app)");
+      router.replace("/onboarding-balance");
     } catch (error) {
       console.error("Error starting trial:", error);
     } finally {
@@ -106,9 +106,9 @@ export default function OnboardingTrialScreen() {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <View style={styles.header}>
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: "100%" }]} />
+          <View style={[styles.progressFill, { width: "75%" }]} />
         </View>
-        <Text style={styles.stepText}>{t('onboarding.step', { current: 3, total: 3 })}</Text>
+        <Text style={styles.stepText}>{t('onboarding.step', { current: 3, total: 4 })}</Text>
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
