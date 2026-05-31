@@ -24,11 +24,25 @@ export function useSocialAuth(onResult?: (r: Result) => void) {
   const [busy, setBusy] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
-  const [request, response, promptGoogle] = Google.useIdTokenAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
+  // expo-auth-session's Google hook THROWS during render if no client id is
+  // defined for the platform (invariantClientId). That would crash the login
+  // screen in a release build. So only pass real ids when configured; otherwise
+  // pass a harmless placeholder so the hook never throws, and keep the button
+  // disabled (googleReady=false) until env vars are set.
+  const googleConfigured = !!(
+    process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ||
+    process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ||
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+  );
+  const [request, response, promptGoogle] = Google.useIdTokenAuthRequest(
+    googleConfigured
+      ? {
+          iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+          androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+          webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        }
+      : { clientId: "unconfigured.apps.googleusercontent.com" }
+  );
 
   useEffect(() => {
     if (Platform.OS === "ios") {
@@ -98,7 +112,7 @@ export function useSocialAuth(onResult?: (r: Result) => void) {
   return {
     signInGoogle,
     signInApple,
-    googleReady: !!request,
+    googleReady: googleConfigured && !!request,
     appleAvailable,
     busy,
   };

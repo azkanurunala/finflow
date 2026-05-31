@@ -4,10 +4,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider } from "../contexts/AuthContext";
 import { CurrencyProvider } from "../contexts/CurrencyContext";
 import { LanguageProvider } from "../contexts/LanguageContext";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary>
       <LanguageProvider>
         <CurrencyProvider>
           <AuthProvider>
@@ -24,6 +26,7 @@ export default function RootLayout() {
           </AuthProvider>
         </CurrencyProvider>
       </LanguageProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
