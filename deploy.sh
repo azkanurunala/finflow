@@ -4,6 +4,8 @@
 #   • Backend : commit + push to `main`  → Render auto-deploys the LIVE service.
 #   • Frontend: EAS build (iOS + Android, production) + auto-submit to
 #               App Store (TestFlight) and Google Play.
+#               Android also produces a directly-installable release .apk
+#               (sideload / direct download) in addition to the .aab.
 #
 # USAGE
 #   ./deploy.sh ["commit message"]                  # both platforms (default)
@@ -87,6 +89,10 @@ npx --yes eas-cli@latest whoami >/dev/null 2>&1 || die "Not logged in to EAS. Ru
 HAS_PLAY_KEY=0
 [ -f "$FRONTEND/play-service-account.json" ] && HAS_PLAY_KEY=1
 
+# Tracks whether the Play Store path (.aab build/submit) failed. The release .apk
+# is built independently and must always be produced even if this is 1.
+ANDROID_AAB_FAILED=0
+
 build_ios() {
   step "iOS → build (production) + auto-submit to App Store"
   # shellcheck disable=SC2086
@@ -95,11 +101,11 @@ build_ios() {
 
 build_android() {
   if [ "$HAS_PLAY_KEY" = "1" ]; then
-    step "Android → build (production) + auto-submit to Play Store"
+    step "Android → build .aab (production) + auto-submit to Play Store"
     # shellcheck disable=SC2086
     npx --yes eas-cli@latest build -p android --profile production --auto-submit $EAS_FLAGS
   else
-    step "Android → build ONLY (no Play key yet → submit skipped, won't prompt)"
+    step "Android → build .aab ONLY (no Play key yet → submit skipped, won't prompt)"
     echo "    No frontend/play-service-account.json found. Google requires the FIRST"
     echo "    Play release to be uploaded manually anyway — use the .aab this produces."
     # shellcheck disable=SC2086
@@ -107,17 +113,32 @@ build_android() {
   fi
 }
 
+build_android_apk() {
+  step "Android → build release .apk (production-apk profile — direct install / sideload)"
+  echo "    .apk can't be submitted to Play (Play requires the .aab); this build is for"
+  echo "    direct distribution. Download it from the build's page on https://expo.dev."
+  # shellcheck disable=SC2086
+  npx --yes eas-cli@latest build -p android --profile production-apk $EAS_FLAGS
+}
+
+# NOTE: the release .apk is always built first and is independent of the Play
+# Store path. If the .aab build or Play submit fails, we record it (non-fatal)
+# and keep going so the .apk is still produced; the failure is reported at the end.
 case "$PLATFORM" in
   ios)     build_ios ;;
-  android) build_android ;;
+  android)
+    build_android_apk
+    build_android || ANDROID_AAB_FAILED=1
+    ;;
   all)
     build_ios
+    build_android_apk
     if [ "$HAS_PLAY_KEY" = "1" ]; then
-      build_android
+      build_android || ANDROID_AAB_FAILED=1
     else
-      printf "\n\033[1;33m⏭  Skipping Android: no Play Console key yet.\033[0m\n"
-      echo "   When ready: PLATFORM=android ./deploy.sh  (builds an .aab for the first"
-      echo "   manual Play upload), or add play-service-account.json for auto-submit."
+      printf "\n\033[1;33m⏭  Skipping Android .aab submit: no Play Console key yet.\033[0m\n"
+      echo "   The release .apk above is built for direct distribution. When ready for Play,"
+      echo "   add frontend/play-service-account.json (auto-submit), or run PLATFORM=android."
     fi
     ;;
 esac
@@ -132,3 +153,11 @@ esac
 step "Done."
 echo "• Backend: redeploying on Render (watch the Render dashboard)."
 echo "• Frontend: builds + store submissions are running on EAS — track at https://expo.dev"
+echo "• Android release .apk: download it from its build page on https://expo.dev once done."
+
+# The release .apk has already been built above. If only the Play Store path
+# (.aab build/submit) failed, surface it as a non-zero exit without undoing the .apk.
+if [ "$ANDROID_AAB_FAILED" = "1" ]; then
+  printf "\n\033[1;33m⚠  Android .aab build/submit to Play Store FAILED — but the release .apk was\n   still generated (see its build page on https://expo.dev). Check the .aab logs there.\033[0m\n" >&2
+  exit 1
+fi

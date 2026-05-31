@@ -327,86 +327,85 @@ async def require_auth(request: Request) -> User:
     return user
 
 async def check_quota(user: User, action_type: str) -> bool:
-    """Check if user has quota for the action"""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
-    # Get today's usage
-    usage = await db.usage_stats.find_one(
-        {"user_id": user.user_id, "date": today},
-        {"_id": 0}
-    )
-    
-    if not usage:
-        usage = {
-            "user_id": user.user_id,
-            "date": today,
-            "chat_count": 0,
-            "ocr_count": 0,
-            "voice_minutes": 0.0,
-            "total_actions": 0
-        }
-    
-    tier = user.subscription_tier
-    tier_limits = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
-    
-    # Check subscription expiry
-    if user.subscription_expires_at:
-        expires_at = user.subscription_expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-        
-        if expires_at < datetime.now(timezone.utc):
-            # Subscription expired, revert to free trial
-            tier = "free_trial"
-            tier_limits = SUBSCRIPTION_TIERS["free_trial"]
-    
-    # For free trial, check daily total actions
-    if tier == "free_trial":
-        if usage["total_actions"] >= tier_limits["daily_actions"]:
-            return False
+    """Check if the user has quota for the action.
+
+    AUTO-HEAL: the whole check is fail-open — any unexpected error logs and
+    returns True. A quota check must never be the reason an action crashes or a
+    paying user is wrongly blocked.
+    """
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        usage = await db.usage_stats.find_one(
+            {"user_id": user.user_id, "date": today},
+            {"_id": 0}
+        ) or {}
+
+        tier = user.subscription_tier
+        tier_limits = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS["free_trial"])
+
+        # Expired subscription → revert to free trial limits.
+        if user.subscription_expires_at:
+            expires_at = user.subscription_expires_at
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            if expires_at < datetime.now(timezone.utc):
+                tier = "free_trial"
+                tier_limits = SUBSCRIPTION_TIERS["free_trial"]
+
+        # Free trial: combined daily action cap.
+        if tier == "free_trial":
+            return usage.get("total_actions", 0) < tier_limits.get("daily_actions", 0)
+
+        # Paid tiers. A limit of -1 means unlimited (Power). "uploads" is the
+        # combined OCR + voice allowance. Keys match SUBSCRIPTION_TIERS, and all
+        # usage fields are read with .get() so a partial usage_stats doc never
+        # raises KeyError.
+        if action_type == "chat":
+            limit = tier_limits.get("chat_messages", 0)
+            return limit == -1 or usage.get("chat_count", 0) < limit
+        elif action_type == "ocr":
+            limit = tier_limits.get("uploads", 0)
+            return limit == -1 or usage.get("ocr_count", 0) < limit
+        elif action_type == "voice":
+            limit = tier_limits.get("uploads", 0)
+            return limit == -1 or usage.get("voice_minutes", 0) < limit
+
         return True
-    
-    # For paid tiers, check monthly limits
-    # For now, we'll use daily limits as placeholder
-    if action_type == "chat":
-        # Rough daily limit = monthly / 30
-        daily_limit = tier_limits.get("chat_messages", 0) / 30
-        return usage["chat_count"] < daily_limit
-    elif action_type == "ocr":
-        daily_limit = tier_limits.get("ocr_images", 0) / 30
-        return usage["ocr_count"] < daily_limit
-    elif action_type == "voice":
-        daily_limit = tier_limits.get("audio_minutes", 0) / 30
-        return usage["voice_minutes"] < daily_limit
-    
-    return True
+    except Exception as e:
+        logger.error(f"check_quota error (failing open, allowing action): {e}")
+        return True
 
 async def increment_usage(user_id: str, action_type: str, amount: float = 1.0):
-    """Increment user's usage stats"""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    
-    update_fields = {
-        "$inc": {
-            "total_actions": 1
-        },
-        "$setOnInsert": {
-            "user_id": user_id,
-            "date": today
+    """Increment user's usage stats. AUTO-HEAL: never raises — usage accounting
+    must not fail a request whose transaction was already saved."""
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+        update_fields = {
+            "$inc": {
+                "total_actions": 1
+            },
+            "$setOnInsert": {
+                "user_id": user_id,
+                "date": today
+            }
         }
-    }
-    
-    if action_type == "chat":
-        update_fields["$inc"]["chat_count"] = 1
-    elif action_type == "ocr":
-        update_fields["$inc"]["ocr_count"] = 1
-    elif action_type == "voice":
-        update_fields["$inc"]["voice_minutes"] = amount
-    
-    await db.usage_stats.update_one(
-        {"user_id": user_id, "date": today},
-        update_fields,
-        upsert=True
-    )
+
+        if action_type == "chat":
+            update_fields["$inc"]["chat_count"] = 1
+        elif action_type == "ocr":
+            update_fields["$inc"]["ocr_count"] = 1
+        elif action_type == "voice":
+            update_fields["$inc"]["voice_minutes"] = amount
+
+        await db.usage_stats.update_one(
+            {"user_id": user_id, "date": today},
+            update_fields,
+            upsert=True
+        )
+    except Exception as e:
+        logger.error(f"increment_usage failed (ignored): {e}")
 
 async def record_token_usage(user_id: str, action: str, model: str,
                              prompt_tokens: int = 0, completion_tokens: int = 0,
