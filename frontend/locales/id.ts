@@ -388,7 +388,7 @@ export default {
     title: "Tukar kode",
     placeholder: "Masukkan kode kamu",
     button: "Tukar",
-    success: "Kode diterapkan! Selamat menikmati uji coba gratis.",
+    success: "Kode diterapkan! Pro aktif selama 7 hari.",
   },
   account: {
     title: "Informasi Pribadi",

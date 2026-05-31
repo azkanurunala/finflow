@@ -2016,6 +2016,11 @@ async def get_usage_cost(days: int = 30, current_user: User = Depends(require_au
 
 app.include_router(api_router)
 
+# Admin web dashboard (GET /admin) + aggregate endpoint (GET /api/admin/overview),
+# both guarded by ADMIN_TOKEN. Defined in admin.py to keep server.py tidy.
+from admin import register_admin
+register_admin(app, db, ADMIN_TOKEN)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,

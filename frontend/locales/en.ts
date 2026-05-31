@@ -387,7 +387,7 @@ export default {
     title: "Redeem a code",
     placeholder: "Enter your code",
     button: "Redeem",
-    success: "Code applied! Enjoy your free trial.",
+    success: "Code applied! Pro unlocked for 7 days.",
   },
   account: {
     title: "Personal Information",
