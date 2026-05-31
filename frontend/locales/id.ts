@@ -206,6 +206,7 @@ export default {
     accountSettings: "Pengaturan Akun",
     personalInfo: "Informasi Pribadi",
     paymentMethods: "Metode Pembayaran",
+    usage: "Penggunaan & Biaya",
     security: "Keamanan",
     notifications: "Notifikasi",
     supportInfo: "Dukungan & Info",

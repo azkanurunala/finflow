@@ -99,6 +99,12 @@ export default function ProfileScreen() {
           onPress: () => router.push("/(app)/subscription"),
         },
         {
+          icon: "stats-chart-outline",
+          label: t('profile.usage'),
+          color: "#3B82F6",
+          onPress: () => router.push("/(app)/usage"),
+        },
+        {
           icon: "shield-checkmark-outline",
           label: t('profile.security'),
           color: "#8B5CF6",

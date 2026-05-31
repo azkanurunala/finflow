@@ -66,6 +66,7 @@
       "expo-localization",
       "expo-web-browser",
       "expo-apple-authentication",
+      "./plugins/withNoPushEntitlement",
       "expo-notifications"
     ],
     "experiments": {

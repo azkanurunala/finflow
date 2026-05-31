@@ -205,6 +205,7 @@ export default {
     accountSettings: "Account Settings",
     personalInfo: "Personal Information",
     paymentMethods: "Payment Methods",
+    usage: "Usage & Cost",
     security: "Security",
     notifications: "Notifications",
     supportInfo: "Support & Info",

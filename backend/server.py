@@ -2014,58 +2014,6 @@ async def get_usage_cost(days: int = 30, current_user: User = Depends(require_au
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class RedeemCodeRequest(BaseModel):
-    code: str
-
-
-@api_router.post("/redeem-code")
-async def redeem_code(request: RedeemCodeRequest, current_user: User = Depends(require_auth)):
-    """Redeem a promo code to unlock a subscription tier for a number of days.
-    Codes are single-use (see backend/generate_codes.py to mint them)."""
-    code = (request.code or "").strip().upper()
-    if not code:
-        raise HTTPException(status_code=400, detail="Code is required")
-
-    doc = await db.redemption_codes.find_one({"code": code})
-    if not doc:
-        raise HTTPException(status_code=404, detail="Invalid code")
-    if doc.get("redeemed"):
-        raise HTTPException(status_code=400, detail="This code has already been redeemed")
-
-    tier = doc.get("tier", "pro")
-    days = int(doc.get("duration_days", 7))
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=days)
-
-    # Mark the code redeemed (guard against double-redeem via the filter).
-    claim = await db.redemption_codes.update_one(
-        {"code": code, "redeemed": {"$ne": True}},
-        {"$set": {"redeemed": True, "redeemed_by": current_user.user_id, "redeemed_at": now}},
-    )
-    if claim.modified_count == 0:
-        raise HTTPException(status_code=400, detail="This code has already been redeemed")
-
-    # Grant the subscription.
-    await db.users.update_one(
-        {"user_id": current_user.user_id},
-        {"$set": {
-            "subscription_tier": tier,
-            "subscription_started_at": now,
-            "subscription_expires_at": expires_at,
-            "onboarding_completed": True,
-        }},
-    )
-
-    tier_name = SUBSCRIPTION_TIERS.get(tier, {}).get("name", tier.title())
-    return {
-        "success": True,
-        "message": f"{tier_name} unlocked for {days} days!",
-        "subscription_tier": tier,
-        "expires_at": expires_at.isoformat(),
-        "duration_days": days,
-    }
-
-
 app.include_router(api_router)
 
 app.add_middleware(
