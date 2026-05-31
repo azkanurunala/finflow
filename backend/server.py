@@ -1844,14 +1844,27 @@ async def export_transactions(
         logger.error(f"Error exporting transactions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+AI_LANGUAGE_NAMES = {
+    "en": "English", "id": "Indonesian", "ar": "Arabic", "de": "German",
+    "es": "Spanish", "fr": "French", "hi": "Hindi", "it": "Italian",
+    "ja": "Japanese", "ko": "Korean", "ms": "Malay", "nl": "Dutch",
+    "pl": "Polish", "pt": "Portuguese", "ru": "Russian", "th": "Thai",
+    "tr": "Turkish", "vi": "Vietnamese", "zh": "Chinese",
+}
+
+
 @api_router.get("/insights/ai")
 async def get_ai_insights(
     days: int = 30,
+    language: Optional[str] = None,
     current_user: User = Depends(require_auth)
 ):
     """Get AI-powered financial insights and recommendations"""
     try:
         start_date = datetime.now(timezone.utc) - timedelta(days=days)
+        # Respond in the user's chosen language (query param wins, else account pref).
+        lang = (language or getattr(current_user, "language", None) or "en")
+        lang_name = AI_LANGUAGE_NAMES.get(lang, "English")
         
         # Get transactions
         transactions = await db.transactions.find(
@@ -1869,7 +1882,27 @@ async def get_ai_insights(
                 "recommendations": ["Start logging your expenses to get personalized insights!"],
                 "spending_trend": "neutral"
             }
-        
+
+        # COST: AI insights are expensive (an LLM call). The Analytics screen
+        # re-fetches on every open and period toggle, so serve a cached result
+        # when nothing changed — invalidated by a newer transaction or a 12h TTL.
+        now = datetime.now(timezone.utc)
+        latest_txn_at = max(
+            (_aware(t.get("created_at")) for t in transactions if t.get("created_at")),
+            default=None,
+        )
+        cached = await db.ai_insights_cache.find_one(
+            {"user_id": current_user.user_id, "days": days, "language": lang}, {"_id": 0}
+        )
+        if cached:
+            gen = _aware(cached.get("generated_at"))
+            fresh = gen is not None and (now - gen) < timedelta(hours=12)
+            unchanged = latest_txn_at is None or (gen is not None and latest_txn_at <= gen)
+            if fresh and unchanged:
+                result = cached.get("result") or {}
+                result["cached"] = True
+                return result
+
         # Calculate basic stats
         total_income = sum(t["amount"] for t in transactions if t.get("transaction_type") == "income")
         total_expenses = sum(t["amount"] for t in transactions if t.get("transaction_type") == "expense")
@@ -1911,19 +1944,23 @@ User's financial data for the last {days} days:
 - Number of transactions: {len(transactions)}
 """
         
-        system_prompt = """You are a friendly personal finance advisor. Analyze the user's spending data and provide:
+        system_prompt = f"""You are a friendly personal finance advisor. Analyze the user's spending data and provide:
 1. A brief summary (2-3 sentences)
 2. 3 specific insights about their spending patterns
 3. 3 actionable recommendations to improve their finances
 4. An overall spending trend assessment (good/needs_attention/concerning)
 
 Respond in JSON format:
-{
+{{
     "summary": "brief summary",
     "insights": ["insight1", "insight2", "insight3"],
     "recommendations": ["rec1", "rec2", "rec3"],
     "spending_trend": "good|needs_attention|concerning"
-}"""
+}}
+
+IMPORTANT: Write ALL text values (summary, insights, recommendations) in {lang_name}.
+Keep the JSON keys in English and keep "spending_trend" as one of the exact English
+values good/needs_attention/concerning."""
 
         response = await llm_complete(
             system_prompt,
@@ -1958,9 +1995,27 @@ Respond in JSON format:
         }
         ai_insights["period_days"] = days
         ai_insights["currency"] = main_currency
-        
+        ai_insights["cached"] = False
+
+        # Store for cheap reuse until a new transaction or the TTL expires.
+        try:
+            await db.ai_insights_cache.update_one(
+                {"user_id": current_user.user_id, "days": days, "language": lang},
+                {"$set": {
+                    "user_id": current_user.user_id,
+                    "days": days,
+                    "language": lang,
+                    "result": ai_insights,
+                    "generated_at": now,
+                    "latest_txn_at": latest_txn_at,
+                }},
+                upsert=True,
+            )
+        except Exception as ce:
+            logger.error(f"Failed to cache AI insights (ignored): {ce}")
+
         return ai_insights
-        
+
     except Exception as e:
         logger.error(f"Error getting AI insights: {str(e)}")
         # Return fallback insights

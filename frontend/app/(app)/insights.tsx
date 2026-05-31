@@ -20,7 +20,9 @@ import { useCurrency } from "../../contexts/CurrencyContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { translateCategory } from "../../utils/i18n";
 import { AddTransactionModal } from "../../components/AddTransactionModal";
-import * as FileSystem from "expo-file-system";
+// expo-file-system@19 (SDK 54) moved documentDirectory/writeAsStringAsync to the
+// legacy entry; the default export no longer has them (export was failing).
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
 const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -52,7 +54,7 @@ interface AIInsights {
 export default function AdvancedAnalyticsScreen() {
   const router = useRouter();
   const { formatAmount, currency, convert } = useCurrency();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Sum a per-currency map into the selected currency (live) or raw (off).
   const sumConverted = (
@@ -73,14 +75,14 @@ export default function AdvancedAnalyticsScreen() {
 
   useEffect(() => {
     fetchAIInsights();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, language]);
 
   const fetchAIInsights = async () => {
     setLoading(true);
     try {
       const sessionToken = await AsyncStorage.getItem("session_token");
       const response = await axios.get(
-        `${BACKEND_URL}/api/insights/ai?days=${selectedPeriod}`,
+        `${BACKEND_URL}/api/insights/ai?days=${selectedPeriod}&language=${language}`,
         { headers: { Authorization: `Bearer ${sessionToken}` } }
       );
       setInsights(response.data);
