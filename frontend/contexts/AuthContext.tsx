@@ -18,6 +18,8 @@ interface User {
   onboarding_completed?: boolean;
   language?: string;
   currency?: string;
+  created_at?: string;
+  has_password?: boolean;
 }
 
 interface AuthContextType {
@@ -39,6 +41,13 @@ interface AuthContextType {
   redeemCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   /** Refresh entitlement from the billing provider (after purchase/restore). */
   syncBilling: () => Promise<void>;
+  /** Update the signed-in user's display name. */
+  updateName: (name: string) => Promise<{ success: boolean; error?: string }>;
+  /** Change password (email accounts only). */
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -216,6 +225,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateName = async (name: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      const response = await axios.put(
+        `${BACKEND_URL}/api/auth/profile`,
+        { name },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      const newName = response.data?.name ?? name;
+      setUser((prev) => (prev ? { ...prev, name: newName } : null));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.response?.data?.detail || "Update failed" };
+    }
+  };
+
+  const changePassword = async (
+    currentPassword: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const sessionToken = await AsyncStorage.getItem("session_token");
+      await axios.post(
+        `${BACKEND_URL}/api/auth/change-password`,
+        { current_password: currentPassword, new_password: newPassword },
+        { headers: { Authorization: `Bearer ${sessionToken}` } }
+      );
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.response?.data?.detail || "Change password failed" };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -230,6 +272,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         startTrial,
         redeemCode,
         syncBilling,
+        updateName,
+        changePassword,
       }}
     >
       {children}

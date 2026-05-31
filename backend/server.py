@@ -36,11 +36,33 @@ LLM_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5.2')
 TRANSCRIBE_MODEL = os.environ.get('OPENAI_TRANSCRIBE_MODEL', 'whisper-1')
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
+# USD price per token (input/output). Verify against https://openai.com/api/pricing/
+# and add models as needed. Unknown models cost 0 (still logged with token counts).
+MODEL_PRICING = {
+    "gpt-4o-mini":            {"in": 0.15 / 1e6,  "out": 0.60 / 1e6},
+    "gpt-4o-mini-transcribe": {"in": 1.25 / 1e6,  "out": 5.00 / 1e6},
+    "gpt-4o":                 {"in": 2.50 / 1e6,  "out": 10.00 / 1e6},
+    "gpt-5-mini":             {"in": 0.25 / 1e6,  "out": 2.00 / 1e6},
+    "gpt-5.2":                {"in": 1.25 / 1e6,  "out": 10.00 / 1e6},
+    "whisper-1":              {"in": 0.0,         "out": 0.0},  # billed per minute, not tokens
+}
+
+def cost_of(model: str, prompt_tokens: int = 0, completion_tokens: int = 0) -> float:
+    """USD cost for a completion given its token counts."""
+    p = MODEL_PRICING.get(model)
+    if not p:
+        return 0.0
+    return prompt_tokens * p["in"] + completion_tokens * p["out"]
+
 
 async def llm_complete(system_prompt: str, user_text: str,
-                       image_base64: Optional[str] = None) -> str:
+                       image_base64: Optional[str] = None,
+                       user_id: Optional[str] = None,
+                       action: str = "other",
+                       transaction_id: Optional[str] = None) -> str:
     """Single-turn OpenAI chat completion. Pass image_base64 for vision
-    (receipt scanning). Returns the assistant's text."""
+    (receipt scanning). Returns the assistant's text. When user_id is given,
+    the call's token usage + cost is logged via record_token_usage."""
     content: List[Dict[str, Any]] = [{"type": "text", "text": user_text}]
     if image_base64:
         content.append({
@@ -54,6 +76,12 @@ async def llm_complete(system_prompt: str, user_text: str,
             {"role": "user", "content": content},
         ],
     )
+    if user_id and getattr(resp, "usage", None):
+        await record_token_usage(
+            user_id, action, LLM_MODEL,
+            resp.usage.prompt_tokens, resp.usage.completion_tokens,
+            transaction_id=transaction_id,
+        )
     return resp.choices[0].message.content or ""
 
 # Create the main app
@@ -380,8 +408,42 @@ async def increment_usage(user_id: str, action_type: str, amount: float = 1.0):
         upsert=True
     )
 
+async def record_token_usage(user_id: str, action: str, model: str,
+                             prompt_tokens: int = 0, completion_tokens: int = 0,
+                             transaction_id: Optional[str] = None):
+    """Log one AI call's token usage + cost, and roll it up into usage_stats.
+
+    action: chat | voice | ocr | insights | transcribe
+    """
+    try:
+        total = (prompt_tokens or 0) + (completion_tokens or 0)
+        cost = round(cost_of(model, prompt_tokens or 0, completion_tokens or 0), 6)
+        now = datetime.now(timezone.utc)
+        today = now.strftime("%Y-%m-%d")
+        await db.token_usage.insert_one({
+            "user_id": user_id,
+            "action": action,
+            "model": model,
+            "prompt_tokens": prompt_tokens or 0,
+            "completion_tokens": completion_tokens or 0,
+            "total_tokens": total,
+            "cost_usd": cost,
+            "transaction_id": transaction_id,
+            "date": today,
+            "created_at": now,
+        })
+        await db.usage_stats.update_one(
+            {"user_id": user_id, "date": today},
+            {"$inc": {"total_tokens": total, "cost_usd": cost},
+             "$setOnInsert": {"user_id": user_id, "date": today}},
+            upsert=True,
+        )
+    except Exception as e:
+        # Never let usage logging break the main request.
+        logger.error(f"Failed to record token usage: {str(e)}")
+
 # Helper function to parse transaction via GPT
-async def parse_transaction_text(text: str, source: str = "chat", user_currency: str = "USD") -> Transaction:
+async def parse_transaction_text(text: str, source: str = "chat", user_currency: str = "USD", user_id: Optional[str] = None, transaction_id: Optional[str] = None) -> Transaction:
     """Use GPT to parse natural language transaction input"""
     try:
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -434,7 +496,7 @@ DATE PARSING:
 - "minggu lalu" / "last week" = 7 days ago
 - If no date mentioned, use today: {today}"""
 
-        response = await llm_complete(system_prompt, f"Parse this transaction: {text}")
+        response = await llm_complete(system_prompt, f"Parse this transaction: {text}", user_id=user_id, action=source, transaction_id=transaction_id)
         
         # Parse GPT response
         import json
@@ -466,7 +528,7 @@ DATE PARSING:
         raise HTTPException(status_code=400, detail=f"Could not parse transaction: {str(e)}")
 
 # Helper function to parse receipt image
-async def parse_receipt_image(image_base64: str, user_currency: str = "USD") -> dict:
+async def parse_receipt_image(image_base64: str, user_currency: str = "USD", user_id: Optional[str] = None, transaction_id: Optional[str] = None) -> dict:
     """Use GPT Vision to parse receipt image"""
     try:
         system_prompt = f"""You are a receipt scanner.
@@ -496,6 +558,9 @@ Rules:
             system_prompt,
             "Extract transaction details from this receipt.",
             image_base64=image_base64,
+            user_id=user_id,
+            action="ocr",
+            transaction_id=transaction_id,
         )
         
         # Parse response
@@ -809,6 +874,45 @@ async def generate_codes(req: GenerateCodesRequest, x_admin_token: Optional[str]
 
 
 # ---------------------------------------------------------------------------
+# Account management — update profile name + change password (email accounts).
+# ---------------------------------------------------------------------------
+class UpdateProfileRequest(BaseModel):
+    name: str
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@api_router.put("/auth/profile")
+async def update_profile(req: UpdateProfileRequest, current_user: User = Depends(require_auth)):
+    name = (req.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    await db.users.update_one(
+        {"user_id": current_user.user_id}, {"$set": {"name": name}}
+    )
+    return {"success": True, "name": name}
+
+
+@api_router.post("/auth/change-password")
+async def change_password(req: ChangePasswordRequest, current_user: User = Depends(require_auth)):
+    user = await db.users.find_one({"user_id": current_user.user_id})
+    if not user or "password_hash" not in user:
+        raise HTTPException(status_code=400, detail="Password change is only available for email accounts")
+    if not verify_password(req.current_password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    await db.users.update_one(
+        {"user_id": current_user.user_id},
+        {"$set": {"password_hash": hash_password(req.new_password)}},
+    )
+    return {"success": True}
+
+
+# ---------------------------------------------------------------------------
 # Billing / paywall — RevenueCat is the source of IAP truth. We mirror the
 # active entitlement onto the user (subscription_tier/expires) so the paywall
 # and quota checks stay server-authoritative.
@@ -906,12 +1010,13 @@ async def get_me(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Get additional user data from DB
+    # Get additional user data from DB (password_hash fetched only to derive
+    # has_password — it is never echoed back in the response below).
     user_doc = await db.users.find_one(
         {"user_id": user.user_id},
-        {"_id": 0, "password_hash": 0}
+        {"_id": 0}
     )
-    
+
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -936,7 +1041,8 @@ async def get_me(request: Request):
         "onboarding_completed": user_doc.get("onboarding_completed", True),
         "language": user_doc.get("language"),
         "currency": user_doc.get("currency"),
-        "created_at": user_doc.get("created_at")
+        "created_at": user_doc.get("created_at"),
+        "has_password": bool(user_doc.get("password_hash")),
     }
 
 @api_router.post("/auth/logout")
@@ -1212,13 +1318,17 @@ async def create_chat_transaction(
                 detail="Quota exceeded. Please upgrade your subscription."
             )
         
-        # Parse transaction using GPT
+        # Parse transaction using GPT (id generated up front so the token-usage
+        # log can be linked to this transaction)
+        txn_id = str(uuid.uuid4())
         transaction_data = await parse_transaction_text(
             request.text, source="chat",
             user_currency=(request.currency or current_user.currency or "USD"),
+            user_id=current_user.user_id,
+            transaction_id=txn_id,
         )
         transaction_data["user_id"] = current_user.user_id
-        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["id"] = txn_id
         transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
@@ -1253,13 +1363,16 @@ async def create_receipt_transaction(
                 detail="Quota exceeded. Please upgrade your subscription."
             )
         
-        # Parse receipt using GPT Vision
+        # Parse receipt using GPT Vision (id up front to link token-usage log)
+        txn_id = str(uuid.uuid4())
         transaction_data = await parse_receipt_image(
             request.image_base64,
             user_currency=(request.currency or current_user.currency or "USD"),
+            user_id=current_user.user_id,
+            transaction_id=txn_id,
         )
         transaction_data["user_id"] = current_user.user_id
-        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["id"] = txn_id
         transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
@@ -1357,7 +1470,21 @@ async def create_voice_transaction(
         
         transcription_result = response.json()
         transcribed_text = transcription_result.get("text", "")
-        
+
+        # Generate the transaction id up front so transcription + parse token
+        # usage can both be linked to this transaction.
+        txn_id = str(uuid.uuid4())
+
+        # Log transcription token usage when the model reports it
+        # (gpt-4o-mini-transcribe returns `usage`; whisper-1 does not).
+        tu = transcription_result.get("usage") or {}
+        if tu.get("input_tokens") or tu.get("output_tokens"):
+            await record_token_usage(
+                current_user.user_id, "transcribe", TRANSCRIBE_MODEL,
+                tu.get("input_tokens", 0), tu.get("output_tokens", 0),
+                transaction_id=txn_id,
+            )
+
         if not transcribed_text:
             raise HTTPException(
                 status_code=400,
@@ -1368,9 +1495,11 @@ async def create_voice_transaction(
         transaction_data = await parse_transaction_text(
             transcribed_text, source="voice",
             user_currency=(request.currency or current_user.currency or "USD"),
+            user_id=current_user.user_id,
+            transaction_id=txn_id,
         )
         transaction_data["user_id"] = current_user.user_id
-        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["id"] = txn_id
         transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
@@ -1406,13 +1535,16 @@ async def create_voice_text_transaction(
                 detail="Quota exceeded. Please upgrade your subscription."
             )
         
-        # Parse transaction using GPT
+        # Parse transaction using GPT (id up front to link token-usage log)
+        txn_id = str(uuid.uuid4())
         transaction_data = await parse_transaction_text(
             request.text, source="voice",
             user_currency=(request.currency or current_user.currency or "USD"),
+            user_id=current_user.user_id,
+            transaction_id=txn_id,
         )
         transaction_data["user_id"] = current_user.user_id
-        transaction_data["id"] = str(uuid.uuid4())
+        transaction_data["id"] = txn_id
         transaction_data["created_at"] = datetime.now(timezone.utc)
         
         # Save to database
@@ -1788,7 +1920,12 @@ Respond in JSON format:
     "spending_trend": "good|needs_attention|concerning"
 }"""
 
-        response = await llm_complete(system_prompt, f"Analyze this financial data and provide insights:\n{context}")
+        response = await llm_complete(
+            system_prompt,
+            f"Analyze this financial data and provide insights:\n{context}",
+            user_id=current_user.user_id,
+            action="insights",
+        )
         
         # Parse response
         import json
@@ -1831,6 +1968,103 @@ Respond in JSON format:
             "period_days": days,
             "currency": "USD"
         }
+
+
+@api_router.get("/usage/cost")
+async def get_usage_cost(days: int = 30, current_user: User = Depends(require_auth)):
+    """Token usage + estimated cost for the current user over the last `days`,
+    broken down by action (chat/voice/ocr/insights/transcribe) and by day."""
+    try:
+        start = datetime.now(timezone.utc) - timedelta(days=days)
+        events = await db.token_usage.find(
+            {"user_id": current_user.user_id, "created_at": {"$gte": start}},
+            {"_id": 0},
+        ).to_list(20000)
+
+        total_cost = 0.0
+        total_tokens = 0
+        by_action: Dict[str, Any] = {}
+        by_day: Dict[str, Any] = {}
+        by_model: Dict[str, Any] = {}
+        for e in events:
+            cost = e.get("cost_usd", 0) or 0
+            tokens = e.get("total_tokens", 0) or 0
+            total_cost += cost
+            total_tokens += tokens
+            for bucket, key in ((by_action, e.get("action", "other")),
+                                (by_day, e.get("date")),
+                                (by_model, e.get("model", "?"))):
+                b = bucket.setdefault(key, {"calls": 0, "tokens": 0, "cost_usd": 0.0})
+                b["calls"] += 1
+                b["tokens"] += tokens
+                b["cost_usd"] = round(b["cost_usd"] + cost, 6)
+
+        return {
+            "period_days": days,
+            "calls": len(events),
+            "total_tokens": total_tokens,
+            "total_cost_usd": round(total_cost, 6),
+            "avg_cost_per_call_usd": round(total_cost / len(events), 6) if events else 0,
+            "by_action": by_action,
+            "by_model": by_model,
+            "by_day": dict(sorted(by_day.items())),
+        }
+    except Exception as e:
+        logger.error(f"Error computing usage cost: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class RedeemCodeRequest(BaseModel):
+    code: str
+
+
+@api_router.post("/redeem-code")
+async def redeem_code(request: RedeemCodeRequest, current_user: User = Depends(require_auth)):
+    """Redeem a promo code to unlock a subscription tier for a number of days.
+    Codes are single-use (see backend/generate_codes.py to mint them)."""
+    code = (request.code or "").strip().upper()
+    if not code:
+        raise HTTPException(status_code=400, detail="Code is required")
+
+    doc = await db.redemption_codes.find_one({"code": code})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Invalid code")
+    if doc.get("redeemed"):
+        raise HTTPException(status_code=400, detail="This code has already been redeemed")
+
+    tier = doc.get("tier", "pro")
+    days = int(doc.get("duration_days", 7))
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=days)
+
+    # Mark the code redeemed (guard against double-redeem via the filter).
+    claim = await db.redemption_codes.update_one(
+        {"code": code, "redeemed": {"$ne": True}},
+        {"$set": {"redeemed": True, "redeemed_by": current_user.user_id, "redeemed_at": now}},
+    )
+    if claim.modified_count == 0:
+        raise HTTPException(status_code=400, detail="This code has already been redeemed")
+
+    # Grant the subscription.
+    await db.users.update_one(
+        {"user_id": current_user.user_id},
+        {"$set": {
+            "subscription_tier": tier,
+            "subscription_started_at": now,
+            "subscription_expires_at": expires_at,
+            "onboarding_completed": True,
+        }},
+    )
+
+    tier_name = SUBSCRIPTION_TIERS.get(tier, {}).get("name", tier.title())
+    return {
+        "success": True,
+        "message": f"{tier_name} unlocked for {days} days!",
+        "subscription_tier": tier,
+        "expires_at": expires_at.isoformat(),
+        "duration_days": days,
+    }
+
 
 app.include_router(api_router)
 

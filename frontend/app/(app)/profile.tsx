@@ -72,6 +72,16 @@ export default function ProfileScreen() {
     return lang ? lang.name : "English (US)";
   };
 
+  // Real subscription tier → short badge label.
+  const tierBadge = (() => {
+    const tier = user?.subscription_tier;
+    if (tier === "free_trial") return t('profile.planTrial');
+    if (tier && ["basic", "pro", "power"].includes(tier)) {
+      return tier.charAt(0).toUpperCase() + tier.slice(1);
+    }
+    return t('profile.planFree');
+  })().toUpperCase();
+
   const menuItems = [
     {
       section: t('profile.accountSettings'),
@@ -80,25 +90,25 @@ export default function ProfileScreen() {
           icon: "person-outline",
           label: t('profile.personalInfo'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/personal-info"),
         },
         {
           icon: "card-outline",
           label: t('profile.paymentMethods'),
           color: "#F59E0B",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/subscription"),
         },
         {
           icon: "shield-checkmark-outline",
           label: t('profile.security'),
           color: "#8B5CF6",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/security"),
         },
         {
           icon: "notifications-outline",
           label: t('profile.notifications'),
           color: "#EF4444",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/notifications"),
         },
       ],
     },
@@ -134,19 +144,19 @@ export default function ProfileScreen() {
           icon: "help-circle-outline",
           label: t('profile.helpCenter'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/help"),
         },
         {
           icon: "document-text-outline",
           label: t('profile.privacyPolicy'),
           color: "#6B7280",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/privacy"),
         },
         {
           icon: "information-circle-outline",
           label: t('profile.aboutFinflow'),
           color: "#4DB6AC",
-          onPress: () => {},
+          onPress: () => router.push("/(app)/about"),
         },
       ],
     },
@@ -176,24 +186,12 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{user?.name}</Text>
           <Text style={styles.userEmail}>{user?.email}</Text>
 
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>1</Text>
-              <Text style={styles.statLabel}>{t('profile.accounts')}</Text>
+          {/* Current plan (real subscription tier) */}
+          <View style={styles.planRow}>
+            <View style={styles.proBadge}>
+              <Text style={styles.proText}>{tierBadge}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>{t('profile.goals')}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <View style={styles.proBadge}>
-                <Text style={styles.proText}>PRO</Text>
-              </View>
-              <Text style={styles.statLabel}>{t('profile.plan')}</Text>
-            </View>
+            <Text style={styles.planLabel}>{t('profile.plan')}</Text>
           </View>
         </View>
 
@@ -458,17 +456,25 @@ const styles = StyleSheet.create({
     height: 32,
     backgroundColor: "#E5E7EB",
   },
+  planRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   proBadge: {
     backgroundColor: "#4DB6AC",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    marginBottom: 4,
   },
   proText: {
     fontSize: 12,
     fontWeight: "bold",
     color: "#fff",
+  },
+  planLabel: {
+    fontSize: 13,
+    color: "#6B7280",
   },
   section: {
     marginTop: 24,
