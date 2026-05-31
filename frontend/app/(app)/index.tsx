@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useCurrency } from "../../contexts/CurrencyContext";
@@ -68,25 +68,14 @@ export default function HomeScreen() {
   const [processingVoice, setProcessingVoice] = useState(false);
   const [liveTranscription, setLiveTranscription] = useState("");
 
-  // Handle query params from chat screen
+  // Open a modal when navigated here with ?openVoice / ?openScan (from chat).
+  // Native-safe via expo-router params — the old window.location.href code
+  // crashed on iOS ("Cannot read property 'href' of undefined").
+  const params = useLocalSearchParams<{ openVoice?: string; openScan?: string }>();
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const openVoice = url.searchParams.get('openVoice');
-    const openScan = url.searchParams.get('openScan');
-    
-    if (openVoice === 'true') {
-      setShowVoiceModal(true);
-      // Clean up URL
-      url.searchParams.delete('openVoice');
-      window.history.replaceState({}, '', url.toString());
-    }
-    if (openScan === 'true') {
-      setShowReceiptModal(true);
-      // Clean up URL
-      url.searchParams.delete('openScan');
-      window.history.replaceState({}, '', url.toString());
-    }
-  }, []);
+    if (params.openVoice === "true") setShowVoiceModal(true);
+    if (params.openScan === "true") setShowReceiptModal(true);
+  }, [params.openVoice, params.openScan]);
 
   // Refresh data when screen is focused
   useFocusEffect(
