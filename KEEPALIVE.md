@@ -8,11 +8,13 @@ secara berkala dari luar.
 ## Endpoint yang di-ping
 
 ```
-GET https://finflow-backend-fshd.onrender.com/health  ->  {"status":"ok"}
+GET|HEAD https://finflow-backend-fshd.onrender.com/health  ->  {"status":"ok"}
 ```
 
 Endpoint ini sengaja dipilih karena **tidak menyentuh database maupun LLM**
 (lihat `backend/server.py`, fungsi `health_check`), jadi tiap ping nyaris nol biaya.
+Endpoint menerima **GET dan HEAD** — penting karena UptimeRobot free tier nge-ping
+pakai HEAD (route GET-only akan balas `405 Method Not Allowed`).
 
 ## Interval: tiap 5 menit (jangan lebih sering)
 

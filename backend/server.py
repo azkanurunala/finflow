@@ -93,7 +93,9 @@ api_router = APIRouter(prefix="/api")
 async def root():
     return {"status": "healthy", "app": "FinFlow API", "version": "1.0.0"}
 
-@app.get("/health")
+# Accept HEAD too: UptimeRobot's free tier pings with HEAD, and GET-only routes
+# return 405 to it. HEAD keeps the Render free-tier backend warm just as well.
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "ok"}
 
