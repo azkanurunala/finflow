@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
+import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "../contexts/AuthContext";
+
+// Fixed, known redirect URI (rather than relying on the library's default
+// detection) so it can be registered exactly in Google Cloud Console. On web
+// this resolves to the page origin regardless of `scheme`; on native it
+// resolves to `frontend:///`.
+const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: "frontend" });
 
 // Required so the auth popup can close itself on web/dev.
 WebBrowser.maybeCompleteAuthSession();
@@ -40,6 +47,7 @@ export function useSocialAuth(onResult?: (r: Result) => void) {
           iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
           androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
           webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+          redirectUri: GOOGLE_REDIRECT_URI,
         }
       : { clientId: "unconfigured.apps.googleusercontent.com" }
   );
