@@ -100,3 +100,9 @@ play-service-account.json
 # Mobile development
 android-sdk/
 frontend/.metro-cache/
+.kiro/*
+frontend/android/.gradle/*
+frontend/android/app/.cxx/*
+frontend/android/app/build/*
+frontend/android/build/*
+frontend/sixth-drive-293409-dd8a432622c2.json
