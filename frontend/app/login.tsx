@@ -111,7 +111,7 @@ export default function LoginScreen() {
 
           {/* Error Message */}
           {error ? (
-            <View style={styles.errorContainer}>
+            <View style={styles.errorContainer} testID="login-error-message">
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
               <Text style={styles.errorText}>{error}</Text>
             </View>
@@ -129,6 +129,7 @@ export default function LoginScreen() {
               />
               <TextInput
                 style={styles.input}
+                testID="login-email-input"
                 placeholder="you@example.com"
                 placeholderTextColor="#CBD5E1"
                 keyboardType="email-address"
@@ -152,6 +153,7 @@ export default function LoginScreen() {
               />
               <TextInput
                 style={styles.input}
+                testID="login-password-input"
                 placeholder={t('auth.enterPassword')}
                 placeholderTextColor="#CBD5E1"
                 secureTextEntry={!showPassword}
@@ -180,6 +182,7 @@ export default function LoginScreen() {
           {/* Login Button */}
           <TouchableOpacity
             style={[styles.loginButton, isLoggingIn && styles.loginButtonDisabled]}
+            testID="login-submit-button"
             activeOpacity={0.8}
             onPress={handleEmailLogin}
             disabled={isLoggingIn}
@@ -212,6 +215,8 @@ export default function LoginScreen() {
           <View style={styles.socialButtons}>
             <TouchableOpacity
               style={[styles.socialButton, (!googleReady || busy) && styles.socialButtonDisabled]}
+              testID="login-google-button"
+              accessibilityLabel="login-google-button"
               onPress={signInGoogle}
               disabled={!googleReady || busy}
               activeOpacity={0.7}
@@ -223,6 +228,8 @@ export default function LoginScreen() {
             {appleAvailable && (
               <TouchableOpacity
                 style={[styles.socialButton, busy && styles.socialButtonDisabled]}
+                testID="login-apple-button"
+                accessibilityLabel="login-apple-button"
                 onPress={signInApple}
                 disabled={busy}
                 activeOpacity={0.7}
@@ -236,7 +243,7 @@ export default function LoginScreen() {
           {/* Sign Up Link */}
           <View style={styles.signupLink}>
             <Text style={styles.signupLinkText}>{t('auth.dontHaveAccount')} </Text>
-            <TouchableOpacity onPress={() => router.push("/signup")}>
+            <TouchableOpacity testID="login-signup-link" onPress={() => router.push("/signup")}>
               <Text style={styles.signupLinkTextBold}>{t('auth.signup')}</Text>
             </TouchableOpacity>
           </View>

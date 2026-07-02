@@ -97,16 +97,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userData.language) await setLanguage(userData.language);
       if (userData.currency) await setCurrency(userData.currency);
 
-      if (!userData.language || !userData.currency) {
-        const [locale, curr] = await Promise.all([
-          AsyncStorage.getItem("user_locale"),
-          AsyncStorage.getItem("user_currency"),
-        ]);
-        const payload: { language?: string; currency?: string } = {};
-        if (!userData.language && locale) payload.language = locale;
-        if (!userData.currency && curr) payload.currency = curr;
-        if (Object.keys(payload).length) await updateOnboarding(payload);
+      const [locale, curr] = await Promise.all([
+        AsyncStorage.getItem("user_locale"),
+        AsyncStorage.getItem("user_currency"),
+      ]);
+      const payload: { language?: string; currency?: string; onboarding_completed?: boolean } = {};
+      if (!userData.language && locale) payload.language = locale;
+      if (!userData.currency && curr) payload.currency = curr;
+      // The device having local onboarding prefs means the user already
+      // completed the onboarding-language/currency screens before signing
+      // in — mark it done server-side too, regardless of whether language/
+      // currency were already synced on a previous (partial) attempt.
+      // Without this, OAuth users (who skip /onboarding-trial because
+      // they're auto-granted a trial server-side, unlike email/password
+      // users whose start-trial call sets this flag) never get
+      // onboarding_completed set on the backend, and (app)/_layout.tsx's
+      // guard bounces them back to /onboarding-language forever.
+      if (userData.onboarding_completed !== true && (locale || curr)) {
+        payload.onboarding_completed = true;
       }
+      if (Object.keys(payload).length) await updateOnboarding(payload);
     } catch {
       // Best-effort — never block sign-in on preference syncing.
     }

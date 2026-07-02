@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,15 +43,24 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = () => {
+    const doLogout = async () => {
+      await logout();
+      router.replace("/login");
+    };
+
+    // react-native-web doesn't implement Alert.alert's multi-button confirm —
+    // it silently no-ops, so logout would never fire. Use window.confirm on web.
+    if (Platform.OS === "web") {
+      if ((globalThis as any).confirm(t('auth.logoutConfirm'))) doLogout();
+      return;
+    }
+
     Alert.alert(t('auth.logout'), t('auth.logoutConfirm'), [
       { text: t('common.cancel'), style: "cancel" },
       {
         text: t('auth.logout'),
         style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/login");
-        },
+        onPress: doLogout,
       },
     ]);
   };
@@ -275,6 +285,7 @@ export default function ProfileScreen() {
         {/* Logout Button */}
         <TouchableOpacity
           style={styles.logoutButton}
+          testID="logout-button"
           onPress={handleLogout}
           activeOpacity={0.7}
         >

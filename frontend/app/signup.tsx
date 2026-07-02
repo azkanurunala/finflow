@@ -123,7 +123,7 @@ export default function SignupScreen() {
 
           {/* Error Message */}
           {error ? (
-            <View style={styles.errorContainer}>
+            <View style={styles.errorContainer} testID="signup-error-message">
               <Ionicons name="alert-circle" size={20} color="#EF4444" />
               <Text style={styles.errorText}>{error}</Text>
             </View>
@@ -133,6 +133,8 @@ export default function SignupScreen() {
           <View style={styles.socialButtons}>
             <TouchableOpacity
               style={[styles.socialButton, (!googleReady || busy) && styles.socialButtonDisabled]}
+              testID="signup-google-button"
+              accessibilityLabel="signup-google-button"
               onPress={signInGoogle}
               disabled={!googleReady || busy}
               activeOpacity={0.7}
@@ -144,6 +146,8 @@ export default function SignupScreen() {
             {appleAvailable && (
               <TouchableOpacity
                 style={[styles.socialButton, busy && styles.socialButtonDisabled]}
+                testID="signup-apple-button"
+                accessibilityLabel="signup-apple-button"
                 onPress={signInApple}
                 disabled={busy}
                 activeOpacity={0.7}
@@ -173,6 +177,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
+                testID="signup-name-input"
                 placeholder={t('auth.enterName')}
                 placeholderTextColor="#CBD5E1"
                 autoCapitalize="words"
@@ -194,6 +199,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
+                testID="signup-email-input"
                 placeholder={t('auth.enterEmail')}
                 placeholderTextColor="#CBD5E1"
                 keyboardType="email-address"
@@ -217,6 +223,7 @@ export default function SignupScreen() {
               />
               <TextInput
                 style={styles.input}
+                testID="signup-password-input"
                 placeholder={t('auth.createPassword')}
                 placeholderTextColor="#CBD5E1"
                 secureTextEntry={!showPassword}
@@ -243,6 +250,7 @@ export default function SignupScreen() {
           {/* Terms Checkbox */}
           <TouchableOpacity
             style={styles.checkboxContainer}
+            testID="signup-terms-checkbox"
             onPress={() => setAcceptedTerms(!acceptedTerms)}
             activeOpacity={0.7}
           >
@@ -269,6 +277,7 @@ export default function SignupScreen() {
               styles.createButton,
               (!acceptedTerms || isRegistering) && styles.createButtonDisabled,
             ]}
+            testID="signup-submit-button"
             disabled={!acceptedTerms || isRegistering}
             onPress={handleEmailSignup}
             activeOpacity={0.8}
@@ -303,7 +312,7 @@ export default function SignupScreen() {
             <Text style={styles.loginLinkText}>
               {t('auth.alreadyHaveAccount')}{" "}
             </Text>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity testID="signup-login-link" onPress={() => router.back()}>
               <Text style={styles.loginLinkTextBold}>{t('auth.login')}</Text>
             </TouchableOpacity>
           </View>
