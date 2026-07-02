@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 // detection) so it can be registered exactly in Google Cloud Console. On web
 // this resolves to the page origin regardless of `scheme`; on native it
 // resolves to `frontend:///`.
-const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: "frontend" });
+const GOOGLE_REDIRECT_URI = AuthSession.makeRedirectUri({ scheme: "com.azkanura.finflow" });
 
 // Required so the auth popup can close itself on web/dev.
 WebBrowser.maybeCompleteAuthSession();
