@@ -105,6 +105,7 @@ frontend/android/.gradle/*
 frontend/android/app/.cxx/*
 frontend/android/app/build/*
 frontend/android/build/*
+frontend/.prebuild-backup/
 frontend/sixth-drive-293409-dd8a432622c2.json
 
 frontend/client_secret_*.json
